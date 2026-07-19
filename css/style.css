@@ -429,6 +429,156 @@ footer:before,footer:after{display:none}
 @media(max-width:520px){#bottomNav{grid-template-columns:repeat(7,82px)}.statRow{grid-template-columns:minmax(82px,1.25fr) repeat(3,minmax(52px,.75fr));font-size:10px;padding-left:7px;padding-right:7px}.upgradeGrid,.researchCenterGrid{grid-template-columns:1fr}.upgradeSummaryGrid{grid-template-columns:repeat(2,1fr)}.upgradeCenterCard{grid-template-columns:36px 1fr}.upgradeCenterActions{grid-column:1/-1;flex-direction:row}.upgradeCenterActions button{flex:1;min-width:0}}
 
 
+/* v1.12.6 – optische Grundpolitur der Upgrade-Zentrale */
+.upgradeCenter{
+ display:grid;
+ gap:14px;
+}
+.upgradeCenter .upgradeHero{
+ margin:0;
+ padding:15px;
+ border-color:#7b572f73;
+ box-shadow:inset 0 1px #fff8,0 5px 14px #5a3b1714;
+}
+.upgradeCenter .upgradeHero p{
+ max-width:62ch;
+ color:#5c482f;
+}
+.upgradeCenter .upgradeSummaryGrid{
+ gap:8px;
+}
+.upgradeCenter .upgradeSummaryTile{
+ min-height:54px;
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ padding:9px 7px;
+ background:linear-gradient(#fff9e8c7,#ead7a18a);
+ box-shadow:inset 0 1px #fff9;
+}
+.upgradeCenter .upgradeSummaryTile span{
+ line-height:1.2;
+ letter-spacing:.45px;
+}
+.upgradeCenter .statsSection{
+ margin:0;
+ border-color:#76522d70;
+ background:#fff7df70;
+ box-shadow:inset 0 1px #fff8,0 4px 12px #57361712;
+}
+.upgradeCenter .statsSection>h3{
+ padding:10px 13px;
+ background:linear-gradient(90deg,#72502a22,#fff0 75%);
+ border-bottom-color:#79552f5c;
+ font-size:16px;
+ letter-spacing:.1px;
+}
+.upgradeCenterCard{
+ grid-template-columns:44px minmax(0,1fr) 132px;
+ gap:11px;
+ min-height:72px;
+ padding:10px 12px;
+ transition:background-color .15s ease,box-shadow .15s ease;
+}
+.upgradeCenterCard:hover{
+ background:#fff9e67d;
+ box-shadow:inset 3px 0 #8b6939a8;
+}
+.upgradeCenterIcon{
+ width:38px;
+ height:38px;
+ display:grid;
+ place-items:center;
+ border:1px solid #79552f3d;
+ border-radius:11px;
+ background:#fff8e7a6;
+ box-shadow:inset 0 1px #fff,0 2px 5px #5c3b1919;
+ font-size:23px;
+}
+.upgradeCenterCard>div:nth-child(2){
+ min-width:0;
+}
+.upgradeCenterCard b{
+ font-size:12px;
+ line-height:1.3;
+ color:#362819;
+}
+.upgradeCenterCard small{
+ margin-top:4px;
+ line-height:1.4;
+ color:#685238;
+}
+.upgradeCenterActions{
+ width:132px;
+ gap:6px;
+}
+.upgradeCenterActions button{
+ width:100%;
+ min-width:0;
+ min-height:34px;
+ padding:6px 9px;
+ border-radius:10px;
+ font-size:10px;
+ line-height:1.15;
+ white-space:nowrap;
+}
+.upgradeCenterActions .viewOnly{
+ background:linear-gradient(#e7f5fe,#c9e3f3);
+ border-color:#6795b2;
+ box-shadow:inset 0 1px #fff,0 2px 4px #284c621f;
+}
+.upgradeCenterActions button:disabled{
+ opacity:1;
+ cursor:not-allowed;
+ color:#6c6653;
+ background:linear-gradient(#d9d4b9,#b7b095);
+ border-color:#8d866d73;
+ box-shadow:inset 0 1px #ffffff70;
+ text-shadow:none;
+ filter:saturate(.55);
+}
+.upgradeCenter .researchCenterGrid{
+ gap:9px;
+ padding:11px;
+}
+.upgradeCenter .researchCenterItem{
+ min-height:92px;
+ padding:10px;
+ background:linear-gradient(#fff9e8a8,#ebd9aa70);
+ box-shadow:inset 0 1px #fff8;
+}
+.upgradeCenter .bonusPills{
+ padding:11px;
+}
+.upgradeCenter .recommendationCard{
+ margin:11px;
+ padding:12px;
+}
+@media(max-width:620px){
+ .upgradeCenterCard{
+  grid-template-columns:40px minmax(0,1fr);
+  gap:9px;
+  padding:10px;
+ }
+ .upgradeCenterIcon{width:36px;height:36px;font-size:21px}
+ .upgradeCenterActions{
+  grid-column:2;
+  width:auto;
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ .upgradeCenterActions button:only-child{grid-column:1/-1}
+ .upgradeCenterActions button{white-space:normal}
+}
+@media(max-width:420px){
+ .upgradeCenter{gap:11px}
+ .upgradeCenter .upgradeHero{padding:12px}
+ .upgradeCenter .upgradeSummaryGrid{grid-template-columns:repeat(2,1fr)}
+ .upgradeCenterActions{grid-column:1/-1}
+ .upgradeCenter .statsSection>h3{padding:9px 11px;font-size:15px}
+}
+
+
 /* v1.8.5 – Reparaturentscheidung */
 #repairDecision{position:fixed;inset:0;z-index:900;display:grid;place-items:center;padding:18px;background:#050908c9;backdrop-filter:blur(8px)}
 #repairDecision.hidden{display:none}
