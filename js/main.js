@@ -21,6 +21,14 @@ import {
  getAllResearchTechs
 } from "./research.js";
 
+import {
+ getSupportProductionPerSecond,
+ getTotalGoldPerSecond,
+ getMarketLossPercent,
+ getMarketOutput,
+ runEconomySupportTick
+} from "./economy.js";
+
 (()=>{
 "use strict";
 const GAME_VERSION="1.11.6.0";
@@ -648,25 +656,15 @@ function burst(x,y,color,n){for(let i=0;i<n;i++){const a=Math.random()*TAU,s=20+
 
 
 function supportProductionPerSecond(building){
- const level=building.level||1;
- if(building.key==="lumber")return buildingHasWorker(building)?(.55+(level-1)*.30):0;
- if(building.key==="market")return buildingHasWorker(building)?level:0;
- return 0;
+ return getSupportProductionPerSecond(building,buildingHasWorker);
 }
 function totalGoldPerSecond(){
- syncResidents();
- const housing=state.buildings.filter(b=>b.key==="house").reduce((sum,h)=>sum+residentCapacityForHouse(h)*.18,0);
- const markets=state.buildings.filter(b=>b.key==="market").reduce((sum,b)=>sum+supportProductionPerSecond(b),0);
- return housing+markets;
+ return getTotalGoldPerSecond(state,{syncResidents,residentCapacityForHouse,buildingHasWorker});
 }
-function marketLossPercent(b){return b&&b.level>=3?10:b&&b.level>=2?15:20}
-function marketOutput(amount,b){return Math.floor(amount*(1-marketLossPercent(b)/100))}
+function marketLossPercent(building){return getMarketLossPercent(building)}
+function marketOutput(amount,building){return getMarketOutput(amount,building)}
 function runSupportTick(){
- if(!state.inWave||paused||gameOver)return;
- let woodGain=0;
- for(const b of state.buildings)if(b.key==="lumber")woodGain+=supportProductionPerSecond(b);
- state.wood+=woodGain;
- state.gold+=totalGoldPerSecond();
+ return runEconomySupportTick(state,{paused,gameOver,syncResidents,residentCapacityForHouse,buildingHasWorker});
 }
 function repairTargetInfo(target){
  if(!target)throw new Error("Ungültiges Reparaturziel");
