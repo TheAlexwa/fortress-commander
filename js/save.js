@@ -278,6 +278,12 @@ export function loadGameState({
   };
 }
 
+export function deleteSaveGame() {
+  const existed = localStorage.getItem(SAVE_KEY) !== null;
+  localStorage.removeItem(SAVE_KEY);
+  return existed;
+}
+
 export function getSaveMetadata() {
   try {
     const snapshot = parseSnapshot();

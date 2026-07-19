@@ -70,15 +70,15 @@ import {
 import { renderGameUI } from "./ui.js";
 import { renderGameFrame } from "./render.js";
 import { attachGameInput } from "./input.js";
-import { saveGameState, loadGameState, getSaveMetadata } from "./save.js";
+import { saveGameState, loadGameState, deleteSaveGame, getSaveMetadata } from "./save.js";
 
 // Fortress Commander – zentrale Initialisierung und Spielschleife.
 // Fachlogik, Darstellung und Eingaben liegen in eigenständigen Modulen.
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.12.2";
-const GAME_RELEASE_NAME="Spiel laden";
+const GAME_VERSION="1.12.3";
+const GAME_RELEASE_NAME="Speicherstand löschen";
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
  if(!ENEMY_CODEX[type]||discoveredEnemies.has(type))return;
@@ -331,7 +331,11 @@ function refreshSaveStatus(){
   load.textContent="📂 Spiel laden";
   load.title=metadata?.valid?"Zuletzt gespeicherten Spielstand laden":"Kein gültiger Speicherstand vorhanden";
  }
- if(del){del.disabled=true;del.textContent="🗑 Löschen (folgt)"}
+ if(del){
+  del.disabled=!metadata;
+  del.textContent="🗑 Speicherstand löschen";
+  del.title=metadata?"Lokalen Speicherstand unwiderruflich löschen":"Kein Speicherstand vorhanden";
+ }
  if(!box)return;
 
  if(state.inWave){
@@ -391,7 +395,29 @@ function loadGame(){
   return false;
  }
 }
-function deleteSave(){showToast("Löschen folgt im nächsten Schritt")}
+function deleteSave(){
+ const metadata=getSaveMetadata();
+ if(!metadata){
+  showToast("Kein Speicherstand vorhanden");
+  refreshSaveStatus();
+  return false;
+ }
+ const confirmed=window.confirm(
+  "Lokalen Speicherstand wirklich löschen?\n\nDie aktuelle Partie bleibt geöffnet, kann danach aber nicht mehr geladen werden."
+ );
+ if(!confirmed)return false;
+ try{
+  deleteSaveGame();
+  refreshSaveStatus();
+  showToast("Speicherstand gelöscht");
+  return true;
+ }catch(error){
+  console.error("Löschen fehlgeschlagen:",error);
+  showToast("Speicherstand konnte nicht gelöscht werden");
+  refreshSaveStatus();
+  return false;
+ }
+}
 
 
 
