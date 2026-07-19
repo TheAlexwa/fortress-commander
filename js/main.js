@@ -76,6 +76,8 @@ import {
  getWallHealthSum
 } from "./game.js";
 
+import { renderGameUI } from "./ui.js";
+
 (()=>{
 "use strict";
 const GAME_VERSION="1.11.6.0";
@@ -361,41 +363,14 @@ function deleteSave(){showToast("Es gibt keinen aktiven Spielstand")}
 
 
 function updateUI(){
- closeAllBlockingPanels();
- ui.gold.textContent=Math.floor(state.gold);ui.wood.textContent=Math.floor(state.wood);const rpHud=document.getElementById("researchPoints");if(rpHud)rpHud.textContent=Math.floor(state.researchPoints||0);const hasWorkshopNow=state.buildings.some(b=>b.key==="workshop");if(navResearch){navResearch.disabled=!hasWorkshopNow;navResearch.title=hasWorkshopNow?"Werkstatt öffnen":"Zuerst eine Werkstatt bauen"}if(navResearchBadge)navResearchBadge.textContent=Math.floor(state.researchPoints||0);
- ui.goldRate.textContent=`+${totalGoldPerSecond().toFixed(2)}/Sek.`;
- ui.woodRate.textContent=`+${totalWoodPerSecond().toFixed(2)}/Sek.`;
- syncResidents();ui.populationBusy.textContent=assignedResidents();ui.populationTotal.textContent=totalResidents();ui.populationFree.textContent=`${freeResidents()} frei`;
- ui.hp.textContent=Math.ceil(state.hp)+"/"+state.maxHp;ui.wave.textContent=state.wave;
- const intact=state.walls.filter(w=>w.hp>0).length;ui.wallInfo.textContent=intact+"/"+WALL_SEGMENTS;
- ui.start.disabled=state.inWave||gameOver;ui.start.textContent=state.inWave?"⚔ Läuft":gameOver?"✖ Verloren":"⚔ Start";
- ui.pause.textContent=paused?"▶ Weiter":"Ⅱ Pause";
- ui.status.textContent=gameOver?"Burg gefallen":state.inWave?`${state.enemies.length+state.toSpawn} Eisenclan-Krieger`:`Bauphase · ${waveCount(state.wave)} Feinde`;
- 
-document.querySelectorAll(".buildBtn").forEach(b=>{const c=BUILD[b.dataset.build];b.classList.toggle("active",buildMode===b.dataset.build);const req=buildRequirement(b.dataset.build);b.disabled=gameOver||!req.ok||state.gold<c.gold||state.wood<c.wood;b.classList.toggle("unlocked",req.ok);b.title=req.ok?"":req.reason});
- ui.upgrade.disabled=true;ui.sell.disabled=true;ui.repairWall.disabled=true;ui.repairWall.textContent="Bewohner";ui.craftsmanToggle.style.display="none";ui.marketTrade.style.display="none";document.getElementById("workshopResearchBtn").style.display="none";
- if(!selected){ui.selected.textContent="Nichts ausgewählt";return}
- if(selected.kind==="wall"){
-  ui.selected.innerHTML=`<b>Mauerabschnitt ${selected.i+1}</b><br>Lebenspunkte: ${Math.ceil(selected.hp)} / ${selected.maxHp}`;return;
- }
- if(selected.kind==="unit"){
-  const unitName=selected.key==="guard"?"Burgwache":"Bogenschütze";
-  const unitMode=selected.key==="guard"?(selected.retreating?"Rückzug":selected.stance==="offense"?"Ausfall":"Burg halten"):(selected.controlMode==="auto"?"Automatik":"Manuell");
-  ui.selected.innerHTML=`<b>${unitName} · Erfahrungsstufe ${selected.expLevel||1}</b><br>HP ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · EXP ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)}<br>Schaden ${Math.round(selected.damage)} · Rüstung ${Math.round((selected.armor||0)*100)}% · Tempo ${Math.round(selected.speed)}<br>Modus: ${unitMode}${selected.pendingUpgrades?` · <b>${selected.pendingUpgrades} Aufwertung bereit</b>`:""}`;
-  ui.upgrade.disabled=selected.level>=5||state.gold<55*selected.level;ui.sell.disabled=false;return;
- }
- const b=selected,g=Math.floor(b.base.gold*(.65+b.level*.45)),w=Math.floor(b.base.wood*(.45+b.level*.3));
- let supportInfo="";
- if(b.key==="house")supportInfo=`<br>Bewohner: ${residentCapacityForHouse(b)} · Gold: +${(residentCapacityForHouse(b)*.18).toFixed(2)}/Sek. im Kampf`;
- if(b.key==="lumber")supportInfo=`<br>Bewohner: ${buildingHasWorker(b)?"zugewiesen":"nicht zugewiesen"} · Produktion: ${supportProductionPerSecond(b).toFixed(2)} Holz/Sek.`;
- if(b.key==="repair")supportInfo=`<br>Bewohner: ${buildingHasWorker(b)?"zugewiesen":"nicht zugewiesen"} · Reparatur: ${repairHpPerTick().toFixed(1).replace(".",",")} HP je Takt · ${b.repairEnabled===false?"gestoppt":"aktiv"}`;
- if(b.key==="workshop"){supportInfo=`<br>Forschung: 🔬 ${Math.floor(state.researchPoints||0)} · Technologiestufen: ${workshopLevels()}<br>Globaler Kostenanstieg je fremder Forschungsstufe: ${Math.round(globalResearchIncreaseRate()*100)} %`;const wr=document.getElementById("workshopResearchBtn");if(wr)wr.style.display="inline-block"}
- if(b.key==="market")supportInfo=`<br>Bewohner: ${buildingHasWorker(b)?"zugewiesen":"nicht zugewiesen"} · Gold: +${supportProductionPerSecond(b).toFixed(2)}/Sek. · Handelsverlust: ${marketLossPercent(b)}%`;
- if(["lumber","repair","market"].includes(b.key)){ui.repairWall.disabled=false;ui.repairWall.textContent=buildingHasWorker(b)?"Abziehen":"Zuweisen"}
- if(b.key==="repair"&&buildingHasWorker(b)){ui.craftsmanToggle.style.display="inline-block";ui.craftsmanToggle.textContent=b.repairEnabled===false?"Arbeit starten":"Arbeit stoppen"}
- if(b.key==="market"){ui.marketTrade.style.display="inline-block"}
- ui.selected.innerHTML=`<b>${b.key==="house"?(b.level>=2?"Holzhaus":"Zeltlager"):b.base.name} Stufe ${b.level}</b>${b.base.kind==="tower"?`<br>HP ${Math.ceil(b.hp)} / ${Math.ceil(b.maxHp)}`:""}${supportInfo}<br>Upgrade: ${g} Gold / ${w} Holz`;
- ui.upgrade.disabled=b.level>=(b.key==="house"?2:b.key==="market"?3:5)||state.gold<g||state.wood<w;ui.sell.disabled=false;
+ return renderGameUI({
+  state,ui,BUILD,WALL_SEGMENTS,selected,buildMode,paused,gameOver,
+  navResearch,navResearchBadge,closeAllBlockingPanels,totalGoldPerSecond,
+  totalWoodPerSecond,syncResidents,assignedResidents,totalResidents,freeResidents,
+  waveCount,buildRequirement,residentCapacityForHouse,buildingHasWorker,
+  supportProductionPerSecond,repairHpPerTick,workshopLevels,
+  globalResearchIncreaseRate,marketLossPercent
+ });
 }
 
 function buildRequirement(key){return getBuildRequirement(state,key)}
