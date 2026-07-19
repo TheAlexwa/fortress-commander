@@ -375,68 +375,259 @@ function drawCraftsmen(){
  for(const c of state.craftsmen){ctx.save();ctx.translate(c.x,c.y);ctx.fillStyle="#0007";ctx.beginPath();ctx.ellipse(3,9,10,5,0,0,TAU);ctx.fill();ctx.fillStyle="#d9b184";ctx.beginPath();ctx.arc(0,-5,5,0,TAU);ctx.fill();ctx.fillStyle="#c69b36";ctx.fillRect(-6,-10,12,3);ctx.fillStyle="#4f6f89";ctx.fillRect(-6,0,12,12);ctx.strokeStyle="#6e4928";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(5,3);ctx.lineTo(11,-6);ctx.stroke();ctx.fillStyle="#b9bec0";ctx.fillRect(8,-9,8,5);ctx.restore()}
 }
 
+function getEnemyVisualProfile(enemy){
+ const base={
+  bodyTop:enemy.color||"#7b342d",
+  bodyMid:enemy.color||"#7b342d",
+  bodyBottom:"#211517",
+  trim:"#d4b36e",
+  metal:"#879196",
+  leather:"#533629",
+  cloth:"#5d4638",
+  fur:"#8d7d69",
+  skin:"#d2a27d",
+  eyes:"#f1d06a",
+  shoulder:1,
+  weapon:"axe",
+  shield:false,
+  helm:"horned",
+  beard:"#4a2f24",
+  aura:null,
+  cape:false,
+  auraAlpha:.12,
+  bodyWidth:1,
+  bodyHeight:1,
+  headScale:1,
+  badge:"diamond",
+  hornColor:"#eee4d2"
+ };
+ switch(enemy.type){
+  case "runner":
+   return {...base,bodyTop:"#b4693c",bodyMid:"#7c4728",bodyBottom:"#1f1415",trim:"#d4a054",metal:"#9eaab0",leather:"#6e4428",cloth:"#4c3b30",fur:"#685743",shoulder:.72,weapon:"dagger",helm:"hood",headScale:.92,bodyWidth:.88,bodyHeight:.9,badge:"strap",beard:"#533425"};
+  case "spear":
+   return {...base,bodyTop:"#69804e",bodyMid:"#4f6340",bodyBottom:"#1c2220",trim:"#d9cb8b",metal:"#b7c0c5",leather:"#6f492d",cloth:"#5b4a3d",fur:"#89755f",shoulder:1.02,weapon:"spear",helm:"crest",badge:"chevron",beard:"#4d3428"};
+  case "shield":
+   return {...base,bodyTop:"#657483",bodyMid:"#45525e",bodyBottom:"#151a1e",trim:"#d8c797",metal:"#c6ced2",leather:"#654329",cloth:"#51443a",fur:"#a69884",shoulder:1.22,weapon:"mace",shield:"tower",helm:"full",bodyWidth:1.08,bodyHeight:1.08,badge:"rivet",beard:"#40302a",aura:"#8ea7ba",auraAlpha:.13};
+  case "berserker":
+   return {...base,bodyTop:"#9d3a34",bodyMid:"#6f2322",bodyBottom:"#1b0f12",trim:"#f0b35c",metal:"#d4d8da",leather:"#6a3d27",cloth:"#5d2220",fur:"#8b5f4f",shoulder:1.05,weapon:"dualAxes",helm:"wild",bodyWidth:1.03,bodyHeight:.96,badge:"paint",beard:"#74211f",aura:"#c5342e",auraAlpha:.15};
+  case "boss":
+   return {...base,bodyTop:"#5e3437",bodyMid:"#342022",bodyBottom:"#120b0d",trim:"#e1b85b",metal:"#d0d6d9",leather:"#643f2a",cloth:"#6f2424",fur:"#d2c1a1",shoulder:1.28,weapon:"greatAxe",shield:false,helm:"crown",bodyWidth:1.14,bodyHeight:1.14,headScale:1.08,badge:"crown",beard:"#6a352a",aura:"#ce9540",cape:true,auraAlpha:.22};
+  default:
+   return {...base,bodyTop:"#9b5b44",bodyMid:enemy.color||"#7b342d",bodyBottom:"#201416",trim:"#d3b06f",metal:"#9ea8ac",leather:"#6a4129",cloth:"#574234",fur:"#8f7a63",shoulder:.98,weapon:"axe",helm:"horned",badge:"diamond",beard:"#533326"};
+ }
+}
+
 function drawEnemies(){
  const now=performance.now()*.006;
  for(const e of state.enemies){
-  ctx.save();ctx.translate(e.x,e.y);
-  const stride=Math.sin(now+(e.animSeed||0))*1.4;
+  ctx.save();
+  ctx.translate(e.x,e.y);
+  const stride=Math.sin(now+(e.animSeed||0))*1.5;
   const visualClass=e.visualClass||(e.type==="boss"?"boss":["shield","berserker"].includes(e.type)?"special":"normal");
   const fallbackScale=visualClass==="boss"?1.5:visualClass==="special"?1.18:1;
   const visualScale=Number.isFinite(e.visualScale)?e.visualScale:fallbackScale;
   const isSpecial=visualClass==="special",isBoss=visualClass==="boss";
-  ctx.scale(visualScale,visualScale);ctx.translate(0,stride*.25);
-  // Bodenschatten und Größenklasse
-  const shadowWidth=isBoss?1.58:isSpecial?1.46:1.35;
-  ctx.fillStyle="#05060788";ctx.beginPath();ctx.ellipse(5,11,e.radius*shadowWidth,e.radius*(isBoss?.76:isSpecial?.71:.67),0,0,TAU);ctx.fill();
-  if(isSpecial||isBoss){
-   ctx.globalAlpha=isBoss?.22:.13;ctx.fillStyle=isBoss?"#d59a42":e.type==="berserker"?"#d73b32":"#7b98aa";
-   ctx.beginPath();ctx.arc(0,0,e.radius+(isBoss?10:7)+Math.sin(now)*2,0,TAU);ctx.fill();ctx.globalAlpha=1;
+  const style=getEnemyVisualProfile(e);
+  const r=e.radius;
+  ctx.scale(visualScale,visualScale);
+  ctx.translate(0,stride*.22);
+
+  const auraRadius=r*(isBoss?1.7:isSpecial?1.45:1.2);
+  ctx.fillStyle="#05060788";
+  ctx.beginPath();ctx.ellipse(6,12,r*(isBoss?1.62:isSpecial?1.46:1.34),r*(isBoss?.78:isSpecial?.72:.66),0,0,TAU);ctx.fill();
+  if(style.aura){
+   ctx.globalAlpha=style.auraAlpha;
+   ctx.fillStyle=style.aura;
+   ctx.beginPath();ctx.arc(0,-r*.05,auraRadius+Math.sin(now+(e.animSeed||0))*2,0,TAU);ctx.fill();
+   ctx.globalAlpha=1;
   }
-  // Beine, Stiefel und Fellrock
-  ctx.strokeStyle="#3a281f";ctx.lineWidth=Math.max(3,e.radius*.28);ctx.lineCap="round";ctx.beginPath();ctx.moveTo(-e.radius*.28,e.radius*.45);ctx.lineTo(-e.radius*.4,e.radius*.98+stride);ctx.moveTo(e.radius*.28,e.radius*.45);ctx.lineTo(e.radius*.42,e.radius*.98-stride);ctx.stroke();
-  ctx.strokeStyle="#171719";ctx.lineWidth=Math.max(3,e.radius*.22);ctx.beginPath();ctx.moveTo(-e.radius*.48,e.radius*.98+stride);ctx.lineTo(-e.radius*.15,e.radius*.98+stride);ctx.moveTo(e.radius*.18,e.radius*.98-stride);ctx.lineTo(e.radius*.55,e.radius*.98-stride);ctx.stroke();
-  ctx.fillStyle="#493525";ctx.beginPath();ctx.moveTo(-e.radius*.72,e.radius*.12);ctx.lineTo(e.radius*.72,e.radius*.12);ctx.lineTo(e.radius*.5,e.radius*.68);ctx.lineTo(-e.radius*.5,e.radius*.68);ctx.closePath();ctx.fill();
-  // Körperpanzer mit Eisenclan-Rautenwappen
-  const body=ctx.createLinearGradient(-e.radius,-e.radius,e.radius,e.radius);body.addColorStop(0,"#a9724c");body.addColorStop(.42,e.color);body.addColorStop(1,"#241719");ctx.fillStyle=body;ctx.beginPath();ctx.roundRect(-e.radius*.7,-e.radius*.5,e.radius*1.4,e.radius*1.25,e.radius*.34);ctx.fill();ctx.strokeStyle="#23191a";ctx.lineWidth=2.2;ctx.stroke();
-  ctx.fillStyle="#24292d";ctx.beginPath();ctx.moveTo(0,-e.radius*.24);ctx.lineTo(e.radius*.27,e.radius*.08);ctx.lineTo(0,e.radius*.38);ctx.lineTo(-e.radius*.27,e.radius*.08);ctx.closePath();ctx.fill();ctx.strokeStyle="#aeb5b7";ctx.lineWidth=1;ctx.stroke();
-  // Fellschultern
-  ctx.fillStyle=e.type==="boss"?"#d4c5a9":"#9b8a72";for(const sx of [-1,1]){ctx.beginPath();ctx.arc(sx*e.radius*.62,-e.radius*.35,e.radius*.3,0,TAU);ctx.fill()}
-  // Kopf und nordischer Eisenhelm
-  ctx.fillStyle="#d6aa83";ctx.beginPath();ctx.arc(0,-e.radius*.72,Math.max(4,e.radius*.39),0,TAU);ctx.fill();
-  ctx.fillStyle="#323a40";ctx.beginPath();ctx.arc(0,-e.radius*.82,e.radius*.43,Math.PI,TAU);ctx.lineTo(e.radius*.43,-e.radius*.62);ctx.lineTo(-e.radius*.43,-e.radius*.62);ctx.closePath();ctx.fill();
-  ctx.strokeStyle="#b7bec1";ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(0,-e.radius*1.18);ctx.lineTo(0,-e.radius*.55);ctx.stroke();
-  ctx.fillStyle="#eee4d2";ctx.beginPath();ctx.moveTo(-e.radius*.34,-e.radius*.95);ctx.lineTo(-e.radius*.65,-e.radius*1.16);ctx.lineTo(-e.radius*.48,-e.radius*.82);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(e.radius*.34,-e.radius*.95);ctx.lineTo(e.radius*.65,-e.radius*1.16);ctx.lineTo(e.radius*.48,-e.radius*.82);ctx.closePath();ctx.fill();
-  // Bart und Augen
-  ctx.fillStyle=e.type==="berserker"?"#6f1f1c":"#4b3024";ctx.beginPath();ctx.moveTo(-e.radius*.28,-e.radius*.62);ctx.lineTo(0,-e.radius*.3);ctx.lineTo(e.radius*.28,-e.radius*.62);ctx.closePath();ctx.fill();
-  ctx.fillStyle="#f2d471";ctx.fillRect(-e.radius*.22,-e.radius*.8,2,2);ctx.fillRect(e.radius*.15,-e.radius*.8,2,2);
-  // Einheitenspezifische Ausrüstung
-  if(e.type==="shield"){
-   ctx.fillStyle="#46515b";ctx.beginPath();ctx.moveTo(-e.radius*.45,-e.radius*.44);ctx.quadraticCurveTo(-e.radius*1.35,0,-e.radius*.55,e.radius*.82);ctx.quadraticCurveTo(-e.radius*.05,e.radius*.4,-e.radius*.45,-e.radius*.44);ctx.fill();ctx.strokeStyle="#c1c7c8";ctx.lineWidth=2;ctx.stroke();ctx.fillStyle="#252b30";ctx.beginPath();ctx.arc(-e.radius*.67,e.radius*.08,e.radius*.18,0,TAU);ctx.fill();
-  }else if(e.type==="runner"){
-   ctx.fillStyle="#513024";ctx.beginPath();ctx.moveTo(-e.radius*.65,-e.radius*.25);ctx.lineTo(-e.radius*1.1,e.radius*.78);ctx.lineTo(e.radius*.1,e.radius*.55);ctx.closePath();ctx.fill();ctx.strokeStyle="#baa06e";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(e.radius*.45,-e.radius*.15);ctx.lineTo(e.radius*1.05,-e.radius*.8);ctx.stroke();
-  }else if(e.type==="spear"){
-   ctx.strokeStyle="#654325";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(e.radius*.25,e.radius*.55);ctx.lineTo(e.radius*1.22,-e.radius*1.12);ctx.stroke();ctx.fillStyle="#c4cbcc";ctx.beginPath();ctx.moveTo(e.radius*1.22,-e.radius*1.12);ctx.lineTo(e.radius*.95,-e.radius*.93);ctx.lineTo(e.radius*1.18,-e.radius*.75);ctx.closePath();ctx.fill();
+
+  if(style.cape){
+   const cape=ctx.createLinearGradient(-r,0,r,0);cape.addColorStop(0,"#421216");cape.addColorStop(.5,"#8b2726");cape.addColorStop(1,"#351015");
+   ctx.fillStyle=cape;ctx.beginPath();ctx.moveTo(-r*.55,-r*.2);ctx.lineTo(-r*.98,r*.82);ctx.lineTo(0,r*.62);ctx.lineTo(r*.98,r*.82);ctx.lineTo(r*.55,-r*.2);ctx.closePath();ctx.fill();
+   ctx.strokeStyle=style.trim;ctx.lineWidth=1.4;ctx.stroke();
+  }
+
+  // Beine und Unterkörper
+  ctx.strokeStyle="#3b281f";
+  ctx.lineWidth=Math.max(3,r*.28);
+  ctx.lineCap="round";
+  ctx.beginPath();
+  ctx.moveTo(-r*.28,r*.44);
+  ctx.lineTo(-r*.42,r*.98+stride);
+  ctx.moveTo(r*.28,r*.44);
+  ctx.lineTo(r*.42,r*.98-stride);
+  ctx.stroke();
+  ctx.strokeStyle="#171719";
+  ctx.lineWidth=Math.max(3,r*.22);
+  ctx.beginPath();
+  ctx.moveTo(-r*.5,r*.98+stride);ctx.lineTo(-r*.16,r*.98+stride);
+  ctx.moveTo(r*.18,r*.98-stride);ctx.lineTo(r*.57,r*.98-stride);
+  ctx.stroke();
+  ctx.fillStyle=style.cloth;
+  ctx.beginPath();
+  ctx.moveTo(-r*.74,r*.12);
+  ctx.lineTo(r*.74,r*.12);
+  ctx.lineTo(r*.5,r*.68);
+  ctx.lineTo(-r*.5,r*.68);
+  ctx.closePath();
+  ctx.fill();
+
+  // Torso
+  const bodyGrad=ctx.createLinearGradient(-r,-r,r,r);
+  bodyGrad.addColorStop(0,style.bodyTop);
+  bodyGrad.addColorStop(.48,style.bodyMid);
+  bodyGrad.addColorStop(1,style.bodyBottom);
+  ctx.fillStyle=bodyGrad;
+  ctx.beginPath();
+  ctx.roundRect(-r*.72*style.bodyWidth,-r*.54,r*1.44*style.bodyWidth,r*1.28*style.bodyHeight,r*.32);
+  ctx.fill();
+  ctx.strokeStyle="#221819";
+  ctx.lineWidth=2.2;
+  ctx.stroke();
+
+  // Schulterfell und Schulterplatten
+  for(const side of [-1,1]){
+   ctx.fillStyle=style.fur;
+   ctx.beginPath();ctx.arc(side*r*.62,-r*.34,r*.28*style.shoulder,0,TAU);ctx.fill();
+   ctx.fillStyle=style.metal;
+   ctx.beginPath();ctx.ellipse(side*r*.53,-r*.18,r*.18*style.shoulder,r*.12*style.shoulder,side*.28,0,TAU);ctx.fill();
+   ctx.strokeStyle="#d9dee0";ctx.lineWidth=1;ctx.stroke();
+  }
+
+  // Emblem / Brustdetail
+  if(style.badge==="diamond"){
+   ctx.fillStyle="#262b30";
+   ctx.beginPath();ctx.moveTo(0,-r*.24);ctx.lineTo(r*.28,r*.06);ctx.lineTo(0,r*.36);ctx.lineTo(-r*.28,r*.06);ctx.closePath();ctx.fill();
+   ctx.strokeStyle="#adb4b7";ctx.lineWidth=1;ctx.stroke();
+  }else if(style.badge==="chevron"){
+   ctx.strokeStyle=style.trim;ctx.lineWidth=2.2;
+   ctx.beginPath();ctx.moveTo(-r*.25,-r*.06);ctx.lineTo(0,r*.18);ctx.lineTo(r*.25,-r*.06);ctx.stroke();
+  }else if(style.badge==="strap"){
+   ctx.strokeStyle="#d7c18e";ctx.lineWidth=3;
+   ctx.beginPath();ctx.moveTo(-r*.42,-r*.26);ctx.lineTo(r*.26,r*.42);ctx.stroke();
+   ctx.fillStyle="#70512d";ctx.beginPath();ctx.arc(-r*.08,r*.1,r*.08,0,TAU);ctx.fill();
+  }else if(style.badge==="rivet"){
+   ctx.fillStyle="#1f262b";ctx.fillRect(-r*.18,-r*.12,r*.36,r*.34);
+   ctx.fillStyle="#d4b56c";for(const ox of [-1,1])for(const oy of [-1,1]){ctx.beginPath();ctx.arc(ox*r*.1,oy*r*.08+.03*r,r*.03,0,TAU);ctx.fill();}
+  }else if(style.badge==="paint"){
+   ctx.strokeStyle="#ebc6bd";ctx.lineWidth=2.3;
+   ctx.beginPath();ctx.moveTo(-r*.2,-r*.14);ctx.lineTo(-r*.03,r*.2);ctx.moveTo(r*.2,-r*.14);ctx.lineTo(r*.03,r*.2);ctx.stroke();
+  }else if(style.badge==="crown"){
+   ctx.fillStyle="#2c2224";ctx.fillRect(-r*.22,-r*.1,r*.44,r*.38);
+   ctx.fillStyle=style.trim;for(const ox of [-1,0,1])ctx.fillRect(ox*r*.11-r*.03,-r*.18,r*.06,r*.12);
+  }
+
+  // Kopf
+  ctx.fillStyle=style.skin;
+  ctx.beginPath();ctx.arc(0,-r*.72,Math.max(4,r*.38*style.headScale),0,TAU);ctx.fill();
+  if(style.helm==="hood"){
+   ctx.fillStyle="#6b4a2f";
+   ctx.beginPath();ctx.arc(0,-r*.8,r*.45,Math.PI,TAU);ctx.lineTo(r*.26,-r*.46);ctx.lineTo(-r*.26,-r*.46);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#8a653f";ctx.beginPath();ctx.arc(0,-r*.8,r*.28,Math.PI,TAU);ctx.fill();
+  }else if(style.helm==="crest"){
+   ctx.fillStyle="#394249";
+   ctx.beginPath();ctx.arc(0,-r*.82,r*.44,Math.PI,TAU);ctx.lineTo(r*.44,-r*.62);ctx.lineTo(-r*.44,-r*.62);ctx.closePath();ctx.fill();
+   ctx.strokeStyle="#c3cacf";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(0,-r*1.2);ctx.lineTo(0,-r*.55);ctx.stroke();
+   ctx.fillStyle="#d7cb8b";ctx.fillRect(-1.2,-r*1.16,2.4,r*.24);
+  }else if(style.helm==="full"){
+   ctx.fillStyle="#48535c";
+   ctx.beginPath();ctx.arc(0,-r*.8,r*.48,Math.PI,TAU);ctx.lineTo(r*.38,-r*.36);ctx.lineTo(-r*.38,-r*.36);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#262d33";ctx.fillRect(-r*.28,-r*.76,r*.56,r*.18);
+   ctx.strokeStyle="#c2c9cc";ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(0,-r*1.16);ctx.lineTo(0,-r*.35);ctx.stroke();
+  }else if(style.helm==="wild"){
+   ctx.fillStyle="#6b1f1c";
+   ctx.beginPath();ctx.arc(0,-r*.95,r*.28,Math.PI,TAU);ctx.lineTo(r*.28,-r*.75);ctx.lineTo(-r*.28,-r*.75);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#3b2a2d";ctx.beginPath();ctx.arc(0,-r*.78,r*.32,Math.PI,TAU);ctx.fill();
+  }else if(style.helm==="crown"){
+   ctx.fillStyle="#42484e";
+   ctx.beginPath();ctx.arc(0,-r*.8,r*.49,Math.PI,TAU);ctx.lineTo(r*.46,-r*.58);ctx.lineTo(-r*.46,-r*.58);ctx.closePath();ctx.fill();
+   ctx.fillStyle=style.trim;for(let k=-2;k<=2;k++)ctx.fillRect(k*r*.1-r*.03,-r*1.2,r*.06,r*.18-(Math.abs(k)%2)*r*.04);
   }else{
-   ctx.strokeStyle="#4a2f24";ctx.lineWidth=Math.max(3,e.radius*.22);ctx.beginPath();ctx.moveTo(e.radius*.28,e.radius*.18);ctx.lineTo(e.radius*1.05,-e.radius*.68);ctx.stroke();ctx.fillStyle=e.type==="boss"?"#d8b45d":"#adb5b7";ctx.beginPath();ctx.moveTo(e.radius*1.05,-e.radius*.68);ctx.lineTo(e.radius*.68,-e.radius*.61);ctx.lineTo(e.radius*.91,-e.radius*.31);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#343c41";
+   ctx.beginPath();ctx.arc(0,-r*.82,r*.43,Math.PI,TAU);ctx.lineTo(r*.43,-r*.62);ctx.lineTo(-r*.43,-r*.62);ctx.closePath();ctx.fill();
+   ctx.strokeStyle="#bac0c3";ctx.lineWidth=1.3;ctx.beginPath();ctx.moveTo(0,-r*1.18);ctx.lineTo(0,-r*.55);ctx.stroke();
+   ctx.fillStyle=style.hornColor;
+   ctx.beginPath();ctx.moveTo(-r*.34,-r*.95);ctx.lineTo(-r*.65,-r*1.16);ctx.lineTo(-r*.48,-r*.82);ctx.closePath();ctx.fill();
+   ctx.beginPath();ctx.moveTo(r*.34,-r*.95);ctx.lineTo(r*.65,-r*1.16);ctx.lineTo(r*.48,-r*.82);ctx.closePath();ctx.fill();
   }
-  if(e.type==="berserker"){ctx.strokeStyle="#cb3931";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,e.radius+4,0,TAU);ctx.stroke();ctx.fillStyle="#b92522";ctx.fillRect(-e.radius*.75,-2,e.radius*1.5,4)}
-  if(e.type==="boss"){ctx.strokeStyle="#e2b75a";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,e.radius+6,0,TAU);ctx.stroke();ctx.fillStyle="#d1a43c";for(let k=-1;k<=1;k++)ctx.fillRect(k*8-2,-e.radius-10,4,10);ctx.fillStyle="#8d2020";ctx.beginPath();ctx.moveTo(-e.radius*.8,-e.radius*.2);ctx.lineTo(-e.radius*1.25,e.radius*.9);ctx.lineTo(0,e.radius*.62);ctx.closePath();ctx.fill()}
-  // Lebensleiste und Typmarke passend zur Größenklasse
+
+  // Gesicht
+  ctx.fillStyle=style.beard;
+  if(e.type==="runner"){
+   ctx.beginPath();ctx.moveTo(-r*.18,-r*.66);ctx.lineTo(0,-r*.48);ctx.lineTo(r*.18,-r*.66);ctx.closePath();ctx.fill();
+  }else if(e.type==="berserker"){
+   ctx.beginPath();ctx.moveTo(-r*.26,-r*.58);ctx.lineTo(0,-r*.18);ctx.lineTo(r*.26,-r*.58);ctx.closePath();ctx.fill();
+  }else{
+   ctx.beginPath();ctx.moveTo(-r*.28,-r*.62);ctx.lineTo(0,-r*.28);ctx.lineTo(r*.28,-r*.62);ctx.closePath();ctx.fill();
+  }
+  ctx.fillStyle=style.eyes;
+  ctx.fillRect(-r*.2,-r*.8,2,2);
+  ctx.fillRect(r*.15,-r*.8,2,2);
+  if(e.type==="berserker"){
+   ctx.strokeStyle="#f0a79d";ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(-r*.28,-r*.86);ctx.lineTo(-r*.08,-r*.9);ctx.moveTo(r*.08,-r*.9);ctx.lineTo(r*.28,-r*.86);ctx.stroke();
+  }
+
+  // Arme
+  ctx.strokeStyle=style.skin;
+  ctx.lineWidth=Math.max(3,r*.19);
+  ctx.beginPath();
+  ctx.moveTo(-r*.68,-r*.08);ctx.lineTo(-r*.98,r*.34);
+  ctx.moveTo(r*.68,-r*.08);ctx.lineTo(r*.98,r*.18);
+  ctx.stroke();
+
+  // Waffen und eindeutige Ausrüstung pro Typ
+  if(style.shield==="tower"){
+   ctx.fillStyle="#4a5862";
+   ctx.beginPath();ctx.moveTo(-r*.5,-r*.36);ctx.quadraticCurveTo(-r*1.4,0,-r*.62,r*.84);ctx.quadraticCurveTo(-r*.04,r*.42,-r*.5,-r*.36);ctx.fill();
+   ctx.strokeStyle="#c5cdcf";ctx.lineWidth=2;ctx.stroke();
+   ctx.fillStyle="#293037";ctx.beginPath();ctx.arc(-r*.73,r*.06,r*.16,0,TAU);ctx.fill();
+   ctx.strokeStyle="#5f3f28";ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(r*.24,r*.46);ctx.lineTo(r*.95,-r*.5);ctx.stroke();
+   ctx.fillStyle="#cdd2d5";ctx.beginPath();ctx.arc(r*.98,-r*.55,r*.12,0,TAU);ctx.fill();
+  }else if(style.weapon==="dagger"){
+   ctx.strokeStyle=style.leather;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-r*.18,r*.08);ctx.lineTo(-r*.82,r*.76);ctx.stroke();
+   ctx.fillStyle="#d0d5d7";ctx.beginPath();ctx.moveTo(-r*.82,r*.76);ctx.lineTo(-r*.56,r*.66);ctx.lineTo(-r*.68,r*.46);ctx.closePath();ctx.fill();
+   ctx.strokeStyle="#b79d6c";ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(r*.48,-r*.18);ctx.lineTo(r*.98,-r*.82);ctx.stroke();
+  }else if(style.weapon==="spear"){
+   ctx.strokeStyle=style.leather;ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(r*.15,r*.54);ctx.lineTo(r*1.22,-r*1.16);ctx.stroke();
+   ctx.fillStyle="#cad1d3";ctx.beginPath();ctx.moveTo(r*1.22,-r*1.16);ctx.lineTo(r*.93,-r*.96);ctx.lineTo(r*1.16,-r*.76);ctx.closePath();ctx.fill();
+  }else if(style.weapon==="dualAxes"){
+   for(const dir of [-1,1]){
+    ctx.strokeStyle=style.leather;ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(dir*r*.26,r*.18);ctx.lineTo(dir*r*.96,-r*.62);ctx.stroke();
+    ctx.fillStyle="#d8dcde";ctx.beginPath();ctx.moveTo(dir*r*.96,-r*.62);ctx.lineTo(dir*r*.62,-r*.55);ctx.lineTo(dir*r*.84,-r*.25);ctx.closePath();ctx.fill();
+   }
+   ctx.strokeStyle="#c83530";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,r+4,0,TAU);ctx.stroke();
+   ctx.fillStyle="#b92622";ctx.fillRect(-r*.72,-2,r*1.44,4);
+  }else if(style.weapon==="greatAxe"){
+   ctx.strokeStyle=style.leather;ctx.lineWidth=4.2;ctx.beginPath();ctx.moveTo(r*.22,r*.5);ctx.lineTo(r*1.12,-r*.82);ctx.stroke();
+   ctx.fillStyle=style.trim;ctx.beginPath();ctx.moveTo(r*1.12,-r*.82);ctx.lineTo(r*.68,-r*.72);ctx.lineTo(r*.94,-r*.3);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#8b1f20";ctx.beginPath();ctx.moveTo(-r*.82,-r*.18);ctx.lineTo(-r*1.3,r*.92);ctx.lineTo(0,r*.66);ctx.closePath();ctx.fill();
+   ctx.strokeStyle=style.trim;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,r+6,0,TAU);ctx.stroke();
+  }else if(style.weapon==="mace"){
+   ctx.strokeStyle=style.leather;ctx.lineWidth=3.1;ctx.beginPath();ctx.moveTo(r*.18,r*.5);ctx.lineTo(r*.86,-r*.42);ctx.stroke();
+   ctx.fillStyle="#c7cdcf";ctx.beginPath();ctx.arc(r*.96,-r*.55,r*.12,0,TAU);ctx.fill();
+  }else{
+   ctx.strokeStyle=style.leather;ctx.lineWidth=Math.max(3,r*.22);ctx.beginPath();ctx.moveTo(r*.28,r*.18);ctx.lineTo(r*1.06,-r*.68);ctx.stroke();
+   ctx.fillStyle="#b8bfc2";ctx.beginPath();ctx.moveTo(r*1.06,-r*.68);ctx.lineTo(r*.68,-r*.61);ctx.lineTo(r*.9,-r*.3);ctx.closePath();ctx.fill();
+  }
+
+  // Lebensleiste und Namensanzeige
   const barHeight=isBoss?10:isSpecial?8:7;
   const barGap=isBoss?23:isSpecial?21:19;
-  const bw=Math.max(isBoss?50:isSpecial?42:34,e.radius*(isBoss?3.05:isSpecial?2.9:2.75));
-  ctx.fillStyle="#160b0b";ctx.fillRect(-bw/2,-e.radius-barGap,bw,barHeight);
+  const bw=Math.max(isBoss?50:isSpecial?42:34,r*(isBoss?3.05:isSpecial?2.9:2.75));
+  ctx.fillStyle="#160b0b";ctx.fillRect(-bw/2,-r-barGap,bw,barHeight);
   ctx.fillStyle=e.hp/e.maxHp>.5?"#6ac265":e.hp/e.maxHp>.25?"#d4a541":"#d14945";
-  ctx.fillRect(-bw/2+1,-e.radius-barGap+1,(bw-2)*Math.max(0,e.hp/e.maxHp),barHeight-2);
-  ctx.strokeStyle=isBoss?"#f0c56a99":isSpecial?"#c9d9df77":"#f5dfca55";ctx.strokeRect(-bw/2,-e.radius-barGap,bw,barHeight);
-  if(isBoss){ctx.fillStyle="#d8ac45";ctx.fillRect(-bw/2,-e.radius-barGap-3,bw,2)}
+  ctx.fillRect(-bw/2+1,-r-barGap+1,(bw-2)*Math.max(0,e.hp/e.maxHp),barHeight-2);
+  ctx.strokeStyle=isBoss?"#f0c56a99":isSpecial?"#c9d9df77":"#f5dfca55";ctx.strokeRect(-bw/2,-r-barGap,bw,barHeight);
+  if(isBoss){ctx.fillStyle="#d8ac45";ctx.fillRect(-bw/2,-r-barGap-3,bw,2)}
   if(zoom>=.58||isBoss){
    ctx.fillStyle="#f2dfba";ctx.font=`bold ${isBoss?11:isSpecial?9:8}px system-ui`;ctx.textAlign="center";
-   ctx.fillText(e.name||"Eisenclan",0,-e.radius-barGap-5);
+   ctx.fillText(e.name||"Eisenclan",0,-r-barGap-5);
   }
   ctx.restore();
  }
 }
+
 function draw(){
  ctx.clearRect(0,0,vw,vh);ctx.save();ctx.translate(vw/2,vh/2);ctx.scale(zoom,zoom);ctx.translate(-camX,-camY);
  drawGround();drawPaths();drawWorldDetails();drawCastle();drawSlots();drawRangeIndicators();drawBuildings();drawUnits();drawCraftsmen();
