@@ -96,6 +96,7 @@ export function renderGameUI({
   });
 
   ui.upgrade.disabled = true;
+  ui.upgrade.style.display = "inline-block";
   ui.sell.disabled = true;
   ui.repairWall.disabled = true;
   ui.repairWall.textContent = "Bewohner";
@@ -127,8 +128,8 @@ export function renderGameUI({
         ? "Automatik"
         : "Manuell";
 
-    ui.selected.innerHTML = `<b>${unitName} · Erfahrungsstufe ${selected.expLevel || 1}</b><br>HP ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · EXP ${Math.floor(selected.xp || 0)}/${Math.floor(selected.xpMax || 65)}<br>Schaden ${Math.round(selected.damage)} · Rüstung ${Math.round((selected.armor || 0) * 100)}% · Tempo ${Math.round(selected.speed)}<br>Modus: ${unitMode}${selected.pendingUpgrades ? ` · <b>${selected.pendingUpgrades} Aufwertung bereit</b>` : ""}`;
-    ui.upgrade.disabled = selected.level >= 5 || state.gold < 55 * selected.level;
+    ui.selected.innerHTML = `<b>${unitName} · Erfahrungsstufe ${selected.expLevel || 1}</b><br>HP ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · EXP ${Math.floor(selected.xp || 0)}/${Math.floor(selected.xpMax || 65)}<br>Schaden ${Math.round(selected.damage)} · Rüstung ${Math.round((selected.armor || 0) * 100)}% · Tempo ${Math.round(selected.speed)}<br>Modus: ${unitMode}${selected.pendingUpgrades ? ` · <b>${selected.pendingUpgrades} Aufwertung bereit</b>` : ""}<br>Aufwertung: EXP-Auswahl oder Werkstatt-Forschung`;
+    ui.upgrade.style.display = "none";
     ui.sell.disabled = false;
     return;
   }

@@ -202,18 +202,8 @@ export function upgradeEntity(entity, context) {
   if (!entity) return false;
 
   if (entity.kind === "unit") {
-    const cost = 55 * entity.level;
-    if (entity.level >= 5 || state.gold < cost) return false;
-
-    state.gold -= cost;
-    entity.investedGold += cost;
-    entity.level++;
-    entity.damage *= 1.3;
-    entity.maxHp *= 1.25;
-    entity.hp = entity.maxHp;
-    entity.range *= 1.04;
-    showToast("Einheit verbessert");
-    return true;
+    showToast("Einheiten werden nur über EXP oder Forschung verbessert");
+    return false;
   }
 
   if (entity.kind !== "building") return false;
