@@ -41,6 +41,13 @@ import {
  toggleBuildingResident
 } from "./villagers.js";
 
+import {
+ getBuildRequirement,
+ createEntityAt,
+ upgradeEntity,
+ sellEntity
+} from "./buildings.js";
+
 (()=>{
 "use strict";
 const GAME_VERSION="1.11.6.0";
@@ -373,19 +380,7 @@ document.querySelectorAll(".buildBtn").forEach(b=>{const c=BUILD[b.dataset.build
  ui.upgrade.disabled=b.level>=(b.key==="house"?2:b.key==="market"?3:5)||state.gold<g||state.wood<w;ui.sell.disabled=false;
 }
 
-function buildRequirement(key){
- const houses=state.buildings.filter(b=>b.key==="house");
- const hasTent=houses.length>0;
- const hasLumber=state.buildings.some(b=>b.key==="lumber");
- const hasRepair=state.buildings.some(b=>b.key==="repair");
- const hasWorkshop=state.buildings.some(b=>b.key==="workshop");
- if(key==="house")return {ok:true,reason:""};
- if(key==="lumber"&&!hasTent)return {ok:false,reason:"Zuerst ein Zeltlager bauen"};
- if(key==="repair"&&!hasLumber)return {ok:false,reason:"Zuerst einen Holzfäller bauen"};
- if(key==="workshop"&&!(hasTent&&hasLumber&&hasRepair))return {ok:false,reason:"Benötigt Zeltlager oder Holzhaus, Holzfäller und Handwerkerhaus"};
- if(key==="market"&&!hasWorkshop)return {ok:false,reason:"Zuerst eine Werkstatt bauen"};
- return {ok:true,reason:""};
-}
+function buildRequirement(key){return getBuildRequirement(state,key)}
 
 function closeAllBlockingPanels(){
  hideRepairDecision();
@@ -416,56 +411,21 @@ function spawnEnemy(){
  discoverEnemy(type);
 }
 function createAt(x,y,key){
- const c=BUILD[key],req=buildRequirement(key);if(!req.ok)return showToast(req.reason);if(state.gold<c.gold||state.wood<c.wood)return showToast("Nicht genug Ressourcen");
- if(c.kind==="unit"){
-  const d=Math.hypot(x-CX,y-CY);
-  if(d>WALL_R-30||d<105)return showToast("Einheiten im Bereich hinter der Mauer platzieren");
-  state.gold-=c.gold;state.wood-=c.wood;
-  const rs=researchedUnitStats(key);
-  state.units.push({kind:"unit",uid:++state.nextUnitId,key,base:c,x,y,targetX:x,targetY:y,homeX:x,homeY:y,hp:rs.hp,maxHp:rs.hp,damage:rs.damage,range:rs.range,rate:rs.rate,speed:rs.speed,armor:rs.armor,stance:key==="guard"?"defend":null,retreating:false,level:1,expLevel:1,xp:0,xpMax:65,pendingUpgrades:0,upgradeStats:{damage:0,health:0,speed:0,rate:0,range:0},attackCd:0,retargetCd:0,controlMode:"auto",autoTarget:null,investedGold:c.gold,investedWood:c.wood});
-  buildMode=null;showToast(c.name+" positioniert");return;
- }
- const slots=c.kind==="tower"?[...wallSlots,...castleSlots]:insideSlots;let best=null,bd=42;
- for(const s of slots){const d=Math.hypot(x-s.x,y-s.y);if(d<bd){bd=d;best=s}}
- if(!best)return showToast(c.kind==="tower"?"Turm auf einem Mauer- oder Burgplatz errichten":"Gebäude im Burghof errichten");
- if(best.building)return showToast("Bauplatz belegt");
- if(c.kind==="tower"&&best.type==="wall"&&state.walls[best.i].hp<=0)return showToast("Auf einer zerstörten Mauer kann nicht gebaut werden");
- state.gold-=c.gold;state.wood-=c.wood;
- const b={
- kind:"building",bid:++state.nextBuildingId,key,base:c,slot:best,level:1,cooldown:0,residentId:null,residentAssigned:false,repairEnabled:true,
- investedGold:c.gold,investedWood:c.wood,
- expLevel:1,xp:0,xpMax:90,pendingUpgrades:0,
- expUpgradeStats:{damage:0,range:0,rate:0,health:0}
-};
- if(c.kind==="tower")Object.assign(b,{hp:c.hp,maxHp:c.hp,range:c.range,rate:c.rate,damage:c.damage,speed:c.speed,splash:c.splash||0});
- best.building=b;state.buildings.push(b);syncResidents();buildMode=null;selected=b;showToast(c.name+" errichtet");
+ return createEntityAt(x,y,key,{
+  state,BUILD,CX,CY,WALL_R,wallSlots,castleSlots,insideSlots,
+  researchedUnitStats,syncResidents,showToast,
+  setBuildMode:value=>{buildMode=value},
+  setSelected:value=>{selected=value}
+ });
 }
 function upgradeSelected(){
- if(!selected)return;
- if(selected.kind==="unit"){
-  const cost=55*selected.level;if(selected.level>=5||state.gold<cost)return;state.gold-=cost;selected.investedGold+=cost;selected.level++;selected.damage*=1.3;selected.maxHp*=1.25;selected.hp=selected.maxHp;selected.range*=1.04;showToast("Einheit verbessert");return;
- }
- if(selected.kind!=="building")return;
- const g=Math.floor(selected.base.gold*(.65+selected.level*.45)),w=Math.floor(selected.base.wood*(.45+selected.level*.3));
- if(selected.level>=(selected.key==="house"?2:selected.key==="market"?3:5)){showToast(selected.key==="house"?"Holzhaus ist bereits vollständig ausgebaut":"Maximale Stufe erreicht");return}
- if(state.gold<g||state.wood<w){showToast(`Benötigt ${g} Gold und ${w} Holz`);return}
- state.gold-=g;state.wood-=w;selected.investedGold+=g;selected.investedWood+=w;selected.level++;
- if(selected.key==="house"){
-  syncResidents();
-  showToast("Zeltlager zum Holzhaus ausgebaut: 4 Bewohner");
- }else if(selected.base.kind==="tower"){
-  selected.damage*=1.34;selected.range*=1.06;selected.rate*=.9;selected.maxHp*=1.22;selected.hp=selected.maxHp;showToast("Gebäude verbessert");
- }else if(selected.key==="workshop"){
-  showToast(`Werkstatt Stufe ${selected.level}: globaler Forschungsanstieg jetzt ${Math.round(globalResearchIncreaseRate()*100)} %`);
- }else showToast("Gebäude verbessert");
+ return upgradeEntity(selected,{state,syncResidents,showToast,globalResearchIncreaseRate});
 }
 function sellSelected(){
- if(!selected)return;
- if(selected.kind==="unit"){state.gold+=Math.floor(selected.investedGold*.6);state.wood+=Math.floor(selected.investedWood*.6);state.units=state.units.filter(u=>u!==selected)}
- else if(selected.kind==="building"){
-  if(selected.residentId){const r=state.residents.find(r=>r.id===selected.residentId);if(r){r.job=null;r.workplaceId=null}}
-  state.gold+=Math.floor(selected.investedGold*.6);state.wood+=Math.floor(selected.investedWood*.6);selected.slot.building=null;state.buildings=state.buildings.filter(b=>b!==selected);syncResidents()}
- selected=null;showToast("Verkauft");
+ return sellEntity(selected,{
+  state,syncResidents,showToast,
+  setSelected:value=>{selected=value}
+ });
 }
 let residentAssignmentBusy=false;
 function setBuildingResident(building){
