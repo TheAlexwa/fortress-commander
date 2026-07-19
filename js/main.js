@@ -36,8 +36,6 @@ import {
  assignedResidents as getAssignedResidents,
  freeResidents as getFreeResidents,
  buildingHasWorker as hasBuildingWorker,
- residentWorkforceAvailable as getResidentWorkforceAvailable,
- craftsmanCapacity as getCraftsmanCapacity,
  toggleBuildingResident
 } from "./villagers.js";
 
@@ -50,17 +48,12 @@ import {
 
 import {
  findNearestEnemy,
- findNearestUnit,
- getTargetCapacity,
- countAssignedUnits,
  getTowerCoverage,
  chooseAutomaticTarget,
  getTowerBehindWall,
  findNearestCastleTower,
  findNearestBlockingUnit,
  createProjectile,
- grantTowerExperience,
- grantUnitExperience,
  grantCombatExperience,
  applyTowerTalent,
  applyUnitTalentUpgrade
@@ -71,19 +64,20 @@ import {
  beginWave,
  createWaveEnemy,
  applyWaveAutoRepair,
- getTotalRepairDamage,
- getRepairWoodEstimate,
- getWallHealthSum
+ getTotalRepairDamage
 } from "./game.js";
 
 import { renderGameUI } from "./ui.js";
 import { renderGameFrame } from "./render.js";
 import { attachGameInput } from "./input.js";
 
+// Fortress Commander – zentrale Initialisierung und Spielschleife.
+// Fachlogik, Darstellung und Eingaben liegen in eigenständigen Modulen.
+
 (()=>{
 "use strict";
-const GAME_VERSION="1.11.6.0";
-const GAME_RELEASE_NAME="Save Disabled";
+const GAME_VERSION="1.12.0";
+const GAME_RELEASE_NAME="Modularisierung abgeschlossen";
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
  if(!ENEMY_CODEX[type]||discoveredEnemies.has(type))return;
@@ -239,7 +233,6 @@ function setZoom(v,focusX=vw/2,focusY=vh/2){
  ui.zoomLabel.textContent=Math.round(zoom*100)+"%";
 }
 function screenToWorld(x,y){return{x:camX+(x-vw/2)/zoom,y:camY+(y-vh/2)/zoom}}
-function worldToScreen(x,y){return{x:vw/2+(x-camX)*zoom,y:vh/2+(y-camY)*zoom}}
 function showToast(t){ui.toast.textContent=t;ui.toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>ui.toast.classList.remove("show"),1900)}
 function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
 function angleIndex(x,y){
@@ -247,7 +240,6 @@ function angleIndex(x,y){
  return Math.max(0,Math.min(WALL_SEGMENTS-1,Math.floor((a+Math.PI/2)/(TAU/WALL_SEGMENTS))));
 }
 function waveCount(w){return getWaveEnemyCount(w)}
-function wallHealthSum(){return getWallHealthSum(state)}
 function workshopLevels(){return Object.values(state.research||{}).reduce((sum,level)=>sum+level,0)}
 function workshopBuilding(){return state.buildings.find(b=>b.key==="workshop")||null}
 function workshopBuildingLevel(){return Math.max(1,Math.min(5,Number(workshopBuilding()?.level||1)))}
@@ -260,8 +252,6 @@ function totalResidents(){return getTotalResidents(state)}
 function assignedResidents(){return getAssignedResidents(state)}
 function freeResidents(){return getFreeResidents(state)}
 function buildingHasWorker(building){return hasBuildingWorker(building)}
-function residentWorkforceAvailable(job){return getResidentWorkforceAvailable(state,job)}
-function craftsmanCapacity(){return getCraftsmanCapacity(state)}
 const REPAIR_TICK_SECONDS=1;
 const BASE_REPAIR_HP_PER_TICK=16;
 const BASE_REPAIR_WOOD_PER_TICK=0.5;
@@ -275,7 +265,6 @@ function applyResearchToExistingUnits(techId,oldLevel,newLevel){return applyRese
 
 function applyAutomaticWaveRepair(){return applyWaveAutoRepair(state,fortressAutoRepairPercent())}
 function totalRepairDamage(){return getTotalRepairDamage(state)}
-function repairWoodEstimate(){return getRepairWoodEstimate(state)}
 
 let activeResearchTab="fortress";
 function researchRequirementMet(tech){return isResearchRequirementMet(tech,state.research)}
@@ -319,37 +308,6 @@ document.getElementById("workshopTabs").addEventListener("click",e=>{const b=e.t
 document.getElementById("techTree").addEventListener("click",e=>{const b=e.target.closest("[data-tech]");if(b)buyResearch(b.dataset.tech)});
 
 
-const SAVE_KEY="fortressCommander.save.v1.11.6.0";
-const LEGACY_SAVE_KEYS=["fortressCommander.save.v1.11.2","fortressCommander.save.v1.11.1","fortressCommander.save.v1.11.0"];
-const SAVE_SCHEMA=4;
-let lastSaveAt=0;
-function slotDescriptor(slot){
- if(!slot)return null;
- const list=slot.type==="wall"?wallSlots:slot.type==="castle"?castleSlots:insideSlots;
- return {type:slot.type,index:list.indexOf(slot)};
-}
-function slotFromDescriptor(ref){
- if(!ref)return null;
- const list=ref.type==="wall"?wallSlots:ref.type==="castle"?castleSlots:insideSlots;
- return list[ref.index]||null;
-}
-function cleanObject(obj,blocked=[]){
- const out={};for(const [k,v] of Object.entries(obj||{})){if(blocked.includes(k)||typeof v==="function")continue;if(v===undefined)continue;out[k]=v}return out;
-}
-function makeSaveData(){
- return {
-  schema:SAVE_SCHEMA,version:GAME_VERSION,savedAt:Date.now(),
-  meta:{wave:state.wave,kills:state.kills},view:{zoom,camX,camY},
-  state:{gold:state.gold,wood:state.wood,researchPoints:state.researchPoints,hp:state.hp,maxHp:state.maxHp,wave:state.wave,inWave:state.inWave,toSpawn:state.toSpawn,spawnTimer:state.spawnTimer,supportTimer:0,kills:state.kills,nextUnitId:state.nextUnitId,nextBuildingId:state.nextBuildingId,nextResidentId:state.nextResidentId,repairedHp:state.repairedHp,research:{...state.research}},
-  walls:state.walls.map(w=>({hp:w.hp,maxHp:w.maxHp})),
-  buildings:state.buildings.map(b=>({...cleanObject(b,["base","slot"]),slotRef:slotDescriptor(b.slot)})),
-  units:state.units.map(u=>({...cleanObject(u,["base","autoTarget"]),autoTarget:null})),
-  residents:state.residents.map(r=>({...r})),
-  enemies:state.enemies.map(e=>cleanObject(e,["lastHitEntity"])),
-  discovered:[...discoveredEnemies]
- };
-}
-function savedGameInfo(){return null}
 function refreshSaveStatus(){
  const box=document.getElementById("saveStatus");
  const load=document.getElementById("loadGameBtn");
@@ -438,9 +396,6 @@ function combatCallbacks(){
  return {burst,isSelected:entity=>selected===entity,showToast};
 }
 function nearestEnemy(x,y,range){return findNearestEnemy(state.enemies,x,y,range)}
-function nearestUnit(x,y,range){return findNearestUnit(state.units,x,y,range)}
-function targetCapacity(enemy){return getTargetCapacity(enemy)}
-function assignedCount(enemy,exceptUnit=null){return countAssignedUnits(state.units,enemy,exceptUnit)}
 function towerCoverage(enemy){return getTowerCoverage(state.buildings,enemy)}
 function chooseAutoTarget(unit){
  return chooseAutomaticTarget(unit,{enemies:state.enemies,units:state.units,buildings:state.buildings,centerX:CX,centerY:CY});
@@ -453,8 +408,6 @@ function nearestBlockingUnit(enemy,maxRange=58){
 function shoot(from,target,damage,speed,splash=0,color="#f0d176"){
  return createProjectile(state.projectiles,from,target,damage,speed,splash,color);
 }
-function grantTowerXp(tower,amount){return grantTowerExperience(tower,amount,combatCallbacks())}
-function grantUnitXp(unit,amount){return grantUnitExperience(unit,amount,combatCallbacks())}
 function grantCombatXp(owner,amount){return grantCombatExperience(owner,amount,combatCallbacks())}
 function applyTowerExpTalent(tower,type){return applyTowerTalent(tower,type,combatCallbacks())}
 function applyUnitTalent(unit,type){
@@ -565,7 +518,6 @@ function updateCraftsmen(dt){
   }
  }
 }
-function showRepairDecision(){hideRepairDecision()}
 function hideRepairDecision(){const p=document.getElementById("repairDecision");if(p){p.classList.add("hidden");p.style.pointerEvents="none"}}
 
 function update(dt){
@@ -750,67 +702,6 @@ function draw() {
   zoom, vw, vh, camX, camY, WORLD_W, WORLD_H, CX, CY, WALL_R, TAU
  });
 }
-function unitMenuItems(unit,p){
- const items=[
-  {id:"move",x:p.x-72,y:p.y,label:unit.key==="guard"?"↩":"➜",caption:unit.key==="guard"?"Rückzug":"Bewegen",active:unit.key==="guard"?unit.retreating:unitCommandMode==="move"},
-  {id:"auto",x:p.x+72,y:p.y,label:unit.key==="guard"?(unit.stance==="offense"?"⚔":"🛡"):"A",caption:unit.key==="guard"?(unit.stance==="offense"?"Ausfall":"Burg halten"):"Automatik",active:unit.key==="guard"?unit.stance==="offense":unit.controlMode==="auto"}
- ];
- if((unit.pendingUpgrades||0)>0){
-  items.push(
-   {id:"damage",x:p.x-63,y:p.y-68,label:"⚔",caption:"+24% Schaden",active:false},
-   {id:"health",x:p.x-22,y:p.y-92,label:"♥",caption:"+28% Leben",active:false},
-   {id:"speed",x:p.x+22,y:p.y-92,label:"➤",caption:"+16% Tempo",active:false},
-   {id:"rate",x:p.x+63,y:p.y-68,label:"✦",caption:"−16% Laden",active:false}
-  );
- }
- return items;
-}
-function drawUnitRadialMenu(){
- if(!selected||selected.kind!=="unit"||gameOver)return;
- const p=worldToScreen(selected.x,selected.y),items=unitMenuItems(selected,p),ready=(selected.pendingUpgrades||0)>0;
- const xpRatio=Math.max(0,Math.min(1,(selected.xp||0)/(selected.xpMax||65)));
- ctx.save();
- ctx.fillStyle="#101923e8";ctx.strokeStyle=ready?"#55baff":"#dacb9c";ctx.lineWidth=3;ctx.shadowBlur=16;ctx.shadowColor="#000";
- ctx.beginPath();ctx.arc(p.x,p.y,38,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;
- ctx.fillStyle="#eaf6ff";ctx.textAlign="center";ctx.textBaseline="middle";ctx.font="bold 12px system-ui";ctx.fillText(`St. ${selected.expLevel||1}`,p.x,p.y-7);
- ctx.font="bold 9px system-ui";ctx.fillStyle="#bcd3e6";ctx.fillText(`${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP`,p.x,p.y+8);
- ctx.fillStyle="#07111f";ctx.fillRect(p.x-27,p.y+17,54,7);ctx.fillStyle=ready?"#65c9ff":"#348de4";ctx.fillRect(p.x-26,p.y+18,52*xpRatio,5);
- if(ready){ctx.fillStyle="#c9eeff";ctx.font="bold 9px system-ui";ctx.fillText(`${selected.pendingUpgrades} Wahl`,p.x,p.y+32)}
- ctx.strokeStyle="#f5dfa066";ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,72,Math.PI,0);ctx.stroke();
- for(const it of items){
-  const br=it.id==="move"||it.id==="auto"?26:23;
-  ctx.fillStyle=it.active?"#6f8e54":(ready&&["damage","health","speed","rate"].includes(it.id)?"#174d78":"#172218ef");
-  ctx.strokeStyle=it.active?"#fff0a0":(ready&&["damage","health","speed","rate"].includes(it.id)?"#76c9ff":"#d9dfd2");ctx.lineWidth=3;
-  ctx.shadowBlur=it.active||ready?8:0;ctx.shadowColor=it.active?"#ffe89a":"#54baff";
-  ctx.beginPath();ctx.arc(it.x,it.y,br,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;
-  ctx.fillStyle="#fff";ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`bold ${it.id==="move"||it.id==="auto"?20:17}px system-ui`;ctx.fillText(it.label,it.x,it.y-1);
-  ctx.font="bold 9px system-ui";ctx.fillStyle="#fff4ca";ctx.fillText(it.caption,it.x,it.y+br+10);
- }
- ctx.restore();
-}
-function radialMenuHit(sx,sy){
- if(!selected||selected.kind!=="unit")return null;
- const p=worldToScreen(selected.x,selected.y);
- for(const it of unitMenuItems(selected,p)){
-  const br=it.id==="move"||it.id==="auto"?32:29;
-  if(Math.hypot(sx-it.x,sy-it.y)<=br)return it.id;
- }
- if(Math.hypot(sx-p.x,sy-p.y)<=41)return "info";
- return null;
-}
-function activateUnitCommand(id){
- if(!selected||selected.kind!=="unit")return;
- if(id==="move"){
-  if(selected.key==="guard"){selected.retreating=true;unitCommandMode=null;showToast("Burgwache zieht sich zurück")}else{selected.controlMode="manual";selected.autoTarget=null;unitCommandMode="move";showToast("Jetzt Zielposition antippen")}
- }else if(id==="auto"){
-  if(selected.key==="guard"){selected.stance=selected.stance==="offense"?"defend":"offense";selected.retreating=false;showToast(selected.stance==="offense"?"Ausfall aktiviert":"Burg halten aktiviert")}else{selected.controlMode=selected.controlMode==="auto"?"manual":"auto";selected.autoTarget=null;selected.retargetCd=0;unitCommandMode=null;
-  showToast(selected.controlMode==="auto"?"Automatik aktiviert":"Automatik deaktiviert")};
- }else if(["damage","health","speed","rate"].includes(id)){
-  applyUnitTalent(selected,id);
- }else if(id==="info"){
-  showToast(`${selected.key==="guard"?"Burgwache":"Bogenschütze"} · EXP ${Math.floor(selected.xp)}/${selected.xpMax} · Schaden ${Math.round(selected.damage)} · Leben ${Math.round(selected.maxHp)} · Rüstung ${Math.round((selected.armor||0)*100)}%`);
- }
-}
 let lastDockSignature="";
 function renderLevelUpDock(){
  if(!ui.levelDock)return;
@@ -845,9 +736,8 @@ function focusUpgradeEntity(card){
 function speedLabel(v){return v>=58?"Sehr schnell":v>=44?"Schnell":v>=33?"Mittel":v>=25?"Langsam":"Sehr langsam"}
 function armorLabel(v){const p=Math.round((v||0)*100);return p?`${p} % Schadensreduktion`:"Keine"}
 function renderBestiary(){const grid=document.getElementById("bestiaryGrid"),progress=document.getElementById("bestiaryProgress");if(!grid)return;const entries=Object.entries(ENEMY_CODEX);if(progress)progress.textContent=`${entries.filter(([k])=>discoveredEnemies.has(k)).length} / ${entries.length} entdeckt`;grid.innerHTML=entries.map(([type,d])=>{const unlocked=discoveredEnemies.has(type);if(!unlocked)return `<article class="bestiaryEntry locked"><div class="bestiaryEntryHead"><div class="bestiaryIcon">?</div><div><h4>???</h4><small>Noch nicht entdeckt</small></div></div><div class="bestiaryLockedText">Begegne diesem Gegner im Kampf.</div></article>`;const st=enemyStatsFor(type,d.unlockWave);return `<article class="bestiaryEntry"><div class="bestiaryEntryHead"><div class="bestiaryIcon">${d.icon}</div><div><h4>${d.name}</h4><small>Ab Welle ${d.unlockWave}${d.boss?" · Boss":""}</small></div></div><p>${d.lore}</p><div class="bestiaryMiniStats"><span>❤️ Basis ${Math.round(st.hp)}</span><span>⚔ ${st.damage}</span><span>🛡 ${armorLabel(st.armor)}</span><span>🪙 ${st.reward}</span><span>➤ ${speedLabel(st.speed)}</span><span>⏱ ${st.attackRate.toFixed(2)} s</span></div></article>`}).join("")}
-let inspectedEnemy=null;
-function openEnemyInfo(e){if(!e||e.dead)return;inspectedEnemy=e;discoverEnemy(e.type);const overlay=document.getElementById("enemyInfoOverlay");document.getElementById("enemyInfoPortrait").textContent=ENEMY_CODEX[e.type]?.icon||"⚔";document.getElementById("enemyInfoName").textContent=e.name;document.getElementById("enemyInfoClan").textContent=`${e.clan||"Eisenclans"} · Welle ${state.wave}`;const roleTag=document.getElementById("enemyBossTag"),codex=ENEMY_CODEX[e.type]||{};roleTag.textContent=codex.role||(codex.boss?"BOSS":"KRIEGER");roleTag.hidden=false;roleTag.classList.toggle("isBoss",!!codex.boss);roleTag.classList.toggle("isElite",codex.role==="ELITE");document.getElementById("enemyHpText").textContent=`Leben ${Math.max(0,Math.ceil(e.hp))} / ${Math.ceil(e.maxHp)}`;document.getElementById("enemyHpFill").style.width=`${Math.max(0,Math.min(100,e.hp/e.maxHp*100))}%`;document.getElementById("enemyStatsGrid").innerHTML=`<div class="enemyStatTile"><span>Schaden</span><b>⚔ ${Math.round(e.damage)}</b></div><div class="enemyStatTile"><span>Rüstung</span><b>🛡 ${armorLabel(e.armor)}</b></div><div class="enemyStatTile"><span>Geschwindigkeit</span><b>➤ ${speedLabel(e.speed)} (${e.speed.toFixed(1)})</b></div><div class="enemyStatTile"><span>Angriffstakt</span><b>⏱ ${e.attackRate.toFixed(2)} s</b></div><div class="enemyStatTile"><span>Goldbelohnung</span><b>🪙 ${e.reward}</b></div><div class="enemyStatTile"><span>Besonderheit</span><b>${ENEMY_CODEX[e.type]?.strength||"–"}</b></div>`;document.getElementById("enemyInfoLore").textContent=ENEMY_CODEX[e.type]?.lore||"Krieger der Eisenclans.";overlay.classList.remove("hidden");paused=true;last=performance.now()}
-function closeEnemyInfo(resume=true){const o=document.getElementById("enemyInfoOverlay");if(o)o.classList.add("hidden");inspectedEnemy=null;if(resume&&!gameOver){paused=false;last=performance.now()}}
+function openEnemyInfo(e){if(!e||e.dead)return;discoverEnemy(e.type);const overlay=document.getElementById("enemyInfoOverlay");document.getElementById("enemyInfoPortrait").textContent=ENEMY_CODEX[e.type]?.icon||"⚔";document.getElementById("enemyInfoName").textContent=e.name;document.getElementById("enemyInfoClan").textContent=`${e.clan||"Eisenclans"} · Welle ${state.wave}`;const roleTag=document.getElementById("enemyBossTag"),codex=ENEMY_CODEX[e.type]||{};roleTag.textContent=codex.role||(codex.boss?"BOSS":"KRIEGER");roleTag.hidden=false;roleTag.classList.toggle("isBoss",!!codex.boss);roleTag.classList.toggle("isElite",codex.role==="ELITE");document.getElementById("enemyHpText").textContent=`Leben ${Math.max(0,Math.ceil(e.hp))} / ${Math.ceil(e.maxHp)}`;document.getElementById("enemyHpFill").style.width=`${Math.max(0,Math.min(100,e.hp/e.maxHp*100))}%`;document.getElementById("enemyStatsGrid").innerHTML=`<div class="enemyStatTile"><span>Schaden</span><b>⚔ ${Math.round(e.damage)}</b></div><div class="enemyStatTile"><span>Rüstung</span><b>🛡 ${armorLabel(e.armor)}</b></div><div class="enemyStatTile"><span>Geschwindigkeit</span><b>➤ ${speedLabel(e.speed)} (${e.speed.toFixed(1)})</b></div><div class="enemyStatTile"><span>Angriffstakt</span><b>⏱ ${e.attackRate.toFixed(2)} s</b></div><div class="enemyStatTile"><span>Goldbelohnung</span><b>🪙 ${e.reward}</b></div><div class="enemyStatTile"><span>Besonderheit</span><b>${ENEMY_CODEX[e.type]?.strength||"–"}</b></div>`;document.getElementById("enemyInfoLore").textContent=ENEMY_CODEX[e.type]?.lore||"Krieger der Eisenclans.";overlay.classList.remove("hidden");paused=true;last=performance.now()}
+function closeEnemyInfo(resume=true){const o=document.getElementById("enemyInfoOverlay");if(o)o.classList.add("hidden");if(resume&&!gameOver){paused=false;last=performance.now()}}
 function pickAt(x,y){
  let best=null,bd=32;
  for(const e of state.enemies){if(e.dead)continue;const d=Math.hypot(x-e.x,y-e.y);if(d<Math.max(bd,e.radius+12)){bd=d;best=e}}
@@ -957,7 +847,6 @@ const buildTray=document.getElementById("buildTray");
 const navButtons=[...document.querySelectorAll(".navBtn[data-tab]")];
 const navResearch=document.getElementById("navResearch"),navResearchBadge=document.getElementById("navResearchBadge");
 const navUpgrade=document.getElementById("navUpgrade");
-const navRepair=document.getElementById("navRepair");
 const navStats=document.getElementById("navStats");
 const navMenu=document.getElementById("navMenu");
 const statsScreen=document.getElementById("statsScreen");
