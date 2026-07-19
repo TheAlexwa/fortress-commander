@@ -14,7 +14,9 @@ import {
  getCraftsmanMoveSpeed,
  getFortressAutoRepairPercent,
  getResearchedUnitStats,
+ getResearchedTowerStats,
  applyResearchToUnits,
+ applyResearchToTowers,
  isResearchRequirementMet,
  getResearchBaseCost,
  getResearchCost,
@@ -77,8 +79,8 @@ import { saveGameState, loadGameState, deleteSaveGame, getSaveMetadata } from ".
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.12.7";
-const GAME_RELEASE_NAME="Turm-Upgrades korrigiert";
+const GAME_VERSION="1.12.8";
+const GAME_RELEASE_NAME="Turmforschung";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -207,7 +209,7 @@ const BUILD={
  market:{name:"Marktplatz",kind:"inside",gold:150,wood:60,color:"#8a6b3d"}
 };
 const state={gold:210,wood:105,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,
- enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],craftsmen:[],residents:[],repairActive:false,repairedHp:0,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0}};
+ enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],craftsmen:[],residents:[],repairActive:false,repairedHp:0,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
 const wallSlots=[],insideSlots=[],castleSlots=[];
 
 function initMap(){
@@ -265,7 +267,9 @@ function repairWoodPerTick(){return getRepairWoodPerTick(state.research,BASE_REP
 function craftsmanMoveSpeed(){return getCraftsmanMoveSpeed(state.research)}
 function fortressAutoRepairPercent(){return getFortressAutoRepairPercent(state.research)}
 function researchedUnitStats(key){return getResearchedUnitStats(key,BUILD,state.research)}
+function researchedTowerStats(key){return getResearchedTowerStats(key,BUILD,state.research)}
 function applyResearchToExistingUnits(techId,oldLevel,newLevel){return applyResearchToUnits(state.units,techId,oldLevel,newLevel)}
+function applyResearchToExistingTowers(techId,oldLevel,newLevel){return applyResearchToTowers(state.buildings,techId,oldLevel,newLevel)}
 
 function applyAutomaticWaveRepair(){return applyWaveAutoRepair(state,fortressAutoRepairPercent())}
 function totalRepairDamage(){return getTotalRepairDamage(state)}
@@ -303,7 +307,7 @@ function buyResearch(techId){
  const lv=state.research[tech.id]||0;if(lv>=tech.max)return showToast("Technologie bereits maximiert");
  if(!researchRequirementMet(tech))return showToast("Vorherige Technologie zuerst erforschen");
  const cost=researchCost(tech);if((state.researchPoints||0)<cost)return showToast("Nicht genug Forschungspunkte");
- state.researchPoints-=cost;state.research[tech.id]=lv+1;applyResearchToExistingUnits(tech.id,lv,lv+1);showToast(`${tech.name}: Stufe ${lv+1} · andere Forschungen +${Math.round(globalResearchIncreaseRate()*100)} %`);renderWorkshop();updateUI();saveGame(true);
+ state.researchPoints-=cost;state.research[tech.id]=lv+1;applyResearchToExistingUnits(tech.id,lv,lv+1);applyResearchToExistingTowers(tech.id,lv,lv+1);showToast(`${tech.name}: Stufe ${lv+1} · andere Forschungen +${Math.round(globalResearchIncreaseRate()*100)} %`);renderWorkshop();updateUI();saveGame(true);
 }
 document.getElementById("workshopResearchBtn").addEventListener("click",openWorkshopPanel);
 document.getElementById("workshopCloseBtn").addEventListener("click",()=>closeWorkshopPanel(true));
@@ -468,7 +472,7 @@ function spawnEnemy(){
 function createAt(x,y,key){
  return createEntityAt(x,y,key,{
   state,BUILD,CX,CY,WALL_R,wallSlots,castleSlots,insideSlots,
-  researchedUnitStats,syncResidents,showToast,
+  researchedUnitStats,researchedTowerStats,syncResidents,showToast,
   setBuildMode:value=>{buildMode=value},
   setSelected:value=>{selected=value}
  });
@@ -1149,8 +1153,8 @@ function upgradeEntityIcon(entity){if(entity.kind==="unit")return entity.key==="
 function allResearchTechs(){return getAllResearchTechs()}
 function activeGlobalBonuses(){
  const bonuses=[];
- const guardHp=researchLevel("guard_hp")*8,guardArmor=researchLevel("guard_armor")*2.5,archerDamage=researchLevel("archer_damage")*7,archerRange=researchLevel("archer_range")*6,archerRate=researchLevel("archer_rate")*5,craftRepair=researchLevel("craft_repair")*12,craftWood=researchLevel("craft_wood")*7,craftSpeed=researchLevel("craft_speed")*8;
- if(guardHp)bonuses.push(`🛡 Wachen-Leben +${guardHp}%`);if(guardArmor)bonuses.push(`🛡 Wachen-Rüstung +${guardArmor}%`);if(archerDamage)bonuses.push(`🏹 Schützen-Schaden +${archerDamage}%`);if(archerRange)bonuses.push(`◎ Schützen-Reichweite +${archerRange}%`);if(archerRate)bonuses.push(`✦ Schützen-Tempo +${archerRate}%`);if(craftRepair)bonuses.push(`🔨 Reparatur +${craftRepair}%`);if(craftWood)bonuses.push(`🪵 Holzbedarf −${craftWood}%`);if(craftSpeed)bonuses.push(`➤ Handwerker-Tempo +${craftSpeed}%`);
+ const guardHp=researchLevel("guard_hp")*8,guardArmor=researchLevel("guard_armor")*2.5,archerDamage=researchLevel("archer_damage")*7,archerRange=researchLevel("archer_range")*6,archerRate=researchLevel("archer_rate")*5,towerDamage=researchLevel("tower_damage")*8,towerRate=researchLevel("tower_rate")*5,towerHp=researchLevel("tower_hp")*10,craftRepair=researchLevel("craft_repair")*12,craftWood=researchLevel("craft_wood")*7,craftSpeed=researchLevel("craft_speed")*8;
+ if(guardHp)bonuses.push(`🛡 Wachen-Leben +${guardHp}%`);if(guardArmor)bonuses.push(`🛡 Wachen-Rüstung +${guardArmor}%`);if(archerDamage)bonuses.push(`🏹 Schützen-Schaden +${archerDamage}%`);if(archerRange)bonuses.push(`◎ Schützen-Reichweite +${archerRange}%`);if(archerRate)bonuses.push(`✦ Schützen-Tempo +${archerRate}%`);if(towerDamage)bonuses.push(`🎯 Turm-Schaden +${towerDamage}%`);if(towerRate)bonuses.push(`⚙ Turm-Nachladezeit −${towerRate}%`);if(towerHp)bonuses.push(`🧱 Turm-Leben +${towerHp}%`);if(craftRepair)bonuses.push(`🔨 Reparatur +${craftRepair}%`);if(craftWood)bonuses.push(`🪵 Holzbedarf −${craftWood}%`);if(craftSpeed)bonuses.push(`➤ Handwerker-Tempo +${craftSpeed}%`);
  const auto=researchLevel("fortress_autoRepair");if(auto)bonuses.push(`🏰 Wellenreparatur ${[10,15,20,25,30][auto-1]}%`);
  return bonuses;
 }
@@ -1166,7 +1170,7 @@ function upgradeRecommendation(){
 }
 function upgradeCenterHtml(){
  const workshop=state.buildings.find(b=>b.key==="workshop"),upgradable=state.buildings.filter(e=>!upgradeEntityCost(e).maxed),affordable=upgradable.filter(e=>{const c=upgradeEntityCost(e);return state.gold>=c.gold&&state.wood>=c.wood});
- const buildingRows=state.buildings.length?state.buildings.map(b=>{const isTower=b.base.kind==="tower",c=upgradeEntityCost(b),can=!c.maxed&&state.gold>=c.gold&&state.wood>=c.wood;if(isTower)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · EXP-Stufe ${b.expLevel||1}</b><small>EXP ${Math.floor(b.xp||0)}/${Math.floor(b.xpMax||90)} · Schaden ${Math.round(b.damage)} · Reichweite ${Math.round(b.range)}${b.pendingUpgrades?` · ${b.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung nur über EXP"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">${b.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${b.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP · Forschung folgt"}</button></div></div>`;return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · Stufe ${b.level||1}</b><small>${b.key==="workshop"?`Globaler Forschungsaufschlag: ${Math.round(globalResearchIncreaseRate()*100)} % je fremder Stufe.`:`Versorgungsgebäude · investiert ${Math.floor(b.investedGold||0)} Gold / ${Math.floor(b.investedWood||0)} Holz`}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" data-upgrade-buy="building:${b.bid}" ${can?"":"disabled"}>${c.maxed?"✓ MAX":`⬆ ${c.gold} 🪙${c.wood?` · ${c.wood} 🪵`:""}`}</button></div></div>`}).join(""):'<div class="statsHint">Noch keine Gebäude errichtet.</div>';
+ const buildingRows=state.buildings.length?state.buildings.map(b=>{const isTower=b.base.kind==="tower",c=upgradeEntityCost(b),can=!c.maxed&&state.gold>=c.gold&&state.wood>=c.wood;if(isTower)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · EXP-Stufe ${b.expLevel||1}</b><small>EXP ${Math.floor(b.xp||0)}/${Math.floor(b.xpMax||90)} · Schaden ${Math.round(b.damage)} · Reichweite ${Math.round(b.range)}${b.pendingUpgrades?` · ${b.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung über EXP oder Forschung"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">${b.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${b.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`;return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · Stufe ${b.level||1}</b><small>${b.key==="workshop"?`Globaler Forschungsaufschlag: ${Math.round(globalResearchIncreaseRate()*100)} % je fremder Stufe.`:`Versorgungsgebäude · investiert ${Math.floor(b.investedGold||0)} Gold / ${Math.floor(b.investedWood||0)} Holz`}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" data-upgrade-buy="building:${b.bid}" ${can?"":"disabled"}>${c.maxed?"✓ MAX":`⬆ ${c.gold} 🪙${c.wood?` · ${c.wood} 🪵`:""}`}</button></div></div>`}).join(""):'<div class="statsHint">Noch keine Gebäude errichtet.</div>';
  const unitRows=state.units.length?state.units.map(u=>`<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(u)}</div><div><b>${upgradeEntityName(u)} · Erfahrungsstufe ${u.expLevel||1}</b><small>EXP ${Math.floor(u.xp||0)}/${Math.floor(u.xpMax||65)} · Schaden ${Math.round(u.damage)} · Leben ${Math.round(u.maxHp)}${u.pendingUpgrades?` · ${u.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung nur durch EXP oder Forschung"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="unit:${u.uid}">${u.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${u.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`).join(""):'<div class="statsHint">Noch keine mobilen Einheiten ausgebildet.</div>';
  const research=allResearchTechs().map(t=>`<div class="researchCenterItem"><b>${t.icon} ${t.name}</b><small>${t.desc}</small><div class="level">Stufe ${researchLevel(t.id)}/${t.max}${researchLevel(t.id)<t.max?` · nächste Kosten ${researchCost(t)} 🔬`:" · MAX"}</div></div>`).join("");
  const bonuses=activeGlobalBonuses();

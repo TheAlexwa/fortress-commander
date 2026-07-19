@@ -42,6 +42,7 @@ export function createEntityAt(x, y, key, context) {
     castleSlots,
     insideSlots,
     researchedUnitStats,
+    researchedTowerStats,
     syncResidents,
     showToast,
     setBuildMode,
@@ -171,14 +172,17 @@ export function createEntityAt(x, y, key, context) {
   };
 
   if (blueprint.kind === "tower") {
+    const stats = researchedTowerStats
+      ? researchedTowerStats(key)
+      : blueprint;
     Object.assign(building, {
-      hp: blueprint.hp,
-      maxHp: blueprint.hp,
-      range: blueprint.range,
-      rate: blueprint.rate,
-      damage: blueprint.damage,
-      speed: blueprint.speed,
-      splash: blueprint.splash || 0,
+      hp: stats.hp,
+      maxHp: stats.hp,
+      range: stats.range,
+      rate: stats.rate,
+      damage: stats.damage,
+      speed: stats.speed,
+      splash: stats.splash || 0,
     });
   }
 

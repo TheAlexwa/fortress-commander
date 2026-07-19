@@ -3,6 +3,7 @@
 export const RESEARCH_BALANCE={
  guardHpPerLevel:.08,guardArmorPerLevel:.025,
  archerDamagePerLevel:.07,archerRangePerLevel:.06,archerRatePerLevel:.05,
+ towerDamagePerLevel:.08,towerRatePerLevel:.05,towerHpPerLevel:.10,
  craftRepairPerLevel:.12,craftWoodPerLevel:.07,craftSpeedPerLevel:.08
 };
 
@@ -10,6 +11,7 @@ export const RESEARCH_TABS=[
  {id:"fortress",label:"🏰 Festung",intro:"Technologien für die zentrale Verteidigung und die Erholung zwischen Angriffswellen."},
  {id:"guard",label:"🛡 Burgwache",intro:"Defensive Ausbildung für widerstandsfähige Nahkämpfer."},
  {id:"archer",label:"🏹 Bogenschützen",intro:"Fernkampftechnologien für Schaden, Reichweite und Angriffstempo."},
+ {id:"tower",label:"🗼 Türme",intro:"Globale Werkstattverbesserungen für Bogen-, Armbrust- und Katapulttürme."},
  {id:"craft",label:"🔨 Handwerker",intro:"Verbesserungen für Reparaturleistung, Holzbedarf und Beweglichkeit."}
 ];
 
@@ -23,6 +25,11 @@ export const RESEARCH_TECHS={
   {id:"archer_damage",icon:"⚔",name:"Durchschlagskräftige Pfeile",desc:"Erhöht den Schaden aller Bogenschützen um 7 % je Stufe.",max:5,costs:[2,4,7,10,14]},
   {id:"archer_range",icon:"◎",name:"Ballistische Berechnung",desc:"Erhöht die Reichweite aller Bogenschützen um 6 % je Stufe.",max:5,costs:[3,5,8,12,16],requires:"archer_damage"},
   {id:"archer_rate",icon:"✦",name:"Schneller Köchergriff",desc:"Verkürzt die Angriffszeit aller Bogenschützen um 5 % je Stufe.",max:5,costs:[4,6,9,13,18],requires:"archer_range"}
+ ],
+ tower:[
+  {id:"tower_damage",icon:"🎯",name:"Gehärtete Geschosse",desc:"Erhöht den Schaden aller Türme um 8 % je Stufe.",max:3,costs:[3,6,10]},
+  {id:"tower_rate",icon:"⚙",name:"Präzise Mechanik",desc:"Verkürzt die Nachladezeit aller Türme um 5 % je Stufe.",max:3,costs:[4,7,11],requires:"tower_damage"},
+  {id:"tower_hp",icon:"🧱",name:"Verstärkte Turmkonstruktion",desc:"Erhöht die maximalen Lebenspunkte aller Türme um 10 % je Stufe.",max:3,costs:[5,8,12],requires:"tower_rate"}
  ],
  craft:[
   {id:"craft_repair",icon:"🔨",name:"Effiziente Reparatur",desc:"Erhöht die Reparaturleistung der Handwerker um 12 % je Stufe.",max:5,costs:[2,4,7,10,14]},
@@ -44,6 +51,15 @@ export function getResearchedUnitStats(key,build,research){
  return stats;
 }
 
+
+export function getResearchedTowerStats(key,build,research){
+ const c=build[key],stats={hp:c.hp,damage:c.damage,range:c.range,rate:c.rate,speed:c.speed,splash:c.splash||0};
+ stats.damage*=1+getResearchLevel(research,"tower_damage")*RESEARCH_BALANCE.towerDamagePerLevel;
+ stats.rate*=Math.pow(1-RESEARCH_BALANCE.towerRatePerLevel,getResearchLevel(research,"tower_rate"));
+ stats.hp*=1+getResearchLevel(research,"tower_hp")*RESEARCH_BALANCE.towerHpPerLevel;
+ return stats;
+}
+
 export function applyResearchToUnits(units,techId,oldLevel,newLevel){
  if(newLevel<=oldLevel)return;
  for(const u of units){
@@ -53,6 +69,21 @@ export function applyResearchToUnits(units,techId,oldLevel,newLevel){
   if(techId==="archer_damage")u.damage*=(1+newLevel*RESEARCH_BALANCE.archerDamagePerLevel)/(1+oldLevel*RESEARCH_BALANCE.archerDamagePerLevel);
   if(techId==="archer_range")u.range*=(1+newLevel*RESEARCH_BALANCE.archerRangePerLevel)/(1+oldLevel*RESEARCH_BALANCE.archerRangePerLevel);
   if(techId==="archer_rate")u.rate*=Math.pow(1-RESEARCH_BALANCE.archerRatePerLevel,newLevel-oldLevel);
+ }
+}
+
+
+export function applyResearchToTowers(buildings,techId,oldLevel,newLevel){
+ if(newLevel<=oldLevel)return;
+ for(const tower of buildings){
+  if(tower.kind!=="building"||tower.base?.kind!=="tower")continue;
+  if(techId==="tower_damage")tower.damage*=(1+newLevel*RESEARCH_BALANCE.towerDamagePerLevel)/(1+oldLevel*RESEARCH_BALANCE.towerDamagePerLevel);
+  if(techId==="tower_rate")tower.rate*=Math.pow(1-RESEARCH_BALANCE.towerRatePerLevel,newLevel-oldLevel);
+  if(techId==="tower_hp"){
+   const factor=(1+newLevel*RESEARCH_BALANCE.towerHpPerLevel)/(1+oldLevel*RESEARCH_BALANCE.towerHpPerLevel);
+   tower.maxHp*=factor;
+   tower.hp=Math.min(tower.maxHp,Math.max(0,tower.hp*factor));
+  }
  }
 }
 
