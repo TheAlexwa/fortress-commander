@@ -1,0 +1,155 @@
+/**
+ * Spiel- und Wellenlogik von Fortress Commander.
+ *
+ * Das Modul arbeitet ausschließlich mit übergebenem Zustand und Callbacks.
+ * Dadurch bleibt es unabhängig von DOM, Canvas und der Benutzeroberfläche.
+ */
+
+export function getWaveEnemyCount(wave) {
+  return Math.floor(4 + wave * 2.15 + Math.pow(wave, 1.25));
+}
+
+export function getWallHealthSum(state) {
+  return state.walls.reduce((sum, wall) => sum + wall.hp, 0);
+}
+
+export function beginWave(
+  state,
+  {
+    gameOver,
+    assignCraftsmen,
+    hideRepairDecision,
+    showToast,
+    setPaused,
+    setBuildMode,
+    setSelected,
+  }
+) {
+  if (state.inWave || gameOver) return false;
+
+  setPaused(false);
+  state.supportTimer = 0;
+  state.repairActive = false;
+  assignCraftsmen();
+  hideRepairDecision();
+
+  state.inWave = true;
+  state.toSpawn = getWaveEnemyCount(state.wave);
+  state.spawnTimer = 0.1;
+
+  setBuildMode(null);
+  setSelected(null);
+  showToast(`Welle ${state.wave}: Die Eisenclans greifen an`);
+  return true;
+}
+
+export function createWaveEnemy(
+  state,
+  { WORLD_W, WORLD_H, TAU, enemyStatsFor, discoverEnemy, random = Math.random }
+) {
+  const side = Math.floor(random() * 4);
+  const margin = 45;
+  let x;
+  let y;
+
+  if (side === 0) {
+    x = 100 + random() * (WORLD_W - 200);
+    y = -margin;
+  } else if (side === 1) {
+    x = WORLD_W + margin;
+    y = 100 + random() * (WORLD_H - 200);
+  } else if (side === 2) {
+    x = 100 + random() * (WORLD_W - 200);
+    y = WORLD_H + margin;
+  } else {
+    x = -margin;
+    y = 100 + random() * (WORLD_H - 200);
+  }
+
+  const wave = state.wave;
+  const roll = random();
+  let type = "raider";
+
+  if (wave >= 10 && roll < 0.12) type = "berserker";
+  else if (wave >= 6 && roll > 0.78) type = "shield";
+  else if (wave >= 4 && roll < 0.25) type = "runner";
+  else if (wave >= 3 && roll > 0.58 && roll < 0.74) type = "spear";
+
+  if (wave % 8 === 0 && state.toSpawn === 1) type = "boss";
+
+  const stats = enemyStatsFor(type, wave);
+  const enemy = {
+    kind: "enemy",
+    x,
+    y,
+    type,
+    name: stats.name,
+    clan: "Eisenclans",
+    hp: stats.hp,
+    maxHp: stats.hp,
+    speed: stats.speed,
+    radius: Number.isFinite(stats.radius) ? stats.radius : 14,
+    reward: stats.reward,
+    damage: stats.damage,
+    attackRate: stats.attackRate,
+    attackCd: random(),
+    armor: stats.armor || 0,
+    color: stats.color,
+    phase: "outside",
+    wallIndex: null,
+    animSeed: random() * TAU,
+  };
+
+  state.enemies.push(enemy);
+  discoverEnemy(type);
+  return enemy;
+}
+
+export function applyWaveAutoRepair(state, percent) {
+  if (percent <= 0) return 0;
+
+  let repaired = 0;
+  const castleGain = Math.min(state.maxHp - state.hp, state.maxHp * percent);
+
+  if (castleGain > 0) {
+    state.hp += castleGain;
+    repaired += castleGain;
+  }
+
+  for (const wall of state.walls) {
+    const gain = Math.min(wall.maxHp - wall.hp, wall.maxHp * percent);
+    if (gain > 0) {
+      wall.hp += gain;
+      repaired += gain;
+    }
+  }
+
+  state.repairedHp += repaired;
+  return repaired;
+}
+
+export function getTotalRepairDamage(state) {
+  let total = Math.max(0, state.maxHp - state.hp);
+
+  total += state.walls.reduce(
+    (sum, wall) => sum + Math.max(0, wall.maxHp - wall.hp),
+    0
+  );
+
+  total += state.buildings
+    .filter(
+      (building) =>
+        building.base.kind === "tower" && building.hp > 0
+    )
+    .reduce(
+      (sum, building) =>
+        sum + Math.max(0, building.maxHp - building.hp),
+      0
+    );
+
+  return total;
+}
+
+export function getRepairWoodEstimate(state) {
+  return Math.ceil(getTotalRepairDamage(state) / 20);
+}

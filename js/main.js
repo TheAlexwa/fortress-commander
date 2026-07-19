@@ -66,6 +66,16 @@ import {
  applyUnitTalentUpgrade
 } from "./combat.js";
 
+import {
+ getWaveEnemyCount,
+ beginWave,
+ createWaveEnemy,
+ applyWaveAutoRepair,
+ getTotalRepairDamage,
+ getRepairWoodEstimate,
+ getWallHealthSum
+} from "./game.js";
+
 (()=>{
 "use strict";
 const GAME_VERSION="1.11.6.0";
@@ -232,8 +242,8 @@ function angleIndex(x,y){
  let a=Math.atan2(y-CY,x-CX);if(a< -Math.PI/2)a+=TAU;
  return Math.max(0,Math.min(WALL_SEGMENTS-1,Math.floor((a+Math.PI/2)/(TAU/WALL_SEGMENTS))));
 }
-function waveCount(w){return Math.floor(4+w*2.15+Math.pow(w,1.25))}
-function wallHealthSum(){return state.walls.reduce((s,w)=>s+w.hp,0)}
+function waveCount(w){return getWaveEnemyCount(w)}
+function wallHealthSum(){return getWallHealthSum(state)}
 function workshopLevels(){return Object.values(state.research||{}).reduce((sum,level)=>sum+level,0)}
 function workshopBuilding(){return state.buildings.find(b=>b.key==="workshop")||null}
 function workshopBuildingLevel(){return Math.max(1,Math.min(5,Number(workshopBuilding()?.level||1)))}
@@ -259,19 +269,9 @@ function fortressAutoRepairPercent(){return getFortressAutoRepairPercent(state.r
 function researchedUnitStats(key){return getResearchedUnitStats(key,BUILD,state.research)}
 function applyResearchToExistingUnits(techId,oldLevel,newLevel){return applyResearchToUnits(state.units,techId,oldLevel,newLevel)}
 
-function applyAutomaticWaveRepair(){
- const pct=fortressAutoRepairPercent();if(pct<=0)return 0;let repaired=0;
- const castleGain=Math.min(state.maxHp-state.hp,state.maxHp*pct);if(castleGain>0){state.hp+=castleGain;repaired+=castleGain}
- for(const w of state.walls){const gain=Math.min(w.maxHp-w.hp,w.maxHp*pct);if(gain>0){w.hp+=gain;repaired+=gain}}
- state.repairedHp+=repaired;return repaired;
-}
-function totalRepairDamage(){
- let total=Math.max(0,state.maxHp-state.hp);
- total+=state.walls.reduce((sum,w)=>sum+Math.max(0,w.maxHp-w.hp),0);
- total+=state.buildings.filter(b=>b.base.kind==="tower"&&b.hp>0).reduce((sum,b)=>sum+Math.max(0,b.maxHp-b.hp),0);
- return total;
-}
-function repairWoodEstimate(){return Math.ceil(totalRepairDamage()/20)}
+function applyAutomaticWaveRepair(){return applyWaveAutoRepair(state,fortressAutoRepairPercent())}
+function totalRepairDamage(){return getTotalRepairDamage(state)}
+function repairWoodEstimate(){return getRepairWoodEstimate(state)}
 
 let activeResearchTab="fortress";
 function researchRequirementMet(tech){return isResearchRequirementMet(tech,state.research)}
@@ -409,24 +409,15 @@ function closeAllBlockingPanels(){
 }
 
 function startWave(){
- if(state.inWave||gameOver)return;paused=false;state.supportTimer=0;state.repairActive=false;assignCraftsmen();hideRepairDecision();state.inWave=true;state.toSpawn=waveCount(state.wave);state.spawnTimer=.1;buildMode=null;selected=null;showToast(`Welle ${state.wave}: Die Eisenclans greifen an`);
+ return beginWave(state,{
+  gameOver,assignCraftsmen,hideRepairDecision,showToast,
+  setPaused:value=>{paused=value},
+  setBuildMode:value=>{buildMode=value},
+  setSelected:value=>{selected=value}
+ });
 }
 function spawnEnemy(){
- const side=Math.floor(Math.random()*4),m=45;let x,y;
- if(side===0){x=100+Math.random()*(WORLD_W-200);y=-m}
- if(side===1){x=WORLD_W+m;y=100+Math.random()*(WORLD_H-200)}
- if(side===2){x=100+Math.random()*(WORLD_W-200);y=WORLD_H+m}
- if(side===3){x=-m;y=100+Math.random()*(WORLD_H-200)}
- const w=state.wave,r=Math.random();let type="raider";
- if(w>=10&&r<.12)type="berserker";
- else if(w>=6&&r>.78)type="shield";
- else if(w>=4&&r<.25)type="runner";
- else if(w>=3&&r>.58&&r<.74)type="spear";
- if(w%8===0&&state.toSpawn===1)type="boss";
- const S=enemyStatsFor(type,w);
- state.enemies.push({kind:"enemy",x,y,type,name:S.name,clan:"Eisenclans",hp:S.hp,maxHp:S.hp,speed:S.speed,radius:Number.isFinite(S.radius)?S.radius:14,reward:S.reward,damage:S.damage,
-  attackRate:S.attackRate,attackCd:Math.random(),armor:S.armor||0,color:S.color,phase:"outside",wallIndex:null,animSeed:Math.random()*TAU});
- discoverEnemy(type);
+ return createWaveEnemy(state,{WORLD_W,WORLD_H,TAU,enemyStatsFor,discoverEnemy});
 }
 function createAt(x,y,key){
  return createEntityAt(x,y,key,{
