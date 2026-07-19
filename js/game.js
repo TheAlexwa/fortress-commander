@@ -43,6 +43,67 @@ export function beginWave(
   return true;
 }
 
+function selectEarlyWaveEnemyType(wave, roll) {
+  let type = "raider";
+
+  if (wave >= 10 && roll < 0.12) type = "berserker";
+  else if (wave >= 6 && roll > 0.78) type = "shield";
+  else if (wave >= 4 && roll < 0.25) type = "runner";
+  else if (wave >= 3 && roll > 0.58 && roll < 0.74) type = "spear";
+
+  return type;
+}
+
+export function getWaveEnemyWeights(wave) {
+  const progress = Math.min(1, Math.max(0, (wave - 12) / 12));
+  const specialShare = 0.36 + progress * 0.22;
+  const berserkerShare = 0.34 + progress * 0.08;
+  const normalShare = 1 - specialShare;
+
+  return {
+    raider: normalShare * 0.54,
+    runner: normalShare * 0.17,
+    spear: normalShare * 0.29,
+    shield: specialShare * (1 - berserkerShare),
+    berserker: specialShare * berserkerShare,
+  };
+}
+
+export function getBossEscortTypes(wave) {
+  if (wave % 8 !== 0 || wave < 16) return [];
+  if (wave < 24) return ["shield", "shield"];
+  if (wave < 32) return ["berserker", "shield", "shield"];
+  return ["shield", "berserker", "shield", "berserker", "shield"];
+}
+
+export function selectWaveEnemyType(
+  wave,
+  remainingToSpawn,
+  random = Math.random
+) {
+  if (wave % 8 === 0) {
+    if (remainingToSpawn === 1) return "boss";
+
+    const escort = getBossEscortTypes(wave);
+    const escortIndex = escort.length - (remainingToSpawn - 1);
+    if (escortIndex >= 0 && escortIndex < escort.length) {
+      return escort[escortIndex];
+    }
+  }
+
+  const roll = Math.min(0.999999, Math.max(0, random()));
+  if (wave < 12) return selectEarlyWaveEnemyType(wave, roll);
+
+  const weights = getWaveEnemyWeights(wave);
+  let threshold = 0;
+  for (const type of ["raider", "runner", "spear", "shield", "berserker"]) {
+    threshold += weights[type];
+    if (roll < threshold) return type;
+  }
+
+  return "berserker";
+}
+
 export function createWaveEnemy(
   state,
   { WORLD_W, WORLD_H, TAU, enemyStatsFor, discoverEnemy, random = Math.random }
@@ -67,16 +128,7 @@ export function createWaveEnemy(
   }
 
   const wave = state.wave;
-  const roll = random();
-  let type = "raider";
-
-  if (wave >= 10 && roll < 0.12) type = "berserker";
-  else if (wave >= 6 && roll > 0.78) type = "shield";
-  else if (wave >= 4 && roll < 0.25) type = "runner";
-  else if (wave >= 3 && roll > 0.58 && roll < 0.74) type = "spear";
-
-  if (wave % 8 === 0 && state.toSpawn === 1) type = "boss";
-
+  const type = selectWaveEnemyType(wave, state.toSpawn, random);
   const stats = enemyStatsFor(type, wave);
   const enemy = {
     kind: "enemy",
