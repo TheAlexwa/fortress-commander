@@ -87,8 +87,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.13.4";
-const GAME_RELEASE_NAME="Belagerungsphase und Außenlager";
+const GAME_VERSION="1.13.5";
+const GAME_RELEASE_NAME="Direkte EXP-Aufwertung";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -864,11 +864,16 @@ function focusUpgradeEntity(card){
  closeStats();hideRepairDecision();let entity=null;
  if(card.dataset.kind==="unit")entity=state.units.find(u=>u.uid===Number(card.dataset.id)&&u.hp>0);
  if(card.dataset.kind==="tower")entity=state.buildings.find(b=>b.base.kind==="tower"&&b.slot.i===Number(card.dataset.slot)&&b.hp>0);
- if(!entity)return;
+ if(!entity){
+  lastDockSignature="";
+  renderLevelUpDock();
+  return;
+ }
  selected=entity;buildMode=null;unitCommandMode=null;
- camX=entity.kind==="unit"?entity.x:entity.slot.x;
- camY=entity.kind==="unit"?entity.y:entity.slot.y;
- showToast("EXP-Aufwertung auswählen");
+ updateSelectionHud();
+ selectionTalentBar.classList.remove("hidden");
+ const name=entity.kind==="unit"?(entity.key==="guard"?"Burgwache":"Bogenschütze"):entity.base.name;
+ showToast(`${name}: Aufwertung auswählen`);
 }
 
 function speedLabel(v){return v>=58?"Sehr schnell":v>=44?"Schnell":v>=33?"Mittel":v>=25?"Langsam":"Sehr langsam"}
