@@ -78,6 +78,7 @@ import {
 
 import { renderGameUI } from "./ui.js";
 import { renderGameFrame } from "./render.js";
+import { attachGameInput } from "./input.js";
 
 (()=>{
 "use strict";
@@ -194,7 +195,7 @@ const WORLD_W=2400,WORLD_H=1700,CX=WORLD_W/2,CY=WORLD_H/2;
 const WALL_R=355,WALL_SEGMENTS=24,WALL_MAX_HP=420;
 let vw=1000,vh=700,dpr=1,last=performance.now(),paused=true,gameOver=false;
 let zoom=.48,minZoom=.15,maxZoom=1.45,camX=CX,camY=CY;
-let buildMode=null,selected=null,unitCommandMode=null,toastTimer=0,pointerDown=null,dragged=false;
+let buildMode=null,selected=null,unitCommandMode=null,toastTimer=0;
 const BUILD={
  archer:{name:"Bogenturm",kind:"tower",gold:60,wood:20,hp:260,range:215,rate:.72,damage:17,speed:470,color:"#b98a4d"},
  crossbow:{name:"Armbrustturm",kind:"tower",gold:95,wood:30,hp:320,range:265,rate:1.45,damage:46,speed:560,color:"#73513b"},
@@ -920,25 +921,36 @@ document.getElementById("pauseRestartBtn").onclick=e=>{e.preventDefault();e.stop
 document.getElementById("cancelPauseRestartBtn").onclick=e=>{e.preventDefault();e.stopPropagation();document.getElementById("pauseRestartConfirm").classList.add("hidden")};
 document.getElementById("confirmPauseRestartBtn").onclick=e=>{e.preventDefault();e.stopPropagation();reset()};
 ui.zoomOut.onclick=()=>setZoom(zoom-.1);ui.zoomIn.onclick=()=>setZoom(zoom+.1);
-canvas.addEventListener("wheel",e=>{e.preventDefault();const r=canvas.getBoundingClientRect();setZoom(zoom*(e.deltaY>0?.9:1.1),e.clientX-r.left,e.clientY-r.top)},{passive:false});
+attachGameInput({
+ canvas,
+ startScreen,
+ instructionsScreen,
+ getZoom:()=>zoom,
+ setZoom,
+ getCamera:()=>({x:camX,y:camY}),
+ setCamera:(x,y)=>{camX=x;camY=y},
+ clampCamera,
+ screenToWorld,
+ worldTap,
+ getBuildMode:()=>buildMode,
+ getSelected:()=>selected,
+ clearSelectionModes:()=>{buildMode=null;selected=null;unitCommandMode=null},
+ isPaused:()=>paused,
+ setPaused:value=>{paused=value},
+ isGameOver:()=>gameOver,
+ setLastFrameTime:value=>{last=value},
+ showToast,
+ startWave,
+ showPauseMenu,
+ hidePauseMenu,
+ resetGame:reset,
+ enterGame,
+ returnToTitle,
+ handleOrientationChange,
+ isPhoneLandscape,
+ resizeCanvas:resize
+});
 
-let touches=new Map(),pinchStart=0,pinchZoom=zoom,pinchCenter=null;
-canvas.addEventListener("pointerdown",e=>{canvas.setPointerCapture(e.pointerId);touches.set(e.pointerId,{x:e.clientX,y:e.clientY});pointerDown={id:e.pointerId,x:e.clientX,y:e.clientY,camX,camY};dragged=false;
- if(touches.size===2){const a=[...touches.values()];pinchStart=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);pinchZoom=zoom;pinchCenter={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2}}});
-canvas.addEventListener("pointermove",e=>{if(!touches.has(e.pointerId))return;touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
- if(touches.size===2){const a=[...touches.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),r=canvas.getBoundingClientRect();setZoom(pinchZoom*d/pinchStart,pinchCenter.x-r.left,pinchCenter.y-r.top);dragged=true}
- else if(pointerDown&&pointerDown.id===e.pointerId&&!buildMode&&!selected){const dx=e.clientX-pointerDown.x,dy=e.clientY-pointerDown.y;if(Math.hypot(dx,dy)>8)dragged=true;camX=pointerDown.camX-dx/zoom;camY=pointerDown.camY-dy/zoom;clampCamera()}});
-function pointerEnd(e){
- if(!touches.has(e.pointerId))return;
- touches.delete(e.pointerId);
- if(pointerDown&&pointerDown.id===e.pointerId&&!dragged){
-  if(paused&&!gameOver){paused=false;last=performance.now();showToast("Spiel fortgesetzt");if(touches.size===0)pointerDown=null;return}
-  const r=canvas.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top;
-  const p=screenToWorld(sx,sy);worldTap(p.x,p.y)
- }
- if(touches.size===0)pointerDown=null;
-}
-canvas.addEventListener("pointerup",pointerEnd);canvas.addEventListener("pointercancel",pointerEnd);
 ui.levelDock.addEventListener("click",e=>{const card=e.target.closest(".levelCard");if(card)focusUpgradeEntity(card)});
 
 const buildTray=document.getElementById("buildTray");
@@ -1354,19 +1366,7 @@ function updateSelectionHud(){
  }else selectionTalentBar.classList.add("hidden");
 }
 
-addEventListener("keydown",e=>{
- if(!startScreen.classList.contains("hidden")||!instructionsScreen.classList.contains("hidden")){
-  if(e.key==="Escape"&&!instructionsScreen.classList.contains("hidden"))returnToTitle();
-  if(e.key==="Enter"&&!startScreen.classList.contains("hidden"))enterGame();
-  return;
- }
- if(e.code==="Space"){e.preventDefault();startWave()}
- if(e.key==="Escape"){buildMode=null;selected=null;unitCommandMode=null}
- if(e.key.toLowerCase()==="p"){if(paused)hidePauseMenu(true);else showPauseMenu()}
- if(e.key.toLowerCase()==="r"&&gameOver)reset()
-});
-addEventListener("resize",()=>{handleOrientationChange();if(!isPhoneLandscape())setTimeout(resize,60)});
-addEventListener("orientationchange",()=>setTimeout(handleOrientationChange,100));
+
 
 function loop(now){
  const dt=Math.min(.04,Math.max(0,(now-last)/1000));last=now;
