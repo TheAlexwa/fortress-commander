@@ -79,8 +79,8 @@ import { saveGameState, loadGameState, deleteSaveGame, getSaveMetadata } from ".
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.12.8";
-const GAME_RELEASE_NAME="Turmforschung";
+const GAME_VERSION="1.12.9";
+const GAME_RELEASE_NAME="Gegnergrößen";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -855,7 +855,7 @@ function openEnemyInfo(e){if(!e||e.dead)return;discoverEnemy(e.type);const overl
 function closeEnemyInfo(resume=true){const o=document.getElementById("enemyInfoOverlay");if(o)o.classList.add("hidden");if(resume&&!gameOver){paused=false;last=performance.now()}}
 function pickAt(x,y){
  let best=null,bd=32;
- for(const e of state.enemies){if(e.dead)continue;const d=Math.hypot(x-e.x,y-e.y);if(d<Math.max(bd,e.radius+12)){bd=d;best=e}}
+ for(const e of state.enemies){if(e.dead)continue;const d=Math.hypot(x-e.x,y-e.y),visualRadius=e.radius*(Number.isFinite(e.visualScale)?e.visualScale:1);if(d<Math.max(bd,visualRadius+12)){bd=d;best=e}}
  for(const u of state.units){const d=Math.hypot(x-u.x,y-u.y);if(d<bd){bd=d;best=u}}
  for(const b of state.buildings){const d=Math.hypot(x-b.slot.x,y-b.slot.y);if(d<bd){bd=d;best=b}}
  for(const w of state.walls){const px=CX+Math.cos(w.am)*WALL_R,py=CY+Math.sin(w.am)*WALL_R,d=Math.hypot(x-px,y-py);if(d<bd){bd=d;best=w;best.kind="wall"}}

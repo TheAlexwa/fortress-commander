@@ -379,11 +379,19 @@ function drawEnemies(){
  const now=performance.now()*.006;
  for(const e of state.enemies){
   ctx.save();ctx.translate(e.x,e.y);
-  const stride=Math.sin(now+(e.animSeed||0))*1.4,scale=e.type==="boss"?1.08:1;
-  ctx.scale(scale,scale);ctx.translate(0,stride*.25);
-  // Bodenschatten und Clan-Aura
-  ctx.fillStyle="#05060788";ctx.beginPath();ctx.ellipse(5,11,e.radius*1.35,e.radius*.67,0,0,TAU);ctx.fill();
-  if(e.type==="berserker"||e.type==="boss"){ctx.globalAlpha=.18;ctx.fillStyle=e.type==="boss"?"#d59a42":"#d73b32";ctx.beginPath();ctx.arc(0,0,e.radius+8+Math.sin(now)*2,0,TAU);ctx.fill();ctx.globalAlpha=1}
+  const stride=Math.sin(now+(e.animSeed||0))*1.4;
+  const visualClass=e.visualClass||(e.type==="boss"?"boss":["shield","berserker"].includes(e.type)?"special":"normal");
+  const fallbackScale=visualClass==="boss"?1.5:visualClass==="special"?1.18:1;
+  const visualScale=Number.isFinite(e.visualScale)?e.visualScale:fallbackScale;
+  const isSpecial=visualClass==="special",isBoss=visualClass==="boss";
+  ctx.scale(visualScale,visualScale);ctx.translate(0,stride*.25);
+  // Bodenschatten und Größenklasse
+  const shadowWidth=isBoss?1.58:isSpecial?1.46:1.35;
+  ctx.fillStyle="#05060788";ctx.beginPath();ctx.ellipse(5,11,e.radius*shadowWidth,e.radius*(isBoss?.76:isSpecial?.71:.67),0,0,TAU);ctx.fill();
+  if(isSpecial||isBoss){
+   ctx.globalAlpha=isBoss?.22:.13;ctx.fillStyle=isBoss?"#d59a42":e.type==="berserker"?"#d73b32":"#7b98aa";
+   ctx.beginPath();ctx.arc(0,0,e.radius+(isBoss?10:7)+Math.sin(now)*2,0,TAU);ctx.fill();ctx.globalAlpha=1;
+  }
   // Beine, Stiefel und Fellrock
   ctx.strokeStyle="#3a281f";ctx.lineWidth=Math.max(3,e.radius*.28);ctx.lineCap="round";ctx.beginPath();ctx.moveTo(-e.radius*.28,e.radius*.45);ctx.lineTo(-e.radius*.4,e.radius*.98+stride);ctx.moveTo(e.radius*.28,e.radius*.45);ctx.lineTo(e.radius*.42,e.radius*.98-stride);ctx.stroke();
   ctx.strokeStyle="#171719";ctx.lineWidth=Math.max(3,e.radius*.22);ctx.beginPath();ctx.moveTo(-e.radius*.48,e.radius*.98+stride);ctx.lineTo(-e.radius*.15,e.radius*.98+stride);ctx.moveTo(e.radius*.18,e.radius*.98-stride);ctx.lineTo(e.radius*.55,e.radius*.98-stride);ctx.stroke();
@@ -413,9 +421,19 @@ function drawEnemies(){
   }
   if(e.type==="berserker"){ctx.strokeStyle="#cb3931";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,e.radius+4,0,TAU);ctx.stroke();ctx.fillStyle="#b92522";ctx.fillRect(-e.radius*.75,-2,e.radius*1.5,4)}
   if(e.type==="boss"){ctx.strokeStyle="#e2b75a";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,e.radius+6,0,TAU);ctx.stroke();ctx.fillStyle="#d1a43c";for(let k=-1;k<=1;k++)ctx.fillRect(k*8-2,-e.radius-10,4,10);ctx.fillStyle="#8d2020";ctx.beginPath();ctx.moveTo(-e.radius*.8,-e.radius*.2);ctx.lineTo(-e.radius*1.25,e.radius*.9);ctx.lineTo(0,e.radius*.62);ctx.closePath();ctx.fill()}
-  // Lebensleiste und Typmarke
-  const bw=Math.max(34,e.radius*2.75);ctx.fillStyle="#160b0b";ctx.fillRect(-bw/2,-e.radius-19,bw,7);ctx.fillStyle=e.hp/e.maxHp>.5?"#6ac265":e.hp/e.maxHp>.25?"#d4a541":"#d14945";ctx.fillRect(-bw/2+1,-e.radius-18,(bw-2)*Math.max(0,e.hp/e.maxHp),5);ctx.strokeStyle="#f5dfca55";ctx.strokeRect(-bw/2,-e.radius-19,bw,7);
-  if(zoom>=.58||e.type==="boss"){ctx.fillStyle="#f2dfba";ctx.font=`bold ${e.type==="boss"?10:8}px system-ui`;ctx.textAlign="center";ctx.fillText(e.name||"Eisenclan",0,-e.radius-23)}
+  // Lebensleiste und Typmarke passend zur Größenklasse
+  const barHeight=isBoss?10:isSpecial?8:7;
+  const barGap=isBoss?23:isSpecial?21:19;
+  const bw=Math.max(isBoss?50:isSpecial?42:34,e.radius*(isBoss?3.05:isSpecial?2.9:2.75));
+  ctx.fillStyle="#160b0b";ctx.fillRect(-bw/2,-e.radius-barGap,bw,barHeight);
+  ctx.fillStyle=e.hp/e.maxHp>.5?"#6ac265":e.hp/e.maxHp>.25?"#d4a541":"#d14945";
+  ctx.fillRect(-bw/2+1,-e.radius-barGap+1,(bw-2)*Math.max(0,e.hp/e.maxHp),barHeight-2);
+  ctx.strokeStyle=isBoss?"#f0c56a99":isSpecial?"#c9d9df77":"#f5dfca55";ctx.strokeRect(-bw/2,-e.radius-barGap,bw,barHeight);
+  if(isBoss){ctx.fillStyle="#d8ac45";ctx.fillRect(-bw/2,-e.radius-barGap-3,bw,2)}
+  if(zoom>=.58||isBoss){
+   ctx.fillStyle="#f2dfba";ctx.font=`bold ${isBoss?11:isSpecial?9:8}px system-ui`;ctx.textAlign="center";
+   ctx.fillText(e.name||"Eisenclan",0,-e.radius-barGap-5);
+  }
   ctx.restore();
  }
 }

@@ -89,6 +89,8 @@ export function createWaveEnemy(
     maxHp: stats.hp,
     speed: stats.speed,
     radius: Number.isFinite(stats.radius) ? stats.radius : 14,
+    visualClass: stats.visualClass || "normal",
+    visualScale: Number.isFinite(stats.visualScale) ? stats.visualScale : 1,
     reward: stats.reward,
     damage: stats.damage,
     attackRate: stats.attackRate,
