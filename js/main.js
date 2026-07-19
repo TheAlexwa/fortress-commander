@@ -48,6 +48,24 @@ import {
  sellEntity
 } from "./buildings.js";
 
+import {
+ findNearestEnemy,
+ findNearestUnit,
+ getTargetCapacity,
+ countAssignedUnits,
+ getTowerCoverage,
+ chooseAutomaticTarget,
+ getTowerBehindWall,
+ findNearestCastleTower,
+ findNearestBlockingUnit,
+ createProjectile,
+ grantTowerExperience,
+ grantUnitExperience,
+ grantCombatExperience,
+ applyTowerTalent,
+ applyUnitTalentUpgrade
+} from "./combat.js";
+
 (()=>{
 "use strict";
 const GAME_VERSION="1.11.6.0";
@@ -448,152 +466,33 @@ function toggleCraftsmanWork(){
  showToast(selected.repairEnabled?"Handwerker arbeitet wieder":"Handwerkerarbeit gestoppt");
  updateUI();
 }
-function nearestEnemy(x,y,range){
- let best=null,bd=range*range;for(const e of state.enemies){if(e.hp<=0)continue;const d=(e.x-x)**2+(e.y-y)**2;if(d<bd){bd=d;best=e}}return best;
+function combatCallbacks(){
+ return {burst,isSelected:entity=>selected===entity,showToast};
 }
-function nearestUnit(x,y,range){
- let best=null,bd=range*range;for(const u of state.units){if(u.hp<=0)continue;const d=(u.x-x)**2+(u.y-y)**2;if(d<bd){bd=d;best=u}}return best;
-}
-function targetCapacity(enemy){
- if(enemy.type==="boss")return 5;
- if(enemy.type==="shield")return 2;
- return 1;
-}
-function assignedCount(enemy,exceptUnit=null){
- let count=0;
- for(const u of state.units){
-  if(u===exceptUnit||u.hp<=0||u.controlMode!=="auto")continue;
-  if(u.autoTarget===enemy)count++;
- }
- return count;
-}
-function towerCoverage(enemy){
- let coverage=0,strongCoverage=0;
- for(const b of state.buildings){
-  if(b.base.kind!=="tower"||b.hp<=0)continue;
-  const d=Math.hypot(enemy.x-b.slot.x,enemy.y-b.slot.y);
-  if(d<=b.range){
-   coverage++;
-   const readiness=Math.max(0,1-(b.cooldown||0)/Math.max(.1,b.rate));
-   strongCoverage+=.45+readiness*.55+(b.splash?0.35:0);
-  }
- }
- return {coverage,strongCoverage};
-}
+function nearestEnemy(x,y,range){return findNearestEnemy(state.enemies,x,y,range)}
+function nearestUnit(x,y,range){return findNearestUnit(state.units,x,y,range)}
+function targetCapacity(enemy){return getTargetCapacity(enemy)}
+function assignedCount(enemy,exceptUnit=null){return countAssignedUnits(state.units,enemy,exceptUnit)}
+function towerCoverage(enemy){return getTowerCoverage(state.buildings,enemy)}
 function chooseAutoTarget(unit){
- let best=null,bestScore=Infinity;
- for(const e of state.enemies){
-  if(e.hp<=0)continue;
-  const assigned=assignedCount(e,unit);
-  const capacity=targetCapacity(e);
-  const distance=Math.hypot(e.x-unit.x,e.y-unit.y);
-  const overload=Math.max(0,assigned-capacity+1);
-  const cover=towerCoverage(e);
-  const towerPenalty=cover.coverage*1050+cover.strongCoverage*620;
-  const dangerBonus=e.phase==="inside"?-720:0;
-  const nearBurgBonus=Math.max(0,520-Math.hypot(e.x-CX,e.y-CY))*.9;
-  const score=(assigned/capacity)*900+overload*1800+distance+towerPenalty+dangerBonus-nearBurgBonus;
-  if(score<bestScore){bestScore=score;best=e}
- }
- return best;
+ return chooseAutomaticTarget(unit,{enemies:state.enemies,units:state.units,buildings:state.buildings,centerX:CX,centerY:CY});
 }
-function towerBehindWall(index){
- const slot=wallSlots[index];
- return slot&&slot.building&&slot.building.base.kind==="tower"&&slot.building.hp>0?slot.building:null;
-}
-function nearestCastleTower(enemy){
- let best=null,bd=Infinity;
- for(const b of state.buildings){
-  if(b.base.kind!=="tower"||b.slot.type!=="castle"||b.hp<=0)continue;
-  const d=(b.slot.x-enemy.x)**2+(b.slot.y-enemy.y)**2;
-  if(d<bd){bd=d;best=b}
- }
- return best;
-}
+function towerBehindWall(index){return getTowerBehindWall(wallSlots,index)}
+function nearestCastleTower(enemy){return findNearestCastleTower(state.buildings,enemy)}
 function nearestBlockingUnit(enemy,maxRange=58){
- let best=null,bd=maxRange*maxRange;
- for(const u of state.units){
-  if(u.hp<=0)continue;
-  if(u.key==="guard"){
-   const enemyRadius=Math.hypot(enemy.x-CX,enemy.y-CY);
-   if(u.stance==="defend"&&enemy.phase!=="inside")continue;
-   if(u.stance==="offense"&&enemyRadius>WALL_R+330)continue;
-  }
-  const d=(u.x-enemy.x)**2+(u.y-enemy.y)**2;
-  if(d<bd){bd=d;best=u}
- }
- return best;
+ return findNearestBlockingUnit(state.units,enemy,{centerX:CX,centerY:CY,wallRadius:WALL_R,maxRange});
 }
 function shoot(from,target,damage,speed,splash=0,color="#f0d176"){
- const sx=from.slot?from.slot.x:from.x;
- const sy=from.slot?from.slot.y:from.y;
- state.projectiles.push({
-  x:sx,y:sy,target,damage,speed,splash,color,radius:splash?6:3,
-  owner:(from&&((from.kind==="unit")||(from.kind==="building"&&from.base.kind==="tower")))?from:null
- });
+ return createProjectile(state.projectiles,from,target,damage,speed,splash,color);
 }
-function grantTowerXp(tower,amount){
- if(!tower||tower.kind!=="building"||tower.base.kind!=="tower"||tower.hp<=0||amount<=0)return;
- tower.xp=(tower.xp||0)+amount;
- tower.xpMax=tower.xpMax||90;
- while(tower.xp>=tower.xpMax){
-  tower.xp-=tower.xpMax;
-  tower.expLevel=(tower.expLevel||1)+1;
-  tower.pendingUpgrades=(tower.pendingUpgrades||0)+1;
-  tower.xpMax=Math.round(tower.xpMax*1.30+18);
-  burst(tower.slot.x,tower.slot.y,"#58aaff",20);
-  if(selected===tower)showToast(`${tower.base.name}: EXP-Aufwertung bereit`);
- }
-}
-function grantCombatXp(owner,amount){
- if(!owner||amount<=0)return;
- if(owner.kind==="unit")grantUnitXp(owner,amount);
- else if(owner.kind==="building"&&owner.base.kind==="tower")grantTowerXp(owner,amount);
-}
-function applyTowerExpTalent(tower,type){
- if(!tower||tower.base.kind!=="tower"||(tower.pendingUpgrades||0)<=0)return;
- tower.expUpgradeStats=tower.expUpgradeStats||{damage:0,range:0,rate:0,health:0};
- if(type==="damage"){
-  tower.damage*=1.20;tower.expUpgradeStats.damage++;
-  showToast("Turmschaden um 20% verbessert");
- }
- if(type==="range"){
-  tower.range*=1.10;tower.expUpgradeStats.range++;
-  showToast("Turmreichweite um 10% verbessert");
- }
- if(type==="rate"){
-  tower.rate=Math.max(.20,tower.rate*.88);tower.expUpgradeStats.rate++;
-  showToast("Nachladezeit um 12% verkürzt");
- }
- if(type==="health"){
-  const gain=tower.maxHp*.22;tower.maxHp+=gain;tower.hp=Math.min(tower.maxHp,tower.hp+gain);
-  tower.expUpgradeStats.health++;
-  showToast("Turmleben um 22% verbessert");
- }
- tower.pendingUpgrades--;
- burst(tower.slot.x,tower.slot.y,"#78cfff",16);
-}
-function grantUnitXp(unit,amount){
- if(!unit||unit.hp<=0)return;
- unit.xp=(unit.xp||0)+amount;
- while(unit.xp>=unit.xpMax){
-  unit.xp-=unit.xpMax;
-  unit.expLevel=(unit.expLevel||1)+1;
-  unit.pendingUpgrades=(unit.pendingUpgrades||0)+1;
-  unit.xpMax=Math.round(unit.xpMax*1.28+12);
-  burst(unit.x,unit.y,"#58aaff",18);
-  if(selected===unit)showToast("Aufwertung bereit – im Kreismenü auswählen");
- }
-}
+function grantTowerXp(tower,amount){return grantTowerExperience(tower,amount,combatCallbacks())}
+function grantUnitXp(unit,amount){return grantUnitExperience(unit,amount,combatCallbacks())}
+function grantCombatXp(owner,amount){return grantCombatExperience(owner,amount,combatCallbacks())}
+function applyTowerExpTalent(tower,type){return applyTowerTalent(tower,type,combatCallbacks())}
 function applyUnitTalent(unit,type){
- if(!unit||unit.pendingUpgrades<=0)return;
- if(type==="damage"){unit.damage*=1.24;unit.upgradeStats.damage++;showToast("Schaden verbessert")}
- if(type==="health"){const gain=unit.maxHp*.28;unit.maxHp+=gain;unit.hp=Math.min(unit.maxHp,unit.hp+gain);unit.upgradeStats.health++;showToast("Leben verbessert")}
- if(type==="speed"){unit.speed*=1.16;unit.upgradeStats.speed++;showToast("Geschwindigkeit verbessert")}
- if(type==="rate"){unit.rate=Math.max(.24,unit.rate*.84);unit.upgradeStats.rate++;showToast("Schussfrequenz verbessert")}
- if(type==="range"){unit.range*=1.12;unit.upgradeStats.range=(unit.upgradeStats.range||0)+1;showToast("Reichweite verbessert")}
- unit.pendingUpgrades--;unitCommandMode=null;
- burst(unit.x,unit.y,"#7fc4ff",14);
+ const changed=applyUnitTalentUpgrade(unit,type,combatCallbacks());
+ if(changed)unitCommandMode=null;
+ return changed;
 }
 function burst(x,y,color,n){for(let i=0;i<n;i++){const a=Math.random()*TAU,s=20+Math.random()*80;state.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.25+Math.random()*.5,color,size:1+Math.random()*3})}}
 
