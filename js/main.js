@@ -70,15 +70,15 @@ import {
 import { renderGameUI } from "./ui.js";
 import { renderGameFrame } from "./render.js";
 import { attachGameInput } from "./input.js";
-import { saveGameState, getSaveMetadata } from "./save.js";
+import { saveGameState, loadGameState, getSaveMetadata } from "./save.js";
 
 // Fortress Commander – zentrale Initialisierung und Spielschleife.
 // Fachlogik, Darstellung und Eingaben liegen in eigenständigen Modulen.
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.12.1";
-const GAME_RELEASE_NAME="Spiel speichern";
+const GAME_VERSION="1.12.2";
+const GAME_RELEASE_NAME="Spiel laden";
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
  if(!ENEMY_CODEX[type]||discoveredEnemies.has(type))return;
@@ -326,7 +326,11 @@ function refreshSaveStatus(){
   save.textContent="💾 Spiel speichern";
   save.title=state.inWave?"Speichern ist nur zwischen den Wellen möglich":"Spielstand lokal in diesem Browser speichern";
  }
- if(load){load.disabled=true;load.textContent="📂 Spiel laden (folgt)"}
+ if(load){
+  load.disabled=!metadata?.valid;
+  load.textContent="📂 Spiel laden";
+  load.title=metadata?.valid?"Zuletzt gespeicherten Spielstand laden":"Kein gültiger Speicherstand vorhanden";
+ }
  if(del){del.disabled=true;del.textContent="🗑 Löschen (folgt)"}
  if(!box)return;
 
@@ -367,8 +371,27 @@ function saveGame(silent=false){
   return false;
  }
 }
-function loadGame(){showToast("Laden folgt im nächsten Schritt");return false}
-function deleteSave(){showToast("Löschen folgt zusammen mit der Ladefunktion")}
+function loadGame(){
+ try{
+  const loaded=loadGameState({state,BUILD,wallSlots,insideSlots,castleSlots});
+  hideRepairDecision();hideEndScreen();closeEnemyInfo(false);
+  selected=null;buildMode=null;unitCommandMode=null;gameOver=false;paused=true;
+  syncResidents();assignCraftsmen();
+  camX=Number.isFinite(loaded.view.camX)?loaded.view.camX:CX;
+  camY=Number.isFinite(loaded.view.camY)?loaded.view.camY:CY;
+  setZoom(Number.isFinite(loaded.view.zoom)?loaded.view.zoom:.48);
+  clampCamera();last=performance.now();lastDockSignature="";
+  refreshSaveStatus();updateUI();
+  showToast(`Spielstand geladen · Welle ${loaded.wave}`);
+  return true;
+ }catch(error){
+  console.error("Laden fehlgeschlagen:",error);
+  showToast("Spielstand konnte nicht geladen werden");
+  refreshSaveStatus();
+  return false;
+ }
+}
+function deleteSave(){showToast("Löschen folgt im nächsten Schritt")}
 
 
 

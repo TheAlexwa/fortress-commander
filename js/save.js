@@ -1,9 +1,10 @@
 /**
  * Lokales Speichersystem von Fortress Commander.
  *
- * Phase 4.1 speichert einen sauberen Spielstand zwischen den Wellen.
- * Laufzeitobjekte wie Gegner, Projektile, Partikel und Zielreferenzen
- * werden absichtlich nicht gespeichert.
+ * Spielstände werden ausschließlich zwischen den Wellen erzeugt. Beim Laden
+ * werden flüchtige Kampfobjekte wie Gegner, Projektile, Partikel und Ziele
+ * verworfen und die gespeicherten Gebäude wieder mit ihren Bauplätzen sowie
+ * den aktuellen Blaupausen verbunden.
  */
 
 const SAVE_KEY = "fortressCommander.save.v1";
@@ -17,6 +18,22 @@ function getSlotIndex(slot, { wallSlots, insideSlots, castleSlots }) {
   if (slot.type === "castle") return castleSlots.indexOf(slot);
 
   return -1;
+}
+
+function getSlotByReference(reference, { wallSlots, insideSlots, castleSlots }) {
+  const slotGroups = {
+    wall: wallSlots,
+    inside: insideSlots,
+    castle: castleSlots,
+  };
+  const slots = slotGroups[reference?.type];
+  const index = Number(reference?.index);
+
+  if (!slots || !Number.isInteger(index) || index < 0 || index >= slots.length) {
+    throw new Error("Speicherstand enthält einen ungültigen Bauplatz.");
+  }
+
+  return slots[index];
 }
 
 function serializeBuilding(building, slots) {
@@ -93,6 +110,68 @@ function createSnapshot({
   };
 }
 
+function parseSnapshot() {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) return null;
+
+  const snapshot = JSON.parse(raw);
+  if (
+    snapshot?.saveFormat !== SAVE_FORMAT ||
+    !snapshot.state ||
+    !Array.isArray(snapshot.state.walls) ||
+    !Array.isArray(snapshot.state.buildings) ||
+    !Array.isArray(snapshot.state.units) ||
+    !Array.isArray(snapshot.state.residents)
+  ) {
+    throw new Error("Speicherstand ist ungültig oder veraltet.");
+  }
+
+  return snapshot;
+}
+
+function restoreBuilding(savedBuilding, context) {
+  const blueprint = context.BUILD[savedBuilding?.key];
+  if (!blueprint || blueprint.kind === "unit") {
+    throw new Error("Speicherstand enthält ein unbekanntes Gebäude.");
+  }
+
+  const slot = getSlotByReference(savedBuilding.slot, context);
+  const allowedSlot =
+    blueprint.kind === "tower"
+      ? slot.type === "wall" || slot.type === "castle"
+      : slot.type === "inside";
+  if (!allowedSlot) {
+    throw new Error("Gebäude und Bauplatz passen im Speicherstand nicht zusammen.");
+  }
+
+  const { slot: _savedSlot, ...plainBuilding } = savedBuilding;
+  return {
+    ...plainBuilding,
+    kind: "building",
+    base: blueprint,
+    slot,
+    cooldown: 0,
+    expUpgradeStats: { ...(savedBuilding.expUpgradeStats || {}) },
+  };
+}
+
+function restoreUnit(savedUnit, BUILD) {
+  const blueprint = BUILD[savedUnit?.key];
+  if (!blueprint || blueprint.kind !== "unit") {
+    throw new Error("Speicherstand enthält eine unbekannte Einheit.");
+  }
+
+  return {
+    ...savedUnit,
+    kind: "unit",
+    base: blueprint,
+    autoTarget: null,
+    attackCd: 0,
+    retargetCd: 0,
+    upgradeStats: { ...(savedUnit.upgradeStats || {}) },
+  };
+}
+
 export function saveGameState(context) {
   const snapshot = createSnapshot(context);
   localStorage.setItem(SAVE_KEY, JSON.stringify(snapshot));
@@ -104,16 +183,105 @@ export function saveGameState(context) {
   };
 }
 
-export function getSaveMetadata() {
-  const raw = localStorage.getItem(SAVE_KEY);
-  if (!raw) return null;
+export function loadGameState({
+  state,
+  BUILD,
+  wallSlots,
+  insideSlots,
+  castleSlots,
+}) {
+  const snapshot = parseSnapshot();
+  if (!snapshot) {
+    throw new Error("Kein Speicherstand vorhanden.");
+  }
 
-  try {
-    const snapshot = JSON.parse(raw);
+  const savedState = snapshot.state;
+  if (savedState.walls.length !== state.walls.length) {
+    throw new Error("Speicherstand passt nicht zur aktuellen Karte.");
+  }
 
-    if (snapshot.saveFormat !== SAVE_FORMAT || !snapshot.state) {
-      return { valid: false };
+  const slotContext = { BUILD, wallSlots, insideSlots, castleSlots };
+  const buildings = savedState.buildings.map((building) =>
+    restoreBuilding(building, slotContext)
+  );
+  const units = savedState.units.map((unit) => restoreUnit(unit, BUILD));
+  const residents = savedState.residents.map((resident) => ({ ...resident }));
+  const occupiedSlots = new Set();
+
+  for (const building of buildings) {
+    if (occupiedSlots.has(building.slot)) {
+      throw new Error("Speicherstand belegt einen Bauplatz mehrfach.");
     }
+    occupiedSlots.add(building.slot);
+  }
+
+  for (const wall of savedState.walls) {
+    if (!Number.isFinite(Number(wall?.hp)) || !Number.isFinite(Number(wall?.maxHp))) {
+      throw new Error("Speicherstand enthält ungültige Mauerwerte.");
+    }
+  }
+
+  for (const slot of [...wallSlots, ...insideSlots, ...castleSlots]) {
+    slot.building = null;
+  }
+
+  Object.assign(state, {
+    gold: Number(savedState.gold) || 0,
+    wood: Number(savedState.wood) || 0,
+    researchPoints: Number(savedState.researchPoints) || 0,
+    hp: Number(savedState.hp) || 0,
+    maxHp: Number(savedState.maxHp) || 1200,
+    wave: Math.max(1, Number(savedState.wave) || 1),
+    kills: Math.max(0, Number(savedState.kills) || 0),
+    repairedHp: Math.max(0, Number(savedState.repairedHp) || 0),
+    nextUnitId: Math.max(0, Number(savedState.nextUnitId) || 0),
+    nextBuildingId: Math.max(0, Number(savedState.nextBuildingId) || 0),
+    nextResidentId: Math.max(0, Number(savedState.nextResidentId) || 0),
+    research: { ...(savedState.research || {}) },
+    buildings,
+    units,
+    residents,
+    enemies: [],
+    projectiles: [],
+    particles: [],
+    craftsmen: [],
+    inWave: false,
+    toSpawn: 0,
+    spawnTimer: 0,
+    supportTimer: 0,
+    repairActive: false,
+  });
+
+  savedState.walls.forEach((savedWall, index) => {
+    state.walls[index].hp = Number(savedWall.hp);
+    state.walls[index].maxHp = Number(savedWall.maxHp);
+  });
+  for (const building of buildings) {
+    building.slot.building = building;
+  }
+
+  return {
+    savedAt: snapshot.savedAt,
+    gameVersion: snapshot.gameVersion,
+    wave: state.wave,
+    view: {
+      zoom: Number.isFinite(Number(snapshot.view?.zoom))
+        ? Number(snapshot.view.zoom)
+        : null,
+      camX: Number.isFinite(Number(snapshot.view?.camX)) && snapshot.view?.camX !== null
+        ? Number(snapshot.view.camX)
+        : null,
+      camY: Number.isFinite(Number(snapshot.view?.camY)) && snapshot.view?.camY !== null
+        ? Number(snapshot.view.camY)
+        : null,
+    },
+  };
+}
+
+export function getSaveMetadata() {
+  try {
+    const snapshot = parseSnapshot();
+    if (!snapshot) return null;
 
     return {
       valid: true,
