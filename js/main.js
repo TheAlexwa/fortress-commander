@@ -29,6 +29,18 @@ import {
  runEconomySupportTick
 } from "./economy.js";
 
+import {
+ residentCapacityForHouse as getResidentCapacityForHouse,
+ syncResidents as syncResidentState,
+ totalResidents as getTotalResidents,
+ assignedResidents as getAssignedResidents,
+ freeResidents as getFreeResidents,
+ buildingHasWorker as hasBuildingWorker,
+ residentWorkforceAvailable as getResidentWorkforceAvailable,
+ craftsmanCapacity as getCraftsmanCapacity,
+ toggleBuildingResident
+} from "./villagers.js";
+
 (()=>{
 "use strict";
 const GAME_VERSION="1.11.6.0";
@@ -203,29 +215,14 @@ function workshopBuildingLevel(){return Math.max(1,Math.min(5,Number(workshopBui
 function globalResearchIncreaseRate(){return [0,.30,.25,.20,.15,.10][workshopBuildingLevel()]}
 function otherResearchLevels(techId){return Object.entries(state.research||{}).reduce((sum,[id,level])=>sum+(id===techId?0:Number(level)||0),0)}
 function globalResearchMultiplier(techId){return 1+otherResearchLevels(techId)*globalResearchIncreaseRate()}
-function residentCapacityForHouse(house){return (house.level||1)>=2?4:2}
-function syncResidents(){
- const houses=state.buildings.filter(b=>b.key==="house");
- const validHouseIds=new Set(houses.map(h=>h.bid));
- state.residents=state.residents.filter(r=>validHouseIds.has(r.homeId));
- for(const h of houses){
-  const cap=residentCapacityForHouse(h);
-  let owned=state.residents.filter(r=>r.homeId===h.bid);
-  while(owned.length<cap){const r={id:++state.nextResidentId,homeId:h.bid,job:null,workplaceId:null};state.residents.push(r);owned.push(r)}
-  while(owned.length>cap){const r=owned.pop();const b=state.buildings.find(x=>x.bid===r.workplaceId);if(b){b.residentId=null;b.residentAssigned=false}state.residents=state.residents.filter(x=>x!==r)}
- }
- for(const b of state.buildings.filter(b=>["lumber","repair","market"].includes(b.key))){
-  if(b.residentId&&!state.residents.some(r=>r.id===b.residentId)){b.residentId=null;b.residentAssigned=false}
- }
-}
-function totalResidents(){syncResidents();return state.residents.length}
-function assignedResidents(){syncResidents();return state.residents.filter(r=>r.workplaceId).length}
-function freeResidents(){return Math.max(0,totalResidents()-assignedResidents())}
-function buildingHasWorker(b){return !["lumber","repair","market"].includes(b.key)||!!b.residentId}
-function residentWorkforceAvailable(job){syncResidents();return state.residents.filter(r=>r.job===job&&r.workplaceId).length}
-function craftsmanCapacity(){
- return state.buildings.filter(b=>b.key==="repair"&&buildingHasWorker(b)).reduce((sum,b)=>sum+1,0);
-}
+function residentCapacityForHouse(house){return getResidentCapacityForHouse(house)}
+function syncResidents(){return syncResidentState(state)}
+function totalResidents(){return getTotalResidents(state)}
+function assignedResidents(){return getAssignedResidents(state)}
+function freeResidents(){return getFreeResidents(state)}
+function buildingHasWorker(building){return hasBuildingWorker(building)}
+function residentWorkforceAvailable(job){return getResidentWorkforceAvailable(state,job)}
+function craftsmanCapacity(){return getCraftsmanCapacity(state)}
 const REPAIR_TICK_SECONDS=1;
 const BASE_REPAIR_HP_PER_TICK=16;
 const BASE_REPAIR_WOOD_PER_TICK=0.5;
@@ -472,26 +469,12 @@ function sellSelected(){
 }
 let residentAssignmentBusy=false;
 function setBuildingResident(building){
- if(residentAssignmentBusy||!building||building.kind!=="building"||!["lumber","repair","market"].includes(building.key))return false;
+ if(residentAssignmentBusy)return false;
  residentAssignmentBusy=true;
  try{
-  syncResidents();
-  if(building.residentId){
-   const r=state.residents.find(x=>x.id===building.residentId);
-   if(r){r.job=null;r.workplaceId=null}
-   building.residentId=null;building.residentAssigned=false;
-   state.craftsmen=state.craftsmen.filter(c=>c.home!==building&&c.residentId!==(r&&r.id));
-   assignCraftsmen();showToast("Bewohner abgezogen");
-  }else{
-   const r=state.residents.find(x=>!x.workplaceId);
-   if(!r){showToast("Kein freier Bewohner – errichte oder verbessere ein Wohnhaus");return false}
-   r.job=building.key==="lumber"?"lumberjack":building.key==="market"?"merchant":"craftsman";
-   r.workplaceId=building.bid;building.residentId=r.id;building.residentAssigned=true;
-   assignCraftsmen();
-   showToast(building.key==="repair"?"Handwerker zugewiesen – Einheit ist sichtbar":building.key==="market"?"Händler zugewiesen – Goldproduktion aktiv":"Bewohner zugewiesen");
-  }
+  const changed=toggleBuildingResident(state,building,{assignCraftsmen,showToast});
   updateUI();
-  return true;
+  return changed;
  }finally{residentAssignmentBusy=false}
 }
 function repairSelectedWall(){
