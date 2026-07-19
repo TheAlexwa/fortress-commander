@@ -106,14 +106,26 @@ export function selectWaveEnemyType(
 
 export function createWaveEnemy(
   state,
-  { WORLD_W, WORLD_H, TAU, enemyStatsFor, discoverEnemy, random = Math.random }
+  {
+    WORLD_W,
+    WORLD_H,
+    TAU,
+    enemyStatsFor,
+    discoverEnemy,
+    random = Math.random,
+    forcedType = null,
+    spawnPoint = null,
+  }
 ) {
   const side = Math.floor(random() * 4);
   const margin = 45;
   let x;
   let y;
 
-  if (side === 0) {
+  if (spawnPoint && Number.isFinite(spawnPoint.x) && Number.isFinite(spawnPoint.y)) {
+    x = spawnPoint.x;
+    y = spawnPoint.y;
+  } else if (side === 0) {
     x = 100 + random() * (WORLD_W - 200);
     y = -margin;
   } else if (side === 1) {
@@ -128,7 +140,7 @@ export function createWaveEnemy(
   }
 
   const wave = state.wave;
-  const type = selectWaveEnemyType(wave, state.toSpawn, random);
+  const type = forcedType || selectWaveEnemyType(wave, state.toSpawn, random);
   const stats = enemyStatsFor(type, wave);
   const enemy = {
     kind: "enemy",

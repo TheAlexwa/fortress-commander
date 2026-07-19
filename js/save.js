@@ -1,3 +1,5 @@
+import { restoreSiegeState, serializeSiegeState } from "./siege.js";
+
 /**
  * Lokales Speichersystem von Fortress Commander.
  *
@@ -103,6 +105,7 @@ function createSnapshot({
       ),
       units: state.units.map(serializeUnit),
       residents: state.residents.map((resident) => ({ ...resident })),
+      siege: serializeSiegeState(state.siege),
     },
     view: {
       zoom: view?.zoom ?? 0.48,
@@ -244,6 +247,8 @@ export function loadGameState({
     buildings,
     units,
     residents,
+    siege: restoreSiegeState(savedState.siege, savedState.wave),
+    spawnQueue: [],
     enemies: [],
     projectiles: [],
     particles: [],

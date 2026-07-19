@@ -1,3 +1,5 @@
+import { getSiegeCampCounts, getSiegeCampPositions } from "./siege.js";
+
 // Zentrale Canvas-Darstellung von Fortress Commander.
 // Die Spielzustände bleiben in main.js; dieses Modul erhält nur die zum Zeichnen benötigten Referenzen.
 
@@ -100,6 +102,60 @@ function drawWorldDetails(){
  }
  ctx.restore();
 }
+function drawSiegeCamps(){
+ const siege=state.siege;
+ if(state.inWave||!siege?.active)return;
+ const camps=getSiegeCampPositions({WORLD_W,WORLD_H});
+ const counts=getSiegeCampCounts(siege);
+ const now=performance.now();
+
+ camps.forEach((camp,index)=>{
+  const count=counts[index]||0;
+  const tentCount=Math.min(3,1+Math.floor(count/5));
+  ctx.save();ctx.translate(camp.x,camp.y);
+
+  ctx.fillStyle="#17110baa";ctx.beginPath();ctx.ellipse(0,18,92,54,0,0,TAU);ctx.fill();
+  ctx.strokeStyle=count?"#b54236aa":"#7b694f88";ctx.lineWidth=3;ctx.setLineDash([8,7]);ctx.beginPath();ctx.ellipse(0,18,98,60,0,0,TAU);ctx.stroke();ctx.setLineDash([]);
+
+  // Zelte wachsen mit der Anzahl versammelter Gegner.
+  for(let i=0;i<tentCount;i++){
+   const ox=(i-1)*42+(tentCount===1?42:0),oy=i%2?18:-3;
+   ctx.fillStyle=i===0?"#6e3d2d":"#78513a";
+   ctx.beginPath();ctx.moveTo(ox-25,oy+25);ctx.lineTo(ox,oy-22);ctx.lineTo(ox+25,oy+25);ctx.closePath();ctx.fill();
+   ctx.strokeStyle="#c59b68";ctx.lineWidth=2;ctx.stroke();
+   ctx.fillStyle="#241812";ctx.beginPath();ctx.moveTo(ox-6,oy+25);ctx.lineTo(ox,oy+4);ctx.lineTo(ox+6,oy+25);ctx.closePath();ctx.fill();
+  }
+
+  // Banner und Lagerfeuer.
+  ctx.strokeStyle="#3b281d";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-62,34);ctx.lineTo(-62,-42);ctx.stroke();
+  ctx.fillStyle="#8f2f2b";ctx.beginPath();ctx.moveTo(-60,-40);ctx.lineTo(-22,-30);ctx.lineTo(-60,-16);ctx.closePath();ctx.fill();
+  ctx.strokeStyle="#d6b06a";ctx.lineWidth=1.5;ctx.stroke();
+
+  const flame=3+Math.sin(now*.012+index)*2;
+  ctx.fillStyle="#4a2c1d";ctx.beginPath();ctx.arc(0,46,15,0,TAU);ctx.fill();
+  ctx.fillStyle="#e08a33";ctx.beginPath();ctx.moveTo(-8,48);ctx.quadraticCurveTo(-2,24-flame,2,42);ctx.quadraticCurveTo(8,26+flame,9,49);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#ffd06a";ctx.beginPath();ctx.moveTo(-3,47);ctx.quadraticCurveTo(1,34-flame,4,47);ctx.closePath();ctx.fill();
+
+  // Kleine Silhouetten zeigen die wachsende Armee ohne aktive Gegnerobjekte.
+  const visible=Math.min(8,count);
+  for(let i=0;i<visible;i++){
+   const a=(i/Math.max(1,visible))*TAU+index*.6;
+   const rr=48+(i%2)*19;
+   const x=Math.cos(a)*rr,y=Math.sin(a)*rr+20;
+   ctx.fillStyle=i===0&&count>10?"#9b2f2b":"#373a39";
+   ctx.beginPath();ctx.arc(x,y-7,5,0,TAU);ctx.fill();
+   ctx.fillRect(x-4,y-2,8,12);
+   ctx.strokeStyle="#8d7453";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+4,y);ctx.lineTo(x+10,y-9);ctx.stroke();
+  }
+
+  ctx.fillStyle="#16110de8";ctx.strokeStyle="#d5b46b";ctx.lineWidth=2;
+  ctx.beginPath();ctx.roundRect(-36,-78,72,28,8);ctx.fill();ctx.stroke();
+  ctx.fillStyle="#fff0bd";ctx.textAlign="center";ctx.font="bold 15px system-ui";ctx.fillText(String(count),0,-59);
+  ctx.fillStyle="#e6d4ad";ctx.font="bold 10px system-ui";ctx.fillText(camp.label,0,93);
+  ctx.restore();
+ });
+}
+
 function drawGatehouse(a){
  const x=CX+Math.cos(a)*WALL_R,y=CY+Math.sin(a)*WALL_R;
  ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);
@@ -683,7 +739,7 @@ function drawEnemies(){
 
 function draw(){
  ctx.clearRect(0,0,vw,vh);ctx.save();ctx.translate(vw/2,vh/2);ctx.scale(zoom,zoom);ctx.translate(-camX,-camY);
- drawGround();drawPaths();drawWorldDetails();drawCastle();drawSlots();drawRangeIndicators();drawBuildings();drawUnits();drawCraftsmen();
+ drawGround();drawPaths();drawWorldDetails();drawSiegeCamps();drawCastle();drawSlots();drawRangeIndicators();drawBuildings();drawUnits();drawCraftsmen();
  for(const p of state.projectiles){ctx.save();ctx.translate(p.x,p.y);const t=p.target,ang=t?Math.atan2(t.y-p.y,t.x-p.x):0;ctx.rotate(ang);ctx.shadowBlur=14;ctx.shadowColor=p.color;ctx.strokeStyle=p.color;ctx.lineWidth=Math.max(2,p.radius*.7);ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(5,0);ctx.stroke();ctx.fillStyle="#eef6f8";ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(1,-3);ctx.lineTo(1,3);ctx.closePath();ctx.fill();ctx.restore()}
  drawEnemies();for(const p of state.particles){ctx.globalAlpha=Math.min(1,p.life*3);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,TAU);ctx.fill()}ctx.globalAlpha=1;ctx.restore();
  const vg=ctx.createRadialGradient(vw*.5,vh*.45,Math.min(vw,vh)*.12,vw*.5,vh*.5,Math.max(vw,vh)*.72);vg.addColorStop(0,"#00000000");vg.addColorStop(.72,"#00000010");vg.addColorStop(1,"#00000068");ctx.fillStyle=vg;ctx.fillRect(0,0,vw,vh);

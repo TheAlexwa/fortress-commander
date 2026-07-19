@@ -30,7 +30,7 @@
   <h2>Spielanleitung</h2>
   <div class="instructionVersion" id="instructionVersion">Anleitung</div>
   <p class="guideIntro">Baue eine funktionierende Festung, versorge deine Bewohner und halte die Angriffswellen der Eisenclans auf. Öffne die Kategorien, um alle Gebäude, Einheiten und Systeme nachzulesen.</p>
-  <div class="guideQuick"><div>① Verteidigung errichten</div><div>② Wirtschaft aufbauen</div><div>③ Welle starten & verbessern</div></div>
+  <div class="guideQuick"><div>① Verteidigung errichten</div><div>② Wirtschaft aufbauen</div><div>③ Belagerung beobachten & Angriff auslösen</div></div>
 
   <details class="guideSection" open>
    <summary>🎮 Einstieg & Steuerung</summary>
@@ -93,7 +93,7 @@
 
   <details class="guideSection">
    <summary>🌊 Wellen, Reparatur & Strategie</summary>
-   <div class="guideBody"><div class="guideTip"><b>🔱 Upgrade-Zentrale:</b> Das Upgrade-Symbol im unteren Hauptmenü öffnet eine Gesamtübersicht für Gebäude, Einheiten, Forschung, globale Boni und Empfehlungen. Reguläre Versorgungsgebäude können dort direkt aufgewertet werden. Einheiten und Türme erhalten keine direkten Gold-/Holz-Upgrades; ihre individuelle Entwicklung läuft über Kampf-EXP.</div><div class="guideTip"><b>Globale Forschungskosten:</b> Forschung in einem Zweig verteuert alle anderen Zweige. Eine höherstufige Werkstatt reduziert diesen globalen Aufschlag von 30 % bis auf 10 %.</div><ul><li>Gold und Holz oben links zeigen Bestand und aktuelle Produktion. Antippen öffnet die ausführliche Übersicht.</li><li>Nach jeder bestandenen Welle erhältst du Forschungspunkte und eine Schadensübersicht.</li><li>Handwerker reparieren 16 Lebenspunkte pro Sekunde und verbrauchen 0,5 Holz pro Reparaturtakt, bevor Forschung wirkt.</li><li>Kleine und normale Gegner verursachen an Mauern nur 25 % ihres normalen Schadens; Schildträger, Berserker und Bosse verursachen vollen Mauerschaden.</li></ul><div class="guideTip">Baue zuerst mindestens einen schnellen Turm. Ergänze danach Unterkünfte und Holzproduktion, bevor die Reparaturkosten stark steigen.</div></div>
+   <div class="guideBody"><div class="guideTip"><b>⛺ Belagerungsphase:</b> Zwischen den Angriffen sammeln sich Gegner sichtbar in drei Außenlagern. Der Button <b>Angriff</b> schickt alle bereits eingetroffenen Gegner gleichzeitig los; noch nicht eingetroffene Einheiten folgen als Verstärkung. Die gesamte Wellenstärke bleibt gleich – längeres Warten vergrößert nur den ersten Angriffspulk.</div><div class="guideTip"><b>🔱 Upgrade-Zentrale:</b> Das Upgrade-Symbol im unteren Hauptmenü öffnet eine Gesamtübersicht für Gebäude, Einheiten, Forschung, globale Boni und Empfehlungen. Reguläre Versorgungsgebäude können dort direkt aufgewertet werden. Einheiten und Türme erhalten keine direkten Gold-/Holz-Upgrades; ihre individuelle Entwicklung läuft über Kampf-EXP.</div><div class="guideTip"><b>Globale Forschungskosten:</b> Forschung in einem Zweig verteuert alle anderen Zweige. Eine höherstufige Werkstatt reduziert diesen globalen Aufschlag von 30 % bis auf 10 %.</div><ul><li>Gold und Holz oben links zeigen Bestand und aktuelle Produktion. Antippen öffnet die ausführliche Übersicht.</li><li>Nach jeder bestandenen Welle erhältst du Forschungspunkte und eine Schadensübersicht.</li><li>Handwerker reparieren 16 Lebenspunkte pro Sekunde und verbrauchen 0,5 Holz pro Reparaturtakt, bevor Forschung wirkt.</li><li>Kleine und normale Gegner verursachen an Mauern nur 25 % ihres normalen Schadens; Schildträger, Berserker und Bosse verursachen vollen Mauerschaden.</li></ul><div class="guideTip">Baue zuerst mindestens einen schnellen Turm. Ergänze danach Unterkünfte und Holzproduktion, bevor die Reparaturkosten stark steigen.</div></div>
   </details>
 
   <details class="guideSection">
@@ -119,13 +119,14 @@
  <div class="stat">❤️ <strong id="hp">0</strong></div>
  <div class="stat">🧱 <strong id="wallInfo">0</strong></div>
  <div class="stat">🌊 <strong id="wave">1</strong></div>
- <div class="grow" id="waveStatus">Bauphase</div>
+ <div class="grow" id="waveStatus">Belagerungsphase</div>
  <button class="primary" id="startWaveBtn">⚔ Start</button>
  <button id="pauseBtn">Ⅱ Pause</button>
 </header>
 
 <div id="gameWrap">
  <canvas id="game"></canvas>
+ <div id="siegePhaseNotice" class="siegePhaseNotice hidden" role="status" aria-live="polite"><strong>⛺ Belagerungsphase</strong><span id="siegePhaseText">Die nächste Armee sammelt sich in den Außenlagern.</span></div>
  <button id="resourceOverviewBtn" type="button" aria-label="Rohstoffübersicht öffnen">
   <span class="resourceCompact"><span>🪙</span><strong id="gold">0</strong></span>
   <span class="resourceDivider"></span>
@@ -206,7 +207,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.13.2 · Dynamische Mid-/Lategame-Wellen: steigender Eliteanteil und feste Eskorte für spätere Bossangriffe.</div>
+  <div class="workshopFoot">v1.13.4 · Belagerungsphase: Gegner sammeln sich sichtbar in drei Außenlagern und greifen auf Befehl gemeinsam an.</div>
  </section>
 </div>
 

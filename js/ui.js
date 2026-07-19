@@ -66,18 +66,38 @@ export function renderGameUI({
   const intactWalls = state.walls.filter((wall) => wall.hp > 0).length;
   ui.wallInfo.textContent = `${intactWalls}/${WALL_SEGMENTS}`;
 
+  const siege = state.siege;
+  const siegeReady = !state.inWave && siege?.active ? Math.max(0, Number(siege.arrived) || 0) : 0;
+  const siegeTotal = !state.inWave && siege?.active ? Math.max(0, Number(siege.total) || 0) : waveCount(state.wave);
+  const siegeNotice = document.getElementById("siegePhaseNotice");
+  const siegeNoticeText = document.getElementById("siegePhaseText");
+
   ui.start.disabled = state.inWave || gameOver;
   ui.start.textContent = state.inWave
     ? "⚔ Läuft"
     : gameOver
       ? "✖ Verloren"
-      : "⚔ Start";
+      : "⚔ Angriff";
+  ui.start.title = state.inWave
+    ? "Angriff läuft"
+    : "Alle bereits versammelten Gegner greifen gemeinsam an; Nachzügler folgen als Verstärkung.";
   ui.pause.textContent = paused ? "▶ Weiter" : "Ⅱ Pause";
   ui.status.textContent = gameOver
     ? "Burg gefallen"
     : state.inWave
       ? `${state.enemies.length + state.toSpawn} Eisenclan-Krieger`
-      : `Bauphase · ${waveCount(state.wave)} Feinde`;
+      : `Belagerung · ${siegeReady}/${siegeTotal} bereit`;
+
+  if (siegeNotice) {
+    const showSiegeNotice = !gameOver && !state.inWave && siege?.active;
+    siegeNotice.classList.toggle("hidden", !showSiegeNotice);
+    if (siegeNoticeText && showSiegeNotice) {
+      const remaining = Math.max(0, siegeTotal - siegeReady);
+      siegeNoticeText.textContent = siegeReady >= siegeTotal
+        ? `${siegeReady} Gegner stehen vollständig in den Außenlagern bereit. Ein Angriff löst alle Lager gleichzeitig aus.`
+        : `${siegeReady} von ${siegeTotal} Gegnern sind eingetroffen · ${remaining} Nachzügler. Je länger du wartest, desto größer wird der erste Angriffspulk.`;
+    }
+  }
 
   document.querySelectorAll(".buildBtn").forEach((button) => {
     const key = button.dataset.build;

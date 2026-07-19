@@ -63,7 +63,7 @@ import {
 
 import {
  getWaveEnemyCount,
- beginWave,
+ selectWaveEnemyType,
  createWaveEnemy,
  applyWaveAutoRepair,
  getTotalRepairDamage
@@ -73,14 +73,22 @@ import { renderGameUI } from "./ui.js";
 import { renderGameFrame } from "./render.js";
 import { attachGameInput } from "./input.js";
 import { saveGameState, loadGameState, deleteSaveGame, getSaveMetadata } from "./save.js";
+import {
+  beginSiegeAttack,
+  ensureSiegePhase,
+  getSiegeCampPositions,
+  getSiegeReleasePoint,
+  prepareSiegePhase,
+  updateSiegePhase
+} from "./siege.js";
 
 // Fortress Commander – zentrale Initialisierung und Spielschleife.
 // Fachlogik, Darstellung und Eingaben liegen in eigenständigen Modulen.
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.13.2";
-const GAME_RELEASE_NAME="Dynamische Angriffswellen";
+const GAME_VERSION="1.13.4";
+const GAME_RELEASE_NAME="Belagerungsphase und Außenlager";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -191,6 +199,7 @@ const ui={
 };
 const TAU=Math.PI*2;
 const WORLD_W=2400,WORLD_H=1700,CX=WORLD_W/2,CY=WORLD_H/2;
+const SIEGE_CAMPS=getSiegeCampPositions({WORLD_W,WORLD_H});
 const WALL_R=355,WALL_SEGMENTS=24,WALL_MAX_HP=420;
 let vw=1000,vh=700,dpr=1,last=performance.now(),paused=true,gameOver=false;
 let zoom=.48,minZoom=.15,maxZoom=1.45,camX=CX,camY=CY;
@@ -209,7 +218,7 @@ const BUILD={
  market:{name:"Marktplatz",kind:"inside",gold:150,wood:60,color:"#8a6b3d"}
 };
 const state={gold:210,wood:105,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,
- enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],craftsmen:[],residents:[],repairActive:false,repairedHp:0,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
+ enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],craftsmen:[],residents:[],siege:null,spawnQueue:[],repairActive:false,repairedHp:0,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
 const wallSlots=[],insideSlots=[],castleSlots=[];
 
 function initMap(){
@@ -395,7 +404,7 @@ function loadGame(){
   const loaded=loadGameState({state,BUILD,wallSlots,insideSlots,castleSlots});
   hideRepairDecision();hideEndScreen();closeEnemyInfo(false);
   selected=null;buildMode=null;unitCommandMode=null;gameOver=false;paused=true;autosaveSuppressed=false;
-  syncResidents();assignCraftsmen();
+  syncResidents();assignCraftsmen();ensureCurrentSiege();
   camX=Number.isFinite(loaded.view.camX)?loaded.view.camX:CX;
   camY=Number.isFinite(loaded.view.camY)?loaded.view.camY:CY;
   setZoom(Number.isFinite(loaded.view.zoom)?loaded.view.zoom:.48);
@@ -458,16 +467,27 @@ function closeAllBlockingPanels(){
  if(ins&&ins.classList.contains("hidden"))ins.style.pointerEvents="none";
 }
 
+function siegeContext(){return {getWaveEnemyCount,selectWaveEnemyType}}
+function ensureCurrentSiege(){return ensureSiegePhase(state,siegeContext())}
 function startWave(){
- return beginWave(state,{
+ ensureCurrentSiege();
+ const release=beginSiegeAttack(state,{
   gameOver,assignCraftsmen,hideRepairDecision,showToast,
   setPaused:value=>{paused=value},
   setBuildMode:value=>{buildMode=value},
   setSelected:value=>{selected=value}
  });
+ if(!release)return false;
+ const campOrders=[0,0,0];
+ for(const entry of release.arrived){
+  const campIndex=Math.max(0,Math.min(2,Number(entry.camp)||0));
+  const point=getSiegeReleasePoint(entry,campOrders[campIndex]++,SIEGE_CAMPS);
+  spawnEnemy(entry.type,point);
+ }
+ return true;
 }
-function spawnEnemy(){
- return createWaveEnemy(state,{WORLD_W,WORLD_H,TAU,enemyStatsFor,discoverEnemy});
+function spawnEnemy(forcedType=null,spawnPoint=null){
+ return createWaveEnemy(state,{WORLD_W,WORLD_H,TAU,enemyStatsFor,discoverEnemy,forcedType,spawnPoint});
 }
 function createAt(x,y,key){
  return createEntityAt(x,y,key,{
@@ -638,12 +658,13 @@ function hideRepairDecision(){const p=document.getElementById("repairDecision");
 function update(dt){
  if(gameOver)return;
  if(paused)return;
+ if(!state.inWave){ensureCurrentSiege();updateSiegePhase(state,dt)}
  if(state.inWave){
   state.supportTimer=(state.supportTimer||0)+dt;
   while(state.supportTimer>=1){state.supportTimer-=1;runSupportTick()}
  }else state.supportTimer=0;
  updateCraftsmen(dt)
- if(state.inWave){state.spawnTimer-=dt;if(state.toSpawn>0&&state.spawnTimer<=0){spawnEnemy();state.toSpawn--;state.spawnTimer=Math.max(.18,.88-state.wave*.024)}}
+ if(state.inWave){state.spawnTimer-=dt;if(state.toSpawn>0&&state.spawnTimer<=0){const forcedType=state.spawnQueue.shift()||null;spawnEnemy(forcedType);state.toSpawn=Math.max(0,state.spawnQueue.length);state.spawnTimer=Math.max(.18,.88-state.wave*.024)}}
  const bonus=1;
  for(const b of state.buildings){
   if(b.base.kind!=="tower"||b.slot.type==="wall"&&state.walls[b.slot.i].hp<=0)continue;
@@ -805,8 +826,10 @@ function update(dt){
   const autoRepaired=applyAutomaticWaveRepair();
   state.wave++;
   state.repairActive=false;
+  state.spawnQueue=[];
+  prepareSiegePhase(state,siegeContext());
   for(const c of state.craftsmen)sendCraftsmanHome(c);
-  showToast(`Welle geschafft: +${gold} Gold · +${rp} Forschung${autoRepaired>0?` · +${Math.round(autoRepaired)} HP automatisch repariert`:""}`);hideRepairDecision();saveGame(true);
+  showToast(`Welle geschafft: +${gold} Gold · +${rp} Forschung${autoRepaired>0?` · +${Math.round(autoRepaired)} HP automatisch repariert`:""} · Neue Belagerung beginnt`);hideRepairDecision();saveGame(true);
  }
  for(const p of state.particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96}
  state.particles=state.particles.filter(p=>p.life>0);
@@ -902,9 +925,9 @@ function showEndScreen(){
 }
 function hideEndScreen(){const screen=document.getElementById("endScreen");if(screen){screen.classList.add("hidden");screen.style.pointerEvents="none"}}
 function reset(){
- state.gold=210;state.wood=105;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.kills=0;
+ state.gold=210;state.wood=105;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;
  state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;for(const w of state.walls)w.hp=w.maxHp;
- selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.48);showToast("Neues Spiel");
+ selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.48);ensureCurrentSiege();showToast("Neue Belagerung beginnt");
 }
 
 document.querySelectorAll(".buildBtn").forEach(b=>b.addEventListener("click",()=>{hideRepairDecision();const k=b.dataset.build;buildMode=buildMode===k?null:k;selected=null;unitCommandMode=null}));
@@ -1057,7 +1080,7 @@ function overviewStatsHtml(){
  <div class="rosterItem"><div class="rosterIcon">⚔️</div><div><b>Gesamtschaden pro Salve</b><small>Aktive Einheiten und Türme</small></div><div class="rosterBadge">${Math.round(totalDamage)}</div></div>
  <div class="rosterItem"><div class="rosterIcon">⭐</div><div><b>Durchschnittsstufe</b><small>Lebende Bodeneinheiten</small></div><div class="rosterBadge">${avg.toFixed(1)}</div></div>
  <div class="rosterItem"><div class="rosterIcon">☠️</div><div><b>Besiegte Gegner</b><small>Gesamter Spielstand</small></div><div class="rosterBadge">${state.kills}</div></div>
- <div class="rosterItem"><div class="rosterIcon">🌊</div><div><b>Aktuelle Welle</b><small>${state.inWave?"Angriff läuft":"Vorbereitung"}</small></div><div class="rosterBadge">${state.wave}</div></div></div>
+ <div class="rosterItem"><div class="rosterIcon">🌊</div><div><b>Aktuelle Welle</b><small>${state.inWave?"Angriff läuft":"Belagerungsphase"}</small></div><div class="rosterBadge">${state.wave}</div></div></div>
  <div class="statsSection"><h3>Einheitenübersicht</h3>${units.length?units.map(u=>`<div class="rosterItem" data-unit-stat="${u.uid}"><div class="rosterIcon">🏹</div><div><b>Bogenschütze Stufe ${u.expLevel||1}</b><small>Schaden ${Math.round(u.damage)} · Leben ${Math.ceil(u.hp)}/${Math.ceil(u.maxHp)} · EXP ${Math.floor(u.xp)}/${u.xpMax}</small></div><div class="rosterBadge">${u.pendingUpgrades||0} P</div></div>`).join(""):'<div class="statsHint">Noch keine Bodeneinheiten gebaut.</div>'}</div>
  <div class="statsSection"><h3>Turmübersicht</h3>${towers.length?towers.map(b=>`<div class="rosterItem"><div class="rosterIcon">🏰</div><div><b>${b.base.name} · EXP-Stufe ${b.expLevel||1}</b><small>Schaden ${Math.round(b.damage)} · Reichweite ${Math.round(b.range)} · EXP ${Math.floor(b.xp||0)}/${b.xpMax||90}</small></div><div class="rosterBadge">${b.pendingUpgrades||0} P</div></div>`).join(""):'<div class="statsHint">Noch keine Verteidigungstürme gebaut.</div>'}</div>`;
 }
@@ -1383,6 +1406,7 @@ function loop(now){
 }
 try{
  initMap();
+ ensureCurrentSiege();
  handleOrientationChange();
  if(!isPhoneLandscape())resize();
  setZoom(.48);
@@ -1390,7 +1414,7 @@ try{
  updateUI();
 }catch(err){
  console.error("Start-Hotfix:",err);
- try{initMap();resize();draw();updateUI()}catch(_){}
+ try{initMap();ensureCurrentSiege();resize();draw();updateUI()}catch(_){}
 }
 requestAnimationFrame(loop);
 })();
