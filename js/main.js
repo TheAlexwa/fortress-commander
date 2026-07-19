@@ -5,6 +5,22 @@ import {
  persistDiscoveredEnemies
 } from "./enemies.js";
 
+import {
+ RESEARCH_TABS,
+ RESEARCH_TECHS,
+ getResearchLevel,
+ getRepairHpPerTick,
+ getRepairWoodPerTick,
+ getCraftsmanMoveSpeed,
+ getFortressAutoRepairPercent,
+ getResearchedUnitStats,
+ applyResearchToUnits,
+ isResearchRequirementMet,
+ getResearchBaseCost,
+ getResearchCost,
+ getAllResearchTechs
+} from "./research.js";
+
 (()=>{
 "use strict";
 const GAME_VERSION="1.11.6.0";
@@ -205,34 +221,14 @@ function craftsmanCapacity(){
 const REPAIR_TICK_SECONDS=1;
 const BASE_REPAIR_HP_PER_TICK=16;
 const BASE_REPAIR_WOOD_PER_TICK=0.5;
-const RESEARCH_BALANCE={
- // Feinschliff-Balance: starke Spezialisierung, ohne Grundwerte zu entwerten.
- guardHpPerLevel:.08,guardArmorPerLevel:.025,
- archerDamagePerLevel:.07,archerRangePerLevel:.06,archerRatePerLevel:.05,
- craftRepairPerLevel:.12,craftWoodPerLevel:.07,craftSpeedPerLevel:.08
-};
-function researchLevel(id){return Math.max(0,Number(state.research?.[id]||0))}
-function repairHpPerTick(){return BASE_REPAIR_HP_PER_TICK*(1+researchLevel("craft_repair")*RESEARCH_BALANCE.craftRepairPerLevel)}
-function repairWoodPerTick(){return BASE_REPAIR_WOOD_PER_TICK*Math.max(.35,1-researchLevel("craft_wood")*RESEARCH_BALANCE.craftWoodPerLevel)}
-function craftsmanMoveSpeed(){return 150*(1+researchLevel("craft_speed")*RESEARCH_BALANCE.craftSpeedPerLevel)}
-function fortressAutoRepairPercent(){return [0,.10,.15,.20,.25,.30][Math.min(5,researchLevel("fortress_autoRepair"))]}
-function researchedUnitStats(key){
- const c=BUILD[key],stats={hp:c.hp,damage:c.damage,range:c.range,rate:c.rate,speed:c.speed,armor:c.armor||0};
- if(key==="guard"){stats.hp*=1+researchLevel("guard_hp")*RESEARCH_BALANCE.guardHpPerLevel;stats.armor=Math.min(.75,stats.armor+researchLevel("guard_armor")*RESEARCH_BALANCE.guardArmorPerLevel)}
- if(key==="soldier"){stats.damage*=1+researchLevel("archer_damage")*RESEARCH_BALANCE.archerDamagePerLevel;stats.range*=1+researchLevel("archer_range")*RESEARCH_BALANCE.archerRangePerLevel;stats.rate*=Math.pow(1-RESEARCH_BALANCE.archerRatePerLevel,researchLevel("archer_rate"))}
- return stats;
-}
-function applyResearchToExistingUnits(techId,oldLevel,newLevel){
- if(newLevel<=oldLevel)return;
- for(const u of state.units){
-  if((techId.startsWith("guard_")&&u.key!=="guard")||(techId.startsWith("archer_")&&u.key!=="soldier"))continue;
-  if(techId==="guard_hp"){const factor=(1+newLevel*RESEARCH_BALANCE.guardHpPerLevel)/(1+oldLevel*RESEARCH_BALANCE.guardHpPerLevel);const oldMax=u.maxHp;u.maxHp*=factor;u.hp=Math.min(u.maxHp,u.hp+(u.maxHp-oldMax))}
-  if(techId==="guard_armor")u.armor=Math.min(.75,(u.armor||0)+(newLevel-oldLevel)*RESEARCH_BALANCE.guardArmorPerLevel);
-  if(techId==="archer_damage")u.damage*=(1+newLevel*RESEARCH_BALANCE.archerDamagePerLevel)/(1+oldLevel*RESEARCH_BALANCE.archerDamagePerLevel);
-  if(techId==="archer_range")u.range*=(1+newLevel*RESEARCH_BALANCE.archerRangePerLevel)/(1+oldLevel*RESEARCH_BALANCE.archerRangePerLevel);
-  if(techId==="archer_rate")u.rate*=Math.pow(1-RESEARCH_BALANCE.archerRatePerLevel,newLevel-oldLevel);
- }
-}
+function researchLevel(id){return getResearchLevel(state.research,id)}
+function repairHpPerTick(){return getRepairHpPerTick(state.research,BASE_REPAIR_HP_PER_TICK)}
+function repairWoodPerTick(){return getRepairWoodPerTick(state.research,BASE_REPAIR_WOOD_PER_TICK)}
+function craftsmanMoveSpeed(){return getCraftsmanMoveSpeed(state.research)}
+function fortressAutoRepairPercent(){return getFortressAutoRepairPercent(state.research)}
+function researchedUnitStats(key){return getResearchedUnitStats(key,BUILD,state.research)}
+function applyResearchToExistingUnits(techId,oldLevel,newLevel){return applyResearchToUnits(state.units,techId,oldLevel,newLevel)}
+
 function applyAutomaticWaveRepair(){
  const pct=fortressAutoRepairPercent();if(pct<=0)return 0;let repaired=0;
  const castleGain=Math.min(state.maxHp-state.hp,state.maxHp*pct);if(castleGain>0){state.hp+=castleGain;repaired+=castleGain}
@@ -247,33 +243,10 @@ function totalRepairDamage(){
 }
 function repairWoodEstimate(){return Math.ceil(totalRepairDamage()/20)}
 
-const RESEARCH_TABS=[
- {id:"fortress",label:"🏰 Festung",intro:"Technologien für die zentrale Verteidigung und die Erholung zwischen Angriffswellen."},
- {id:"guard",label:"🛡 Burgwache",intro:"Defensive Ausbildung für widerstandsfähige Nahkämpfer."},
- {id:"archer",label:"🏹 Bogenschützen",intro:"Fernkampftechnologien für Schaden, Reichweite und Angriffstempo."},
- {id:"craft",label:"🔨 Handwerker",intro:"Verbesserungen für Reparaturleistung, Holzbedarf und Beweglichkeit."}
-];
-const RESEARCH_TECHS={
- fortress:[{id:"fortress_autoRepair",icon:"🏰",name:"Automatische Wellenreparatur",desc:"Schaltet stufenweise eine automatische Reparatur der Festungsmauern nach jeder Welle frei.",max:5,costs:[3,5,8,12,17],values:["10 %","15 %","20 %","25 %","30 %"]}],
- guard:[
-  {id:"guard_hp",icon:"♥",name:"Verstärkte Konstitution",desc:"Erhöht die maximalen Lebenspunkte aller Burgwachen um 8 % je Stufe.",max:5,costs:[2,4,7,10,14]},
-  {id:"guard_armor",icon:"🛡",name:"Gehärtete Rüstung",desc:"Erhöht die Rüstung aller Burgwachen um 2,5 Prozentpunkte je Stufe.",max:5,costs:[3,5,8,12,16],requires:"guard_hp"}
- ],
- archer:[
-  {id:"archer_damage",icon:"⚔",name:"Durchschlagskräftige Pfeile",desc:"Erhöht den Schaden aller Bogenschützen um 7 % je Stufe.",max:5,costs:[2,4,7,10,14]},
-  {id:"archer_range",icon:"◎",name:"Ballistische Berechnung",desc:"Erhöht die Reichweite aller Bogenschützen um 6 % je Stufe.",max:5,costs:[3,5,8,12,16],requires:"archer_damage"},
-  {id:"archer_rate",icon:"✦",name:"Schneller Köchergriff",desc:"Verkürzt die Angriffszeit aller Bogenschützen um 5 % je Stufe.",max:5,costs:[4,6,9,13,18],requires:"archer_range"}
- ],
- craft:[
-  {id:"craft_repair",icon:"🔨",name:"Effiziente Reparatur",desc:"Erhöht die Reparaturleistung der Handwerker um 12 % je Stufe.",max:5,costs:[2,4,7,10,14]},
-  {id:"craft_wood",icon:"🪵",name:"Materialkunde",desc:"Senkt den Holzverbrauch pro Reparaturtakt um 7 % je Stufe.",max:5,costs:[3,5,8,12,16],requires:"craft_repair"},
-  {id:"craft_speed",icon:"➤",name:"Leichte Werkzeugtaschen",desc:"Erhöht die Bewegungsgeschwindigkeit der Handwerker um 8 % je Stufe.",max:5,costs:[3,6,9,13,18],requires:"craft_wood"}
- ]
-};
 let activeResearchTab="fortress";
-function researchRequirementMet(tech){return !tech.requires||(state.research[tech.requires]||0)>0}
-function researchBaseCost(tech){const lv=state.research[tech.id]||0;return tech.costs[Math.min(lv,tech.costs.length-1)]}
-function researchCost(tech){return Math.max(1,Math.ceil(researchBaseCost(tech)*globalResearchMultiplier(tech.id)))}
+function researchRequirementMet(tech){return isResearchRequirementMet(tech,state.research)}
+function researchBaseCost(tech){return getResearchBaseCost(tech,state.research)}
+function researchCost(tech){return getResearchCost(tech,state.research,globalResearchMultiplier(tech.id))}
 function openWorkshopPanel(){
  if(!state.buildings.some(b=>b.key==="workshop"))return showToast("Zuerst eine Werkstatt bauen");
  hideRepairDecision();paused=true;last=performance.now();
@@ -1739,7 +1712,7 @@ function upgradeEntityCost(entity){
 }
 function upgradeEntityName(entity){return entity.kind==="unit"?(entity.key==="guard"?"Burgwache":"Bogenschütze"):buildingDisplayName(entity)}
 function upgradeEntityIcon(entity){if(entity.kind==="unit")return entity.key==="guard"?"🛡️":"🏹";return {archer:"🏹",crossbow:"🎯",catapult:"🪨",house:entity.level>=2?"🏠":"⛺",lumber:"🪵",workshop:"⚒️",repair:"👷",market:"🏪"}[entity.key]||"🏰"}
-function allResearchTechs(){return Object.values(RESEARCH_TECHS).flat()}
+function allResearchTechs(){return getAllResearchTechs()}
 function activeGlobalBonuses(){
  const bonuses=[];
  const guardHp=researchLevel("guard_hp")*8,guardArmor=researchLevel("guard_armor")*2.5,archerDamage=researchLevel("archer_damage")*7,archerRange=researchLevel("archer_range")*6,archerRate=researchLevel("archer_rate")*5,craftRepair=researchLevel("craft_repair")*12,craftWood=researchLevel("craft_wood")*7,craftSpeed=researchLevel("craft_speed")*8;
