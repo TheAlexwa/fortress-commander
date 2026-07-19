@@ -70,14 +70,15 @@ import {
 import { renderGameUI } from "./ui.js";
 import { renderGameFrame } from "./render.js";
 import { attachGameInput } from "./input.js";
+import { saveGameState, getSaveMetadata } from "./save.js";
 
 // Fortress Commander – zentrale Initialisierung und Spielschleife.
 // Fachlogik, Darstellung und Eingaben liegen in eigenständigen Modulen.
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.12.0";
-const GAME_RELEASE_NAME="Modularisierung abgeschlossen";
+const GAME_VERSION="1.12.1";
+const GAME_RELEASE_NAME="Spiel speichern";
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
  if(!ENEMY_CODEX[type]||discoveredEnemies.has(type))return;
@@ -308,17 +309,66 @@ document.getElementById("workshopTabs").addEventListener("click",e=>{const b=e.t
 document.getElementById("techTree").addEventListener("click",e=>{const b=e.target.closest("[data-tech]");if(b)buyResearch(b.dataset.tech)});
 
 
+function formatSaveDate(value){
+ if(!value)return "unbekannt";
+ try{return new Intl.DateTimeFormat("de-DE",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}
+ catch(_){return new Date(value).toLocaleString("de-DE")}
+}
 function refreshSaveStatus(){
  const box=document.getElementById("saveStatus");
+ const save=document.getElementById("saveGameBtn");
  const load=document.getElementById("loadGameBtn");
  const del=document.getElementById("deleteSaveBtn");
- if(load)load.disabled=true;
- if(del)del.disabled=true;
- if(box){box.className="saveStatus warn";box.textContent="Speichern und Laden sind vorübergehend deaktiviert."}
+ const metadata=getSaveMetadata();
+
+ if(save){
+  save.disabled=state.inWave||gameOver;
+  save.textContent="💾 Spiel speichern";
+  save.title=state.inWave?"Speichern ist nur zwischen den Wellen möglich":"Spielstand lokal in diesem Browser speichern";
+ }
+ if(load){load.disabled=true;load.textContent="📂 Spiel laden (folgt)"}
+ if(del){del.disabled=true;del.textContent="🗑 Löschen (folgt)"}
+ if(!box)return;
+
+ if(state.inWave){
+  box.className="saveStatus warn";
+  box.textContent="Speichern ist nur zwischen den Wellen möglich.";
+ }else if(metadata?.valid){
+  box.className="saveStatus good";
+  box.textContent=`Letzter Spielstand: ${formatSaveDate(metadata.savedAt)} · Welle ${metadata.wave} · v${metadata.gameVersion}`;
+ }else if(metadata){
+  box.className="saveStatus warn";
+  box.textContent="Ein vorhandener Speicherstand ist ungültig oder veraltet.";
+ }else{
+  box.className="saveStatus";
+  box.textContent="Noch kein lokaler Spielstand vorhanden.";
+ }
 }
-function saveGame(silent=false){if(!silent)showToast("Speichern ist vorübergehend deaktiviert");return false}
-function loadGame(){showToast("Laden ist vorübergehend deaktiviert");return false}
-function deleteSave(){showToast("Es gibt keinen aktiven Spielstand")}
+function saveGame(silent=false){
+ // Die vorhandenen stillen Aufrufe bleiben bis zur späteren Autosave-Phase ohne Wirkung.
+ if(silent)return false;
+ if(state.inWave||gameOver){
+  showToast("Speichern ist nur zwischen den Wellen möglich");
+  refreshSaveStatus();
+  return false;
+ }
+ try{
+  saveGameState({
+   state,GAME_VERSION,wallSlots,insideSlots,castleSlots,
+   view:{zoom,camX,camY}
+  });
+  refreshSaveStatus();
+  showToast("Spiel gespeichert");
+  return true;
+ }catch(error){
+  console.error("Speichern fehlgeschlagen:",error);
+  showToast("Spielstand konnte nicht gespeichert werden");
+  refreshSaveStatus();
+  return false;
+ }
+}
+function loadGame(){showToast("Laden folgt im nächsten Schritt");return false}
+function deleteSave(){showToast("Löschen folgt zusammen mit der Ladefunktion")}
 
 
 
@@ -1277,15 +1327,3 @@ try{
 requestAnimationFrame(loop);
 })();
 
-(function disableSaveAndLoadUI(){
- const save=document.getElementById("saveGameBtn");
- const load=document.getElementById("loadGameBtn");
- const del=document.getElementById("deleteSaveBtn");
- const cont=document.getElementById("continueGameBtn")||document.getElementById("continueBtn");
- if(save){save.disabled=true;save.textContent="Speichern aus";save.title="Vorübergehend deaktiviert"}
- if(load){load.disabled=true;load.textContent="Laden aus";load.title="Vorübergehend deaktiviert"}
- if(del){del.disabled=true;del.textContent="Kein Spielstand";del.title="Vorübergehend deaktiviert"}
- if(cont)cont.style.display="none";
- const status=document.getElementById("saveStatus");
- if(status){status.className="saveStatus warn";status.textContent="Speichern und Laden sind vorübergehend deaktiviert."}
-})();
