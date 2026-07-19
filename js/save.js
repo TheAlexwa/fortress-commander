@@ -66,6 +66,7 @@ function createSnapshot({
   insideSlots,
   castleSlots,
   view,
+  saveType = "manual",
 }) {
   if (state.inWave) {
     throw new Error("Speichern ist nur zwischen den Wellen möglich.");
@@ -75,6 +76,7 @@ function createSnapshot({
     saveFormat: SAVE_FORMAT,
     gameVersion,
     savedAt: new Date().toISOString(),
+    saveType: saveType === "auto" ? "auto" : "manual",
     state: {
       gold: state.gold,
       wood: state.wood,
@@ -180,6 +182,7 @@ export function saveGameState(context) {
     savedAt: snapshot.savedAt,
     gameVersion: snapshot.gameVersion,
     wave: snapshot.state.wave,
+    saveType: snapshot.saveType,
   };
 }
 
@@ -294,6 +297,7 @@ export function getSaveMetadata() {
       savedAt: snapshot.savedAt,
       gameVersion: snapshot.gameVersion,
       wave: snapshot.state.wave,
+      saveType: snapshot.saveType === "auto" ? "auto" : "manual",
     };
   } catch (error) {
     console.error("Speicherstand konnte nicht gelesen werden:", error);

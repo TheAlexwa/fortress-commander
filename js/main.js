@@ -77,8 +77,9 @@ import { saveGameState, loadGameState, deleteSaveGame, getSaveMetadata } from ".
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.12.3";
-const GAME_RELEASE_NAME="Speicherstand löschen";
+const GAME_VERSION="1.12.4";
+const GAME_RELEASE_NAME="Autosave";
+const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
  if(!ENEMY_CODEX[type]||discoveredEnemies.has(type))return;
@@ -126,6 +127,7 @@ function handleOrientationChange(){
 }
 
 function enterGame(){
+ gameSessionStarted=true;
  requestPortraitLock();
  startScreen.classList.add("hidden");
  instructionsScreen.classList.add("hidden");
@@ -166,7 +168,7 @@ function returnToTitle(){
   if(!gameOver){paused=false;last=performance.now()}
   const menuButton=document.getElementById("navMenu");if(menuButton)menuButton.classList.remove("active");
   updateUI();
- }else{startScreen.classList.remove("hidden");paused=true}
+ }else{startScreen.classList.remove("hidden");paused=true;gameSessionStarted=false}
 }
 playHotspot.addEventListener("click",enterGame);
 instructionsHotspot.addEventListener("click",openInstructions);
@@ -191,6 +193,7 @@ const WALL_R=355,WALL_SEGMENTS=24,WALL_MAX_HP=420;
 let vw=1000,vh=700,dpr=1,last=performance.now(),paused=true,gameOver=false;
 let zoom=.48,minZoom=.15,maxZoom=1.45,camX=CX,camY=CY;
 let buildMode=null,selected=null,unitCommandMode=null,toastTimer=0;
+let autosaveSuppressed=false,gameSessionStarted=false;
 const BUILD={
  archer:{name:"Bogenturm",kind:"tower",gold:60,wood:20,hp:260,range:215,rate:.72,damage:17,speed:470,color:"#b98a4d"},
  crossbow:{name:"Armbrustturm",kind:"tower",gold:95,wood:30,hp:320,range:265,rate:1.45,damage:46,speed:560,color:"#73513b"},
@@ -340,37 +343,45 @@ function refreshSaveStatus(){
 
  if(state.inWave){
   box.className="saveStatus warn";
-  box.textContent="Speichern ist nur zwischen den Wellen möglich.";
+  box.textContent="Speichern und Autosave sind nur zwischen den Wellen möglich.";
  }else if(metadata?.valid){
+  const label=metadata.saveType==="auto"?"Letzter Autosave":"Letzter Spielstand";
+  const version=metadata.gameVersion?` · v${metadata.gameVersion}`:"";
   box.className="saveStatus good";
-  box.textContent=`Letzter Spielstand: ${formatSaveDate(metadata.savedAt)} · Welle ${metadata.wave} · v${metadata.gameVersion}`;
+  box.textContent=`${label}: ${formatSaveDate(metadata.savedAt)} · Welle ${metadata.wave}${version} · Autosave alle 60 s`;
  }else if(metadata){
   box.className="saveStatus warn";
-  box.textContent="Ein vorhandener Speicherstand ist ungültig oder veraltet.";
+  box.textContent="Ein vorhandener Speicherstand ist ungültig oder veraltet. Autosave ist aktiv.";
+ }else if(autosaveSuppressed){
+  box.className="saveStatus warn";
+  box.textContent="Speicherstand gelöscht · Autosave bis zum nächsten manuellen Speichern pausiert.";
  }else{
   box.className="saveStatus";
-  box.textContent="Noch kein lokaler Spielstand vorhanden.";
+  box.textContent="Noch kein lokaler Spielstand vorhanden · Autosave alle 60 s.";
  }
 }
 function saveGame(silent=false){
- // Die vorhandenen stillen Aufrufe bleiben bis zur späteren Autosave-Phase ohne Wirkung.
- if(silent)return false;
+ if(silent&&(autosaveSuppressed||!gameSessionStarted||!startScreen.classList.contains("hidden")))return false;
  if(state.inWave||gameOver){
-  showToast("Speichern ist nur zwischen den Wellen möglich");
-  refreshSaveStatus();
+  if(!silent){
+   showToast("Speichern ist nur zwischen den Wellen möglich");
+   refreshSaveStatus();
+  }
   return false;
  }
  try{
   saveGameState({
-   state,GAME_VERSION,wallSlots,insideSlots,castleSlots,
+   state,gameVersion:GAME_VERSION,saveType:silent?"auto":"manual",
+   wallSlots,insideSlots,castleSlots,
    view:{zoom,camX,camY}
   });
+  if(!silent)autosaveSuppressed=false;
   refreshSaveStatus();
-  showToast("Spiel gespeichert");
+  if(!silent)showToast("Spiel gespeichert");
   return true;
  }catch(error){
-  console.error("Speichern fehlgeschlagen:",error);
-  showToast("Spielstand konnte nicht gespeichert werden");
+  console.error(silent?"Autosave fehlgeschlagen:":"Speichern fehlgeschlagen:",error);
+  if(!silent)showToast("Spielstand konnte nicht gespeichert werden");
   refreshSaveStatus();
   return false;
  }
@@ -379,7 +390,7 @@ function loadGame(){
  try{
   const loaded=loadGameState({state,BUILD,wallSlots,insideSlots,castleSlots});
   hideRepairDecision();hideEndScreen();closeEnemyInfo(false);
-  selected=null;buildMode=null;unitCommandMode=null;gameOver=false;paused=true;
+  selected=null;buildMode=null;unitCommandMode=null;gameOver=false;paused=true;autosaveSuppressed=false;
   syncResidents();assignCraftsmen();
   camX=Number.isFinite(loaded.view.camX)?loaded.view.camX:CX;
   camY=Number.isFinite(loaded.view.camY)?loaded.view.camY:CY;
@@ -408,6 +419,7 @@ function deleteSave(){
  if(!confirmed)return false;
  try{
   deleteSaveGame();
+  autosaveSuppressed=true;
   refreshSaveStatus();
   showToast("Speicherstand gelöscht");
   return true;
@@ -895,6 +907,7 @@ document.querySelectorAll(".buildBtn").forEach(b=>b.addEventListener("click",()=
 document.getElementById("enemyInfoClose").addEventListener("click",()=>closeEnemyInfo(true));
 document.getElementById("enemyInfoOverlay").addEventListener("click",e=>{if(e.target.id==="enemyInfoOverlay")closeEnemyInfo(true)});
 renderBestiary();refreshSaveStatus();
+window.setInterval(()=>saveGame(true),AUTOSAVE_INTERVAL_MS);
 document.getElementById("marketTradeBtn").addEventListener("click",openMarketPanel);
 document.getElementById("marketCloseBtn").addEventListener("click",closeMarketPanel);
 document.getElementById("marketTradeGrid").addEventListener("click",e=>{const b=e.target.closest("[data-trade]");if(b)executeMarketTrade(b.dataset.trade,Number(b.dataset.amount))});
