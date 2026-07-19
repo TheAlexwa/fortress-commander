@@ -79,8 +79,8 @@ import { saveGameState, loadGameState, deleteSaveGame, getSaveMetadata } from ".
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.13.0";
-const GAME_RELEASE_NAME="Gegnergrafik";
+const GAME_VERSION="1.13.1";
+const GAME_RELEASE_NAME="Elite-/Boss-Look";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){

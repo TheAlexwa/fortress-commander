@@ -399,7 +399,14 @@ function getEnemyVisualProfile(enemy){
   bodyHeight:1,
   headScale:1,
   badge:"diamond",
-  hornColor:"#eee4d2"
+  hornColor:"#eee4d2",
+  banner:false,
+  bannerColor:"#6d1f22",
+  bannerTrim:"#d4b36e",
+  eyeGlow:null,
+  weaponScale:1,
+  pauldronSpikes:false,
+  crestColor:null
  };
  switch(enemy.type){
   case "runner":
@@ -407,11 +414,11 @@ function getEnemyVisualProfile(enemy){
   case "spear":
    return {...base,bodyTop:"#69804e",bodyMid:"#4f6340",bodyBottom:"#1c2220",trim:"#d9cb8b",metal:"#b7c0c5",leather:"#6f492d",cloth:"#5b4a3d",fur:"#89755f",shoulder:1.02,weapon:"spear",helm:"crest",badge:"chevron",beard:"#4d3428"};
   case "shield":
-   return {...base,bodyTop:"#657483",bodyMid:"#45525e",bodyBottom:"#151a1e",trim:"#d8c797",metal:"#c6ced2",leather:"#654329",cloth:"#51443a",fur:"#a69884",shoulder:1.22,weapon:"mace",shield:"tower",helm:"full",bodyWidth:1.08,bodyHeight:1.08,badge:"rivet",beard:"#40302a",aura:"#8ea7ba",auraAlpha:.13};
+   return {...base,bodyTop:"#657483",bodyMid:"#45525e",bodyBottom:"#151a1e",trim:"#d8c797",metal:"#c6ced2",leather:"#654329",cloth:"#51443a",fur:"#a69884",shoulder:1.22,weapon:"mace",shield:"tower",helm:"full",bodyWidth:1.08,bodyHeight:1.08,badge:"rivet",beard:"#40302a",aura:"#8ea7ba",auraAlpha:.15,banner:"split",bannerColor:"#465c72",bannerTrim:"#d8c797",eyeGlow:"#9dd7ff",weaponScale:1.08,pauldronSpikes:true,crestColor:"#d8c797"};
   case "berserker":
-   return {...base,bodyTop:"#9d3a34",bodyMid:"#6f2322",bodyBottom:"#1b0f12",trim:"#f0b35c",metal:"#d4d8da",leather:"#6a3d27",cloth:"#5d2220",fur:"#8b5f4f",shoulder:1.05,weapon:"dualAxes",helm:"wild",bodyWidth:1.03,bodyHeight:.96,badge:"paint",beard:"#74211f",aura:"#c5342e",auraAlpha:.15};
+   return {...base,bodyTop:"#9d3a34",bodyMid:"#6f2322",bodyBottom:"#1b0f12",trim:"#f0b35c",metal:"#d4d8da",leather:"#6a3d27",cloth:"#5d2220",fur:"#8b5f4f",shoulder:1.05,weapon:"dualAxes",helm:"wild",bodyWidth:1.03,bodyHeight:.96,badge:"paint",beard:"#74211f",aura:"#c5342e",auraAlpha:.18,eyeGlow:"#ff7d63",weaponScale:1.12,pauldronSpikes:true,crestColor:"#e85f54"};
   case "boss":
-   return {...base,bodyTop:"#5e3437",bodyMid:"#342022",bodyBottom:"#120b0d",trim:"#e1b85b",metal:"#d0d6d9",leather:"#643f2a",cloth:"#6f2424",fur:"#d2c1a1",shoulder:1.28,weapon:"greatAxe",shield:false,helm:"crown",bodyWidth:1.14,bodyHeight:1.14,headScale:1.08,badge:"crown",beard:"#6a352a",aura:"#ce9540",cape:true,auraAlpha:.22};
+   return {...base,bodyTop:"#5e3437",bodyMid:"#342022",bodyBottom:"#120b0d",trim:"#e1b85b",metal:"#d0d6d9",leather:"#643f2a",cloth:"#6f2424",fur:"#d2c1a1",shoulder:1.28,weapon:"greatAxe",shield:false,helm:"crown",bodyWidth:1.14,bodyHeight:1.14,headScale:1.08,badge:"crown",beard:"#6a352a",aura:"#ce9540",cape:true,auraAlpha:.26,banner:"war",bannerColor:"#5c1718",bannerTrim:"#e1b85b",eyeGlow:"#ffd36f",weaponScale:1.2,pauldronSpikes:true,crestColor:"#f3c96e"};
   default:
    return {...base,bodyTop:"#9b5b44",bodyMid:enemy.color||"#7b342d",bodyBottom:"#201416",trim:"#d3b06f",metal:"#9ea8ac",leather:"#6a4129",cloth:"#574234",fur:"#8f7a63",shoulder:.98,weapon:"axe",helm:"horned",badge:"diamond",beard:"#533326"};
  }
@@ -440,6 +447,37 @@ function drawEnemies(){
    ctx.fillStyle=style.aura;
    ctx.beginPath();ctx.arc(0,-r*.05,auraRadius+Math.sin(now+(e.animSeed||0))*2,0,TAU);ctx.fill();
    ctx.globalAlpha=1;
+  }
+
+  if(style.banner){
+   ctx.strokeStyle="#4b2e23";
+   ctx.lineWidth=2.6;
+   ctx.beginPath();
+   ctx.moveTo(-r*.18,-r*.52);
+   ctx.lineTo(-r*.18,-r*1.55);
+   ctx.stroke();
+   ctx.fillStyle=style.bannerColor;
+   ctx.beginPath();
+   if(style.banner==="split"){
+    ctx.moveTo(-r*.18,-r*1.5);
+    ctx.lineTo(r*.52,-r*1.42);
+    ctx.lineTo(r*.14,-r*.94);
+    ctx.lineTo(r*.36,-r*.74);
+    ctx.lineTo(-r*.18,-r*.86);
+   }else{
+    ctx.moveTo(-r*.18,-r*1.54);
+    ctx.lineTo(r*.72,-r*1.4);
+    ctx.lineTo(r*.2,-r*.74);
+    ctx.lineTo(r*.48,-r*.56);
+    ctx.lineTo(-r*.18,-r*.66);
+   }
+   ctx.closePath();
+   ctx.fill();
+   ctx.strokeStyle=style.bannerTrim;
+   ctx.lineWidth=1.3;
+   ctx.stroke();
+   ctx.fillStyle=style.bannerTrim;
+   ctx.fillRect(-r*.26,-r*1.62,r*.16,r*.12);
   }
 
   if(style.cape){
@@ -493,6 +531,10 @@ function drawEnemies(){
    ctx.fillStyle=style.metal;
    ctx.beginPath();ctx.ellipse(side*r*.53,-r*.18,r*.18*style.shoulder,r*.12*style.shoulder,side*.28,0,TAU);ctx.fill();
    ctx.strokeStyle="#d9dee0";ctx.lineWidth=1;ctx.stroke();
+   if(style.pauldronSpikes){
+    ctx.fillStyle=style.trim;
+    ctx.beginPath();ctx.moveTo(side*r*.42,-r*.34);ctx.lineTo(side*r*.58,-r*.62);ctx.lineTo(side*r*.66,-r*.3);ctx.closePath();ctx.fill();
+   }
   }
 
   // Emblem / Brustdetail
@@ -535,14 +577,17 @@ function drawEnemies(){
    ctx.beginPath();ctx.arc(0,-r*.8,r*.48,Math.PI,TAU);ctx.lineTo(r*.38,-r*.36);ctx.lineTo(-r*.38,-r*.36);ctx.closePath();ctx.fill();
    ctx.fillStyle="#262d33";ctx.fillRect(-r*.28,-r*.76,r*.56,r*.18);
    ctx.strokeStyle="#c2c9cc";ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(0,-r*1.16);ctx.lineTo(0,-r*.35);ctx.stroke();
+   if(style.crestColor){ctx.fillStyle=style.crestColor;ctx.fillRect(-r*.06,-r*1.14,r*.12,r*.16);}
   }else if(style.helm==="wild"){
    ctx.fillStyle="#6b1f1c";
    ctx.beginPath();ctx.arc(0,-r*.95,r*.28,Math.PI,TAU);ctx.lineTo(r*.28,-r*.75);ctx.lineTo(-r*.28,-r*.75);ctx.closePath();ctx.fill();
    ctx.fillStyle="#3b2a2d";ctx.beginPath();ctx.arc(0,-r*.78,r*.32,Math.PI,TAU);ctx.fill();
+   if(style.crestColor){ctx.strokeStyle=style.crestColor;ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(0,-r*1.08);ctx.lineTo(0,-r*.78);ctx.stroke();}
   }else if(style.helm==="crown"){
    ctx.fillStyle="#42484e";
    ctx.beginPath();ctx.arc(0,-r*.8,r*.49,Math.PI,TAU);ctx.lineTo(r*.46,-r*.58);ctx.lineTo(-r*.46,-r*.58);ctx.closePath();ctx.fill();
    ctx.fillStyle=style.trim;for(let k=-2;k<=2;k++)ctx.fillRect(k*r*.1-r*.03,-r*1.2,r*.06,r*.18-(Math.abs(k)%2)*r*.04);
+   if(style.crestColor){ctx.strokeStyle=style.crestColor;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-r*1.24);ctx.lineTo(0,-r*.98);ctx.stroke();}
   }else{
    ctx.fillStyle="#343c41";
    ctx.beginPath();ctx.arc(0,-r*.82,r*.43,Math.PI,TAU);ctx.lineTo(r*.43,-r*.62);ctx.lineTo(-r*.43,-r*.62);ctx.closePath();ctx.fill();
@@ -561,7 +606,14 @@ function drawEnemies(){
   }else{
    ctx.beginPath();ctx.moveTo(-r*.28,-r*.62);ctx.lineTo(0,-r*.28);ctx.lineTo(r*.28,-r*.62);ctx.closePath();ctx.fill();
   }
-  ctx.fillStyle=style.eyes;
+  if(style.eyeGlow){
+   ctx.fillStyle=style.eyeGlow;
+   ctx.globalAlpha=.28;
+   ctx.beginPath();ctx.arc(-r*.17,-r*.79,r*.09,0,TAU);ctx.fill();
+   ctx.beginPath();ctx.arc(r*.18,-r*.79,r*.09,0,TAU);ctx.fill();
+   ctx.globalAlpha=1;
+  }
+  ctx.fillStyle=style.eyeGlow||style.eyes;
   ctx.fillRect(-r*.2,-r*.8,2,2);
   ctx.fillRect(r*.15,-r*.8,2,2);
   if(e.type==="berserker"){
@@ -577,35 +629,36 @@ function drawEnemies(){
   ctx.stroke();
 
   // Waffen und eindeutige Ausrüstung pro Typ
+  const ws=style.weaponScale||1;
   if(style.shield==="tower"){
    ctx.fillStyle="#4a5862";
    ctx.beginPath();ctx.moveTo(-r*.5,-r*.36);ctx.quadraticCurveTo(-r*1.4,0,-r*.62,r*.84);ctx.quadraticCurveTo(-r*.04,r*.42,-r*.5,-r*.36);ctx.fill();
    ctx.strokeStyle="#c5cdcf";ctx.lineWidth=2;ctx.stroke();
    ctx.fillStyle="#293037";ctx.beginPath();ctx.arc(-r*.73,r*.06,r*.16,0,TAU);ctx.fill();
-   ctx.strokeStyle="#5f3f28";ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(r*.24,r*.46);ctx.lineTo(r*.95,-r*.5);ctx.stroke();
+   ctx.strokeStyle="#5f3f28";ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(r*.22,r*.46);ctx.lineTo(r*(.75+.2*ws),-r*(.38+.12*ws));ctx.stroke();
    ctx.fillStyle="#cdd2d5";ctx.beginPath();ctx.arc(r*.98,-r*.55,r*.12,0,TAU);ctx.fill();
   }else if(style.weapon==="dagger"){
-   ctx.strokeStyle=style.leather;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-r*.18,r*.08);ctx.lineTo(-r*.82,r*.76);ctx.stroke();
-   ctx.fillStyle="#d0d5d7";ctx.beginPath();ctx.moveTo(-r*.82,r*.76);ctx.lineTo(-r*.56,r*.66);ctx.lineTo(-r*.68,r*.46);ctx.closePath();ctx.fill();
-   ctx.strokeStyle="#b79d6c";ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(r*.48,-r*.18);ctx.lineTo(r*.98,-r*.82);ctx.stroke();
+   ctx.strokeStyle=style.leather;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-r*.18,r*.08);ctx.lineTo(-r*(.58+.24*ws),r*(.48+.28*ws));ctx.stroke();
+   ctx.fillStyle="#d0d5d7";ctx.beginPath();ctx.moveTo(-r*(.58+.24*ws),r*(.48+.28*ws));ctx.lineTo(-r*(.38+.18*ws),r*(.42+.24*ws));ctx.lineTo(-r*(.5+.16*ws),r*(.24+.2*ws));ctx.closePath();ctx.fill();
+   ctx.strokeStyle="#b79d6c";ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(r*.48,-r*.18);ctx.lineTo(r*(.72+.26*ws),-r*(.5+.32*ws));ctx.stroke();
   }else if(style.weapon==="spear"){
-   ctx.strokeStyle=style.leather;ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(r*.15,r*.54);ctx.lineTo(r*1.22,-r*1.16);ctx.stroke();
-   ctx.fillStyle="#cad1d3";ctx.beginPath();ctx.moveTo(r*1.22,-r*1.16);ctx.lineTo(r*.93,-r*.96);ctx.lineTo(r*1.16,-r*.76);ctx.closePath();ctx.fill();
+   ctx.strokeStyle=style.leather;ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(r*.15,r*.54);ctx.lineTo(r*(.95+.27*ws),-r*(.86+.3*ws));ctx.stroke();
+   ctx.fillStyle="#cad1d3";ctx.beginPath();ctx.moveTo(r*(.95+.27*ws),-r*(.86+.3*ws));ctx.lineTo(r*(.7+.23*ws),-r*(.72+.24*ws));ctx.lineTo(r*(.9+.26*ws),-r*(.52+.24*ws));ctx.closePath();ctx.fill();
   }else if(style.weapon==="dualAxes"){
    for(const dir of [-1,1]){
-    ctx.strokeStyle=style.leather;ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(dir*r*.26,r*.18);ctx.lineTo(dir*r*.96,-r*.62);ctx.stroke();
-    ctx.fillStyle="#d8dcde";ctx.beginPath();ctx.moveTo(dir*r*.96,-r*.62);ctx.lineTo(dir*r*.62,-r*.55);ctx.lineTo(dir*r*.84,-r*.25);ctx.closePath();ctx.fill();
+    ctx.strokeStyle=style.leather;ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(dir*r*.26,r*.18);ctx.lineTo(dir*r*(.7+.26*ws),-r*(.38+.24*ws));ctx.stroke();
+    ctx.fillStyle="#d8dcde";ctx.beginPath();ctx.moveTo(dir*r*(.7+.26*ws),-r*(.38+.24*ws));ctx.lineTo(dir*r*(.44+.18*ws),-r*(.34+.21*ws));ctx.lineTo(dir*r*(.62+.22*ws),-r*(.12+.13*ws));ctx.closePath();ctx.fill();
    }
    ctx.strokeStyle="#c83530";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,r+4,0,TAU);ctx.stroke();
    ctx.fillStyle="#b92622";ctx.fillRect(-r*.72,-2,r*1.44,4);
   }else if(style.weapon==="greatAxe"){
-   ctx.strokeStyle=style.leather;ctx.lineWidth=4.2;ctx.beginPath();ctx.moveTo(r*.22,r*.5);ctx.lineTo(r*1.12,-r*.82);ctx.stroke();
-   ctx.fillStyle=style.trim;ctx.beginPath();ctx.moveTo(r*1.12,-r*.82);ctx.lineTo(r*.68,-r*.72);ctx.lineTo(r*.94,-r*.3);ctx.closePath();ctx.fill();
+   ctx.strokeStyle=style.leather;ctx.lineWidth=4.2;ctx.beginPath();ctx.moveTo(r*.2,r*.5);ctx.lineTo(r*(.78+.34*ws),-r*(.48+.34*ws));ctx.stroke();
+   ctx.fillStyle=style.trim;ctx.beginPath();ctx.moveTo(r*(.78+.34*ws),-r*(.48+.34*ws));ctx.lineTo(r*(.48+.2*ws),-r*(.44+.28*ws));ctx.lineTo(r*(.7+.24*ws),-r*(.12+.18*ws));ctx.closePath();ctx.fill();
    ctx.fillStyle="#8b1f20";ctx.beginPath();ctx.moveTo(-r*.82,-r*.18);ctx.lineTo(-r*1.3,r*.92);ctx.lineTo(0,r*.66);ctx.closePath();ctx.fill();
    ctx.strokeStyle=style.trim;ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,r+6,0,TAU);ctx.stroke();
   }else if(style.weapon==="mace"){
-   ctx.strokeStyle=style.leather;ctx.lineWidth=3.1;ctx.beginPath();ctx.moveTo(r*.18,r*.5);ctx.lineTo(r*.86,-r*.42);ctx.stroke();
-   ctx.fillStyle="#c7cdcf";ctx.beginPath();ctx.arc(r*.96,-r*.55,r*.12,0,TAU);ctx.fill();
+   ctx.strokeStyle=style.leather;ctx.lineWidth=3.1;ctx.beginPath();ctx.moveTo(r*.18,r*.5);ctx.lineTo(r*(.62+.24*ws),-r*(.22+.2*ws));ctx.stroke();
+   ctx.fillStyle="#c7cdcf";ctx.beginPath();ctx.arc(r*(.78+.18*ws),-r*(.43+.12*ws),r*(.08+.04*ws),0,TAU);ctx.fill();
   }else{
    ctx.strokeStyle=style.leather;ctx.lineWidth=Math.max(3,r*.22);ctx.beginPath();ctx.moveTo(r*.28,r*.18);ctx.lineTo(r*1.06,-r*.68);ctx.stroke();
    ctx.fillStyle="#b8bfc2";ctx.beginPath();ctx.moveTo(r*1.06,-r*.68);ctx.lineTo(r*.68,-r*.61);ctx.lineTo(r*.9,-r*.3);ctx.closePath();ctx.fill();
