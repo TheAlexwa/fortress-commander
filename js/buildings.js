@@ -201,8 +201,11 @@ export function upgradeEntity(entity, context) {
 
   if (!entity) return false;
 
-  if (entity.kind === "unit") {
-    showToast("Einheiten werden nur über EXP oder Forschung verbessert");
+  if (
+    entity.kind === "unit" ||
+    (entity.kind === "building" && entity.base?.kind === "tower")
+  ) {
+    showToast("Einheiten und Türme werden nicht mit Gold oder Holz verbessert");
     return false;
   }
 
@@ -234,13 +237,6 @@ export function upgradeEntity(entity, context) {
   if (entity.key === "house") {
     syncResidents();
     showToast("Zeltlager zum Holzhaus ausgebaut: 4 Bewohner");
-  } else if (entity.base.kind === "tower") {
-    entity.damage *= 1.34;
-    entity.range *= 1.06;
-    entity.rate *= 0.9;
-    entity.maxHp *= 1.22;
-    entity.hp = entity.maxHp;
-    showToast("Gebäude verbessert");
   } else if (entity.key === "workshop") {
     showToast(
       `Werkstatt Stufe ${entity.level}: globaler Forschungsanstieg jetzt ${Math.round(

@@ -135,6 +135,14 @@ export function renderGameUI({
   }
 
   const building = selected;
+
+  if (building.base.kind === "tower") {
+    ui.selected.innerHTML = `<b>${building.base.name} · EXP-Stufe ${building.expLevel || 1}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · EXP ${Math.floor(building.xp || 0)}/${Math.floor(building.xpMax || 90)}<br>Schaden ${Math.round(building.damage)} · Reichweite ${Math.round(building.range)}${building.pendingUpgrades ? ` · <b>${building.pendingUpgrades} EXP-Aufwertung bereit</b>` : ""}<br>Aufwertung: nur über EXP; Turmforschung folgt separat`;
+    ui.upgrade.style.display = "none";
+    ui.sell.disabled = false;
+    return;
+  }
+
   const goldCost = Math.floor(building.base.gold * (0.65 + building.level * 0.45));
   const woodCost = Math.floor(building.base.wood * (0.45 + building.level * 0.3));
   let supportInfo = "";
@@ -173,7 +181,7 @@ export function renderGameUI({
     ? building.level >= 2 ? "Holzhaus" : "Zeltlager"
     : building.base.name;
 
-  ui.selected.innerHTML = `<b>${buildingName} Stufe ${building.level}</b>${building.base.kind === "tower" ? `<br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)}` : ""}${supportInfo}<br>Upgrade: ${goldCost} Gold / ${woodCost} Holz`;
+  ui.selected.innerHTML = `<b>${buildingName} Stufe ${building.level}</b>${supportInfo}<br>Upgrade: ${goldCost} Gold / ${woodCost} Holz`;
 
   const maxLevel = building.key === "house" ? 2 : building.key === "market" ? 3 : 5;
   ui.upgrade.disabled =
