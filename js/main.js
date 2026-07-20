@@ -129,8 +129,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.0";
-const GAME_RELEASE_NAME="Außentore & freie Kartenkamera";
+const GAME_VERSION="1.15.1";
+const GAME_RELEASE_NAME="Laptop-HUD & Kamera-Randpuffer";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -246,6 +246,7 @@ const WALL_R=355,WALL_SEGMENTS=MIDDLE_WALL_SEGMENT_COUNT,WALL_MAX_HP=420;
 const OUTER_WALL_R=WALL_R+OUTER_WALL_OFFSET;
 let vw=1000,vh=700,dpr=1,last=performance.now(),paused=true,gameOver=false;
 const BASE_MIN_ZOOM=.18;
+const CAMERA_OVERSCROLL_PX=120;
 let zoom=.42,maxZoom=1.45,camX=CX,camY=CY;
 let buildMode=null,selected=null,unitCommandMode=null,toastTimer=0;
 let autosaveSuppressed=false,gameSessionStarted=false;
@@ -306,9 +307,13 @@ function resize(){
  if(ui.zoomLabel)ui.zoomLabel.textContent=Math.round(zoom*100)+"%";
 }
 function clampCamera(){
- const halfW=vw/(2*zoom),halfH=vh/(2*zoom);
- camX=halfW>=WORLD_W/2?CX:Math.max(halfW,Math.min(WORLD_W-halfW,camX));
- camY=halfH>=WORLD_H/2?CY:Math.max(halfH,Math.min(WORLD_H-halfH,camY));
+ const visibleW=vw/zoom,visibleH=vh/zoom;
+ const overscroll=CAMERA_OVERSCROLL_PX/zoom;
+ // Passt die vollständige Karte in eine Achse, bleibt sie dort sauber zentriert.
+ // Bei höherem Zoom darf die Kameramitte bis knapp über den Kartenrand hinaus,
+ // damit Randbereiche trotz HUD in die Bildschirmmitte gezogen werden können.
+ camX=visibleW>=WORLD_W?CX:Math.max(-overscroll,Math.min(WORLD_W+overscroll,camX));
+ camY=visibleH>=WORLD_H?CY:Math.max(-overscroll,Math.min(WORLD_H+overscroll,camY));
 }
 function setZoom(v,focusX=vw/2,focusY=vh/2){
  const before=screenToWorld(focusX,focusY);zoom=Math.max(effectiveMinZoom(),Math.min(maxZoom,v));
