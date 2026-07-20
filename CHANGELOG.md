@@ -1,5 +1,10 @@
 # Fortress Commander – Changelog
 
+## v1.15.12 – Einheiten-Grafiken
+- neue statische WebP-Grafiken für Bogenschütze und Burgwache integriert
+- Einheiten-Rendering lädt die neuen Grafiken aus dem Asset-Ordner
+- bisherige Canvas-Zeichnung bleibt als Fallback erhalten, falls eine Grafik nicht geladen werden kann
+
 ## v1.15.11 – Startbildschirm-Optimierung
 - Das Titelbild wurde aus der CSS-Datei in `assets/ui/start-screen.webp` ausgelagert.
 - Die eingebettete Base64-PNG-Grafik wurde entfernt.

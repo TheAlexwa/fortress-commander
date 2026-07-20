@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.11";
-const GAME_RELEASE_NAME="Startbildschirm-Optimierung";
+const GAME_VERSION="1.15.12";
+const GAME_RELEASE_NAME="Einheiten-Grafiken";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
