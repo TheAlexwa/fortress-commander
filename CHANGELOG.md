@@ -1,5 +1,10 @@
 # Fortress Commander – Changelog
 
+## v1.15.13 – Freistellungskorrektur
+- Freistellung von Bogenschütze und Burgwache bereinigt
+- helle Restflächen und sichtbare Hintergrundkästchen an den Einheiten entfernt
+- Einheiten-Grafiken bleiben statisch, Spielverhalten und Steuerung unverändert
+
 ## v1.15.12 – Einheiten-Grafiken
 - neue statische WebP-Grafiken für Bogenschütze und Burgwache integriert
 - Einheiten-Rendering lädt die neuen Grafiken aus dem Asset-Ordner
