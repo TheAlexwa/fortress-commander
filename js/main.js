@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.32";
-const GAME_RELEASE_NAME="Schotterwege";
+const GAME_VERSION="1.15.33";
+const GAME_RELEASE_NAME="Gegnergrafiken";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){

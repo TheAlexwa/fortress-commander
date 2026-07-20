@@ -87,6 +87,19 @@ const buildingSprites = Object.fromEntries(
   Object.entries(BUILDING_SPRITE_DEFS).map(([key, def]) => [key, { image: loadUnitSprite(def.src), def }])
 );
 
+const ENEMY_SPRITE_DEFS = {
+  raider: { src: "assets/enemies/raider.webp", width: 46, height: 48, offsetY: -2 },
+  runner: { src: "assets/enemies/runner.webp", width: 44, height: 50, offsetY: -2 },
+  spear: { src: "assets/enemies/spear.webp", width: 48, height: 50, offsetY: -2 },
+  shield: { src: "assets/enemies/shield.webp", width: 48, height: 50, offsetY: -2 },
+  berserker: { src: "assets/enemies/berserker.webp", width: 50, height: 50, offsetY: -2 },
+  boss: { src: "assets/enemies/boss.webp", width: 52, height: 52, offsetY: -3 }
+};
+
+const enemySprites = Object.fromEntries(
+  Object.entries(ENEMY_SPRITE_DEFS).map(([key, def]) => [key, { image: loadUnitSprite(def.src), def }])
+);
+
 const FORTRESS_SPRITE_DEF = { src: "assets/buildings/wood-fortress-center.webp", width: 226, height: 250, offsetY: -4 };
 const fortressSprite = { image: loadUnitSprite(FORTRESS_SPRITE_DEF.src), def: FORTRESS_SPRITE_DEF };
 const FORTRESS_YARD_SPRITE_DEF = { src: "assets/environment/fortress-yard.webp", width: 664, height: 664, offsetY: 0 };
@@ -1054,9 +1067,55 @@ function getEnemyVisualProfile(enemy){
  }
 }
 
+function drawEnemySprite(enemy, now){
+ const sprite=enemySprites[enemy.type];
+ if(!sprite?.image?.complete||!sprite.image.naturalWidth)return false;
+ const visualClass=enemy.visualClass||(enemy.type==="boss"?"boss":["shield","berserker"].includes(enemy.type)?"special":"normal");
+ const fallbackScale=visualClass==="boss"?1.5:visualClass==="special"?1.18:1;
+ const visualScale=Number.isFinite(enemy.visualScale)?enemy.visualScale:fallbackScale;
+ const isSpecial=visualClass==="special",isBoss=visualClass==="boss";
+ const r=enemy.radius;
+ const stride=Math.sin(now+(enemy.animSeed||0))*1.5;
+ const bob=stride*.25;
+ const {width,height,offsetY=0}=sprite.def;
+ const drawW=width*visualScale;
+ const drawH=height*visualScale;
+ const shadowW=Math.max(r*1.8,drawW*.52);
+ const shadowH=Math.max(r*.72,drawH*.16);
+
+ ctx.save();
+ ctx.translate(enemy.x,enemy.y);
+ ctx.fillStyle="#05060788";
+ ctx.beginPath();ctx.ellipse(4,12,shadowW,shadowH,0,0,TAU);ctx.fill();
+ if(isBoss||isSpecial){
+  ctx.globalAlpha=isBoss?.22:.14;
+  ctx.fillStyle=isBoss?"#ce9540":"#8ea7ba";
+  ctx.beginPath();ctx.arc(0,-drawH*.22,Math.max(drawW,drawH)*(.48+Math.sin(now+(enemy.animSeed||0))*.01),0,TAU);ctx.fill();
+  ctx.globalAlpha=1;
+ }
+ ctx.drawImage(sprite.image,-drawW/2,-drawH+offsetY+bob,drawW,drawH);
+ const barHeight=isBoss?10:isSpecial?8:7;
+ const barGap=isBoss?22:isSpecial?20:18;
+ const bw=Math.max(isBoss?54:isSpecial?44:36,drawW*.9);
+ const barY=-drawH-barGap+8;
+ ctx.fillStyle="#160b0b";ctx.fillRect(-bw/2,barY,bw,barHeight);
+ const hp=Math.max(0,Math.min(1,enemy.hp/enemy.maxHp));
+ ctx.fillStyle=hp>.5?"#6ac265":hp>.25?"#d4a541":"#d14945";
+ ctx.fillRect(-bw/2+1,barY+1,(bw-2)*hp,barHeight-2);
+ ctx.strokeStyle=isBoss?"#f0c56a99":isSpecial?"#c9d9df77":"#f5dfca55";ctx.strokeRect(-bw/2,barY,bw,barHeight);
+ if(isBoss){ctx.fillStyle="#d8ac45";ctx.fillRect(-bw/2,barY-3,bw,2)}
+ if(zoom>=.58||isBoss){
+  ctx.fillStyle="#f2dfba";ctx.font=`bold ${isBoss?11:isSpecial?9:8}px system-ui`;ctx.textAlign="center";
+  ctx.fillText(enemy.name||"Eisenclan",0,barY-5);
+ }
+ ctx.restore();
+ return true;
+}
+
 function drawEnemies(){
  const now=performance.now()*.006;
  for(const e of state.enemies){
+  if(drawEnemySprite(e,now))continue;
   ctx.save();
   ctx.translate(e.x,e.y);
   const stride=Math.sin(now+(e.animSeed||0))*1.5;
