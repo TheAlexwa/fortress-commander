@@ -57,6 +57,7 @@ import {
  findNearestBlockingUnit,
  findNearestGuardTarget,
  getGuardMeleeReach,
+ resolveGuardEnemyOverlap,
  isGuardTargetAllowed,
  createProjectile,
  grantCombatExperience,
@@ -105,8 +106,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.14.6";
-const GAME_RELEASE_NAME="Segmentweiser Palisadenbau";
+const GAME_VERSION="1.14.7";
+const GAME_RELEASE_NAME="Burgwachen-Kollision korrigiert";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -254,7 +255,7 @@ function initMap(){
  state.innerWalls.push(...createInnerWallSegments());
  const villageSlots=[
   [-190,-115],[150,-165],[-228,20],[225,55],
-  [-190,155],[-75,245],[85,245],[245,-95],[-245,-85],[15,-235]
+  [-190,155],[-75,245],[85,245],[245,-95],[-110,-245],[15,-235]
  ];
  for(const [ox,oy] of villageSlots){
   insideSlots.push({type:"inside",role:"support",x:CX+ox,y:CY+oy,building:null});
@@ -730,6 +731,7 @@ function update(dt){
    const target=u.autoTarget;
 
    if(target){
+    resolveGuardEnemyOverlap(u,target,{centerX:CX,centerY:CY,wallRadius:WALL_R});
     const dx=target.x-u.x,dy=target.y-u.y,d=Math.max(1,Math.hypot(dx,dy));
     const meleeReach=getGuardMeleeReach(u,target);
     if(d<=meleeReach){
@@ -1131,7 +1133,7 @@ function buildingProductionInfo(b){
 }
 function buildingStatsHtml(b){
  const base=b.base,isTower=base.kind==="tower",level=b.level||1;
- if(base.decorative)return `<div class="buildingOverview"><div class="statTile"><span>Bauwerk</span><b>${buildingDisplayName(b)}</b></div><div class="statTile"><span>Funktion</span><b>Noch ohne Aufgabe</b></div><div class="statTile"><span>Standort</span><b>Eigener Ehrenplatz</b></div></div><div class="statsHint">Die Kriegerstatue ist in v1.14.6 ein reines Zierbauwerk. Eine spätere Ausbauphase gibt ihr eine eigene spielerische Funktion.</div>`;
+ if(base.decorative)return `<div class="buildingOverview"><div class="statTile"><span>Bauwerk</span><b>${buildingDisplayName(b)}</b></div><div class="statTile"><span>Funktion</span><b>Noch ohne Aufgabe</b></div><div class="statTile"><span>Standort</span><b>Eigener Ehrenplatz</b></div></div><div class="statsHint">Die Kriegerstatue ist in v1.14.7 ein reines Zierbauwerk. Eine spätere Ausbauphase gibt ihr eine eigene spielerische Funktion.</div>`;
  let rows=isTower?
  `${statRow("Schaden",fmt(base.damage),fmt(b.damage),pctDelta(base.damage,b.damage))}
  ${statRow("Reichweite",fmt(base.range),fmt(b.range),pctDelta(base.range,b.range))}

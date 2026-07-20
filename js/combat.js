@@ -162,9 +162,24 @@ export function isGuardTargetAllowed(
 ) {
   if (!unit || unit.key !== "guard" || !enemy || enemy.hp <= 0) return false;
 
-  const enemyRadius = Math.hypot(enemy.x - centerX, enemy.y - centerY);
-  if (unit.stance === "defend" && enemy.phase === "outside") return false;
-  if (unit.stance === "offense" && enemyRadius > wallRadius + 330) return false;
+  const enemyCenterRadius = Math.hypot(enemy.x - centerX, enemy.y - centerY);
+  if (unit.stance === "defend" && enemy.phase === "outside") {
+    // Eine verteidigende Burgwache verfolgt keine Gegner ins freie Feld.
+    // Gegner, die bereits direkt an der mittleren Palisade mit ihr in
+    // Kontakt stehen, müssen jedoch als Nahkampfziel zugelassen werden.
+    // Sonst können sich beide Figuren am Ring berühren, ohne zuzuschlagen.
+    const contactDistance = Math.hypot(enemy.x - unit.x, enemy.y - unit.y);
+    const enemyBodyRadius = Math.max(8, Number(enemy.radius) || 12);
+    const pressedAgainstWall =
+      enemyCenterRadius <= wallRadius + enemyBodyRadius + 18;
+    const inMeleeContact =
+      contactDistance <= getGuardMeleeReach(unit, enemy) + 22;
+
+    if (!pressedAgainstWall || !inMeleeContact) return false;
+  }
+  if (unit.stance === "offense" && enemyCenterRadius > wallRadius + 330) {
+    return false;
+  }
   return true;
 }
 
@@ -194,6 +209,52 @@ export function getGuardMeleeReach(unit, enemy) {
   const unitRange = Math.max(0, Number(unit?.range) || 0);
   const enemyRadius = Math.max(8, Number(enemy?.radius) || 12);
   return Math.max(48, unitRange + enemyRadius + 10);
+}
+
+export function resolveGuardEnemyOverlap(
+  unit,
+  enemy,
+  { centerX, centerY, wallRadius }
+) {
+  if (!unit || unit.key !== "guard" || !enemy) return false;
+
+  let dx = unit.x - enemy.x;
+  let dy = unit.y - enemy.y;
+  const overlapDistance = Math.hypot(dx, dy);
+  const minimumDistance = Math.max(24, (Number(enemy.radius) || 12) + 15);
+  if (overlapDistance >= minimumDistance) return false;
+
+  // Bei exakt gleicher Position wird die Wache radial zur Burgmitte
+  // zurückgeschoben. Dadurch bleiben beide Figuren sichtbar getrennt und
+  // die Nahkampfentfernung kann stabil ausgewertet werden.
+  let directionLength = overlapDistance;
+  if (directionLength < 0.001) {
+    dx = centerX - enemy.x;
+    dy = centerY - enemy.y;
+    directionLength = Math.hypot(dx, dy);
+    if (directionLength < 0.001) {
+      dx = 1;
+      dy = 0;
+      directionLength = 1;
+    }
+  }
+
+  const push = minimumDistance - overlapDistance;
+  unit.x += (dx / directionLength) * push;
+  unit.y += (dy / directionLength) * push;
+
+  if (unit.stance === "defend") {
+    const ux = unit.x - centerX;
+    const uy = unit.y - centerY;
+    const unitRadius = Math.hypot(ux, uy);
+    const maximumRadius = wallRadius - 10;
+    if (unitRadius > maximumRadius) {
+      unit.x = centerX + (ux / unitRadius) * maximumRadius;
+      unit.y = centerY + (uy / unitRadius) * maximumRadius;
+    }
+  }
+
+  return true;
 }
 
 export function findNearestBlockingUnit(
