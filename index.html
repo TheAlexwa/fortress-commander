@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.14.7 – Burgwachen-Kollision korrigiert</title>
+<title>Fortress Commander v1.14.8 – Mittlere Holztore</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,8 +20,8 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Spiel starten">Spiel starten</button>
-  <div id="gameVersionBadge">v1.14.7</div>
-  <div id="developmentNotice"><strong>🏗 Festungsumbau in Entwicklung</strong><span>Die mittlere Holzpalisade wird jetzt aus 20 einzelnen Segmenten aufgebaut. Jedes Segment kostet 5 Holz; Tore und äußerer Mauerring folgen in weiteren Schritten.</span></div>
+  <div id="gameVersionBadge">v1.14.8</div>
+  <div id="developmentNotice"><strong>🏗 Festungsumbau in Entwicklung</strong><span>Der mittlere Verteidigungsring besteht aus 20 einzelnen Palisadensegmenten und vier separat baubaren Holztoren. Der äußere Mauerring folgt in weiteren Schritten.</span></div>
  </div>
 </div>
 
@@ -53,7 +53,7 @@
     <article class="guideCard"><h3>🎯 Armbrustturm</h3><p>Langsamer, aber sehr hoher Einzelschaden. Besonders stark gegen gepanzerte und zähe Ziele.</p><div class="guideMeta"><span>95 Gold</span><span>30 Holz</span><span>Reichweite 265</span></div></article>
     <article class="guideCard"><h3>🪨 Katapult</h3><p>Große Reichweite und Flächenschaden. Ideal gegen dicht stehende Gegnergruppen.</p><div class="guideMeta"><span>140 Gold</span><span>55 Holz</span><span>Flächenschaden</span></div></article>
     <article class="guideCard"><h3>🧱 Palisade & Holzfestung</h3><p>Feinde greifen derzeit zuerst die bestehende Palisade an. Die neue kleine Holzfestung bildet bereits das Zentrum des künftigen Aufbausystems.</p><div class="guideMeta"><span>Festung: 1200 Leben</span><span>Reparierbar</span></div></article>
-   </div><div class="guideTip">Beim Auswählen eines Turms erscheinen auch die vier Bauplätze an den Ecken der Holzfestung.</div><div class="guideTip"><b>🏗 Layout v1.14.7:</b> Die Holzfestung wird durch den inneren Mauerring aus acht Segmenten geschützt. Die mittlere Holzpalisade startet ungebaut und besteht jetzt aus 20 einzeln errichtbaren Segmenten.</div><div class="guideTip"><b>🧱 Innerer Mauerring:</b> Nach einer Bresche in der mittleren Palisade müssen Gegner zuerst das passende Segment des inneren Rings zerstören. Beschädigte Segmente können von zugewiesenen Handwerkern repariert werden.</div><div class="guideTip"><b>🪵 Mittlere Holzpalisade:</b> Wähle sie im Reiter Bauen und klicke ein markiertes Segment an. Jedes Segment kostet 5 Holz und kann nur während der Belagerungsphase errichtet oder neu aufgebaut werden. Der Baumodus bleibt aktiv, damit mehrere Segmente nacheinander gesetzt werden können.</div><div class="guideTip"><b>🛡 Burgwache:</b> Burgwachen erkennen nun auch Gegner, die direkt an der mittleren Palisade mit ihnen kollidieren. Überlappende Figuren werden getrennt, damit der Nahkampf zuverlässig startet.</div><div class="guideTip"><b>🗿 Kriegerstatue:</b> Sie befindet sich im Reiter Versorgung und benötigt ihren eigenen markierten Ehrenplatz. Derzeit ist sie reine Dekoration; ihre Funktion folgt später.</div><div class="guideTip"><b>🖱 Zukunftsplätze:</b> Der äußere Mauerring und seine vier Tore können weiterhin angeklickt werden. Ein Hinweis erklärt die spätere Freischaltung.</div></div>
+   </div><div class="guideTip">Beim Auswählen eines Turms erscheinen auch die vier Bauplätze an den Ecken der Holzfestung.</div><div class="guideTip"><b>🏗 Layout v1.14.8:</b> Die Holzfestung wird durch den inneren Mauerring aus acht Segmenten geschützt. Der mittlere Verteidigungsring besteht aus 20 einzeln errichtbaren Palisadensegmenten und vier Torplätzen.</div><div class="guideTip"><b>🧱 Innerer Mauerring:</b> Nach einer Bresche im mittleren Ring müssen Gegner zuerst das passende Segment des inneren Rings zerstören. Beschädigte Segmente können von zugewiesenen Handwerkern repariert werden.</div><div class="guideTip"><b>🪵 Mittlere Holzpalisade:</b> Wähle sie im Reiter Bauen und klicke ein markiertes Segment an. Jedes Segment kostet 5 Holz und kann nur während der Belagerungsphase errichtet oder neu aufgebaut werden.</div><div class="guideTip"><b>🚪 Mittlere Holztore:</b> Nord-, Ost-, Süd- und Westtor kosten jeweils 20 Holz. Feinde auf den Straßen greifen ein errichtetes Tor an; ein offener oder zerstörter Torplatz lässt sie direkt in den Innenhof.</div><div class="guideTip"><b>🛡 Burgwache:</b> Im Modus „Burg halten“ darf die Wache nun bis zu 135 Einheiten über den mittleren Ring hinaus vorrücken, um Gegner sicher im Nahkampf zu erreichen.</div><div class="guideTip"><b>🗿 Kriegerstatue:</b> Sie befindet sich im Reiter Versorgung und benötigt ihren eigenen markierten Ehrenplatz. Derzeit ist sie reine Dekoration; ihre Funktion folgt später.</div><div class="guideTip"><b>🖱 Zukunftsplätze:</b> Der äußere Mauerring und seine vier Tore können weiterhin angeklickt werden. Ein Hinweis erklärt die spätere Freischaltung.</div></div>
   </details>
 
   <details class="guideSection">
@@ -171,6 +171,7 @@
 <footer>
  <div id="buildTray">
   <button class="buildBtn" data-build="palisade" data-group="towers" data-icon="🧱"><div class="name">Holzpalisade</div><div class="cost">🪵 5</div><div class="desc">Mittlerer Ring · 20 Segmente</div></button>
+  <button class="buildBtn" data-build="gate" data-group="towers" data-icon="🚪"><div class="name">Holztor</div><div class="cost">🪵 20</div><div class="desc">Mittlerer Ring · 4 Tore</div></button>
   <button class="buildBtn" data-build="archer" data-group="towers" data-icon="🏹"><div class="name">Bogenturm</div><div class="cost">🪙 60 · 🪵 20</div><div class="desc">Schneller Fernkampf</div></button>
   <button class="buildBtn" data-build="crossbow" data-group="towers" data-icon="🎯"><div class="name">Armbrustturm</div><div class="cost">🪙 95 · 🪵 30</div><div class="desc">Hoher Einzelschaden</div></button>
   <button class="buildBtn" data-build="catapult" data-group="towers" data-icon="🪨"><div class="name">Katapult</div><div class="cost">🪙 140 · 🪵 55</div><div class="desc">Flächenschaden</div></button>
@@ -215,7 +216,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.14.7 · Burgwachen-Kollision korrigiert und Dorf-Bauplätze entzerrt.</div>
+  <div class="workshopFoot">v1.14.8 · Vier mittlere Holztore und größerer Einsatzradius für Burgwachen.</div>
  </section>
 </div>
 

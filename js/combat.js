@@ -155,6 +155,8 @@ export function findNearestCastleTower(buildings, enemy) {
 }
 
 
+export const GUARD_DEFEND_RADIUS_BONUS = 135;
+
 export function isGuardTargetAllowed(
   unit,
   enemy,
@@ -163,19 +165,11 @@ export function isGuardTargetAllowed(
   if (!unit || unit.key !== "guard" || !enemy || enemy.hp <= 0) return false;
 
   const enemyCenterRadius = Math.hypot(enemy.x - centerX, enemy.y - centerY);
-  if (unit.stance === "defend" && enemy.phase === "outside") {
-    // Eine verteidigende Burgwache verfolgt keine Gegner ins freie Feld.
-    // Gegner, die bereits direkt an der mittleren Palisade mit ihr in
-    // Kontakt stehen, müssen jedoch als Nahkampfziel zugelassen werden.
-    // Sonst können sich beide Figuren am Ring berühren, ohne zuzuschlagen.
-    const contactDistance = Math.hypot(enemy.x - unit.x, enemy.y - unit.y);
-    const enemyBodyRadius = Math.max(8, Number(enemy.radius) || 12);
-    const pressedAgainstWall =
-      enemyCenterRadius <= wallRadius + enemyBodyRadius + 18;
-    const inMeleeContact =
-      contactDistance <= getGuardMeleeReach(unit, enemy) + 22;
-
-    if (!pressedAgainstWall || !inMeleeContact) return false;
+  if (
+    unit.stance === "defend" &&
+    enemyCenterRadius > wallRadius + GUARD_DEFEND_RADIUS_BONUS
+  ) {
+    return false;
   }
   if (unit.stance === "offense" && enemyCenterRadius > wallRadius + 330) {
     return false;
@@ -247,7 +241,7 @@ export function resolveGuardEnemyOverlap(
     const ux = unit.x - centerX;
     const uy = unit.y - centerY;
     const unitRadius = Math.hypot(ux, uy);
-    const maximumRadius = wallRadius - 10;
+    const maximumRadius = wallRadius + GUARD_DEFEND_RADIUS_BONUS - 10;
     if (unitRadius > maximumRadius) {
       unit.x = centerX + (ux / unitRadius) * maximumRadius;
       unit.y = centerY + (uy / unitRadius) * maximumRadius;

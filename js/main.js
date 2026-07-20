@@ -57,6 +57,7 @@ import {
  findNearestBlockingUnit,
  findNearestGuardTarget,
  getGuardMeleeReach,
+ GUARD_DEFEND_RADIUS_BONUS,
  resolveGuardEnemyOverlap,
  isGuardTargetAllowed,
  createProjectile,
@@ -89,15 +90,23 @@ import { FIXED_INNER_WALL_RADIUS, hitTestFutureLayout } from "./map-layout.js";
 import {
   MIDDLE_WALL_SECTION_COUNT,
   MIDDLE_WALL_SEGMENT_COUNT,
+  MIDDLE_GATE_COUNT,
   createInnerWallSegments,
+  createMiddleGates,
+  getBuiltMiddleGateCount,
   getBuiltMiddleWallSegmentCount,
   getInnerWallSegmentForPoint,
+  getMiddleGateForPoint,
+  getNearestMiddleGateIndexForAngle,
   getMiddleWallSectionIndexForSegment,
+  getMiddleWallSegmentAngles,
   getMiddleWallSegmentName,
   getMiddleWallSegmentStatus,
   hitTestInnerWallSegment,
+  hitTestMiddleGate,
   hitTestMiddleWallSegment,
   initializeInnerWallSegments,
+  initializeMiddleGates,
   initializeMiddleWallSegments
 } from "./fortifications.js";
 
@@ -106,8 +115,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.14.7";
-const GAME_RELEASE_NAME="Burgwachen-Kollision korrigiert";
+const GAME_VERSION="1.14.8";
+const GAME_RELEASE_NAME="Mittlere Holztore & größerer Wachenradius";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -226,6 +235,7 @@ let buildMode=null,selected=null,unitCommandMode=null,toastTimer=0;
 let autosaveSuppressed=false,gameSessionStarted=false;
 const BUILD={
  palisade:{name:"Holzpalisade",kind:"fortification",gold:0,wood:5,color:"#81512d"},
+ gate:{name:"Holztor",kind:"fortification-gate",gold:0,wood:20,color:"#6f4528"},
  archer:{name:"Bogenturm",kind:"tower",gold:60,wood:20,hp:260,range:215,rate:.72,damage:17,speed:470,color:"#b98a4d"},
  crossbow:{name:"Armbrustturm",kind:"tower",gold:95,wood:30,hp:320,range:265,rate:1.45,damage:46,speed:560,color:"#73513b"},
  catapult:{name:"Katapult",kind:"tower",gold:140,wood:55,hp:390,range:315,rate:2.45,damage:58,speed:330,splash:62,color:"#5b554c"},
@@ -240,19 +250,21 @@ const BUILD={
  statue:{name:"Kriegerstatue",kind:"inside",gold:45,wood:0,stone:15,color:"#8f7958",slotRole:"statue",decorative:true}
 };
 const state={gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,
- enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],craftsmen:[],residents:[],siege:null,spawnQueue:[],repairActive:false,repairedHp:0,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
+ enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],craftsmen:[],residents:[],siege:null,spawnQueue:[],repairActive:false,repairedHp:0,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
 const wallSlots=[],insideSlots=[],castleSlots=[];
 
 function initMap(){
- state.walls.length=0;state.innerWalls.length=0;wallSlots.length=0;insideSlots.length=0;castleSlots.length=0;
+ state.walls.length=0;state.innerWalls.length=0;state.middleGates.length=0;wallSlots.length=0;insideSlots.length=0;castleSlots.length=0;
  for(let i=0;i<WALL_SEGMENTS;i++){
-  const a0=-Math.PI/2+i*TAU/WALL_SEGMENTS,a1=-Math.PI/2+(i+1)*TAU/WALL_SEGMENTS,am=(a0+a1)/2;
+  const angles=getMiddleWallSegmentAngles(i,WALL_SEGMENTS);
+  const {a0,a1,am}=angles;
   const quarterIndex=getMiddleWallSectionIndexForSegment(i,WALL_SEGMENTS);
   const segmentInQuarter=i%Math.max(1,WALL_SEGMENTS/MIDDLE_WALL_SECTION_COUNT);
   state.walls.push({kind:"wall",ring:"middle",i,quarterIndex,segmentInQuarter,name:getMiddleWallSegmentName(i,WALL_SEGMENTS),a0,a1,am,built:false,hp:0,maxHp:WALL_MAX_HP});
   wallSlots.push({type:"wall",i,x:CX+Math.cos(am)*(WALL_R-48),y:CY+Math.sin(am)*(WALL_R-48),building:null});
  }
  state.innerWalls.push(...createInnerWallSegments());
+ state.middleGates.push(...createMiddleGates());
  const villageSlots=[
   [-190,-115],[150,-165],[-228,20],[225,55],
   [-190,155],[-75,245],[85,245],[245,-95],[-110,-245],[15,-235]
@@ -481,8 +493,9 @@ function deleteSave(){
 
 function updateUI(){
  return renderGameUI({
-  state,ui,BUILD,WALL_SEGMENTS,MIDDLE_WALL_SEGMENT_COUNT,selected,buildMode,paused,gameOver,
+  state,ui,BUILD,WALL_SEGMENTS,MIDDLE_WALL_SEGMENT_COUNT,MIDDLE_GATE_COUNT,selected,buildMode,paused,gameOver,
   builtMiddleWallSegments:()=>getBuiltMiddleWallSegmentCount(state),
+  builtMiddleGates:()=>getBuiltMiddleGateCount(state),
   navResearch,navResearchBadge,closeAllBlockingPanels,totalGoldPerSecond,
   totalWoodPerSecond,totalStonePerSecond,syncResidents,assignedResidents,totalResidents,freeResidents,
   waveCount,buildRequirement,residentCapacityForHouse,buildingHasWorker,
@@ -521,7 +534,11 @@ function startWave(){
  return true;
 }
 function spawnEnemy(forcedType=null,spawnPoint=null){
- return createWaveEnemy(state,{WORLD_W,WORLD_H,TAU,enemyStatsFor,discoverEnemy,forcedType,spawnPoint});
+ const enemy=createWaveEnemy(state,{WORLD_W,WORLD_H,TAU,enemyStatsFor,discoverEnemy,forcedType,spawnPoint});
+ if(enemy&&spawnPoint){
+  enemy.approachGateIndex=getNearestMiddleGateIndexForAngle(Math.atan2(spawnPoint.y-CY,spawnPoint.x-CX));
+ }
+ return enemy;
 }
 function createAt(x,y,key){
  return createEntityAt(x,y,key,{
@@ -612,7 +629,7 @@ function repairTargetInfo(target){
 function damagedRepairTargets(){
  const list=[];
  if(state.hp<state.maxHp)list.push({kind:"castle"});
- list.push(...[...state.walls,...state.innerWalls].filter(w=>w.built&&w.hp<w.maxHp).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp));
+ list.push(...[...state.walls,...state.innerWalls,...state.middleGates].filter(w=>w.built&&w.hp<w.maxHp).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp));
  list.push(...state.buildings.filter(b=>b.base.kind==="tower"&&b.hp>0&&b.hp<b.maxHp).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp));
  return list;
 }
@@ -745,7 +762,8 @@ function update(dt){
      const travel=Math.max(0,d-stopDistance);
      const step=Math.min(travel,u.speed*dt);let nx=u.x+dx/d*step,ny=u.y+dy/d*step;
      const nr=Math.hypot(nx-CX,ny-CY);
-     if(u.stance==="defend"&&nr>WALL_R-12){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(WALL_R-14);ny=CY+Math.sin(a)*(WALL_R-14)}
+     const defendLimit=WALL_R+GUARD_DEFEND_RADIUS_BONUS;
+     if(u.stance==="defend"&&nr>defendLimit){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(defendLimit-2);ny=CY+Math.sin(a)*(defendLimit-2)}
      if(u.stance==="offense"&&nr>WALL_R+330){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(WALL_R+328);ny=CY+Math.sin(a)*(WALL_R+328)}
      u.x=nx;u.y=ny;
     }
@@ -819,13 +837,29 @@ function update(dt){
  for(const e of state.enemies){
   e.attackCd-=dt;const dx=CX-e.x,dy=CY-e.y,dCenter=Math.max(1,Math.hypot(dx,dy));
   if(e.phase==="outside"){
-   const wi=angleIndex(e.x,e.y),wall=state.walls[wi];e.wallIndex=wi;
-   const targetR=WALL_R+e.radius+4,tx=CX+(e.x-CX)/dCenter*targetR,ty=CY+(e.y-CY)/dCenter*targetR;
-   const d=Math.hypot(tx-e.x,ty-e.y);
-   if(!wall.built||wall.hp<=0){e.phase="inside"}
-   else if(d<5){if(e.attackCd<=0){e.attackCd=e.attackRate;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
-    wall.hp=Math.max(0,wall.hp-wallDamage);burst(tx,ty,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in mittlerer Palisade: ${wall.name||getMiddleWallSegmentName(wi,state.walls.length)}!`)}}
-   else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+   const gate=Number.isInteger(e.approachGateIndex)
+    ?state.middleGates[e.approachGateIndex]||null
+    :getMiddleGateForPoint(state,e.x,e.y,{CX,CY});
+   const targetR=WALL_R+e.radius+4;
+   if(gate){
+    e.middleGateIndex=gate.i;e.wallIndex=null;
+    const tx=CX+Math.cos(gate.angle)*targetR,ty=CY+Math.sin(gate.angle)*targetR;
+    const d=Math.hypot(tx-e.x,ty-e.y);
+    if(!gate.built||gate.hp<=0){
+     if(d<5)e.phase="inside";
+     else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+    }else if(d<5){if(e.attackCd<=0){e.attackCd=e.attackRate;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
+     gate.hp=Math.max(0,gate.hp-gateDamage);burst(tx,ty,"#8c5734",6);if(gate.hp<=0)showToast(`Das ${gate.name} wurde durchbrochen!`)}}
+    else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+   }else{
+    const wi=angleIndex(e.x,e.y),wall=state.walls[wi];e.wallIndex=wi;e.middleGateIndex=null;
+    const tx=CX+(e.x-CX)/dCenter*targetR,ty=CY+(e.y-CY)/dCenter*targetR;
+    const d=Math.hypot(tx-e.x,ty-e.y);
+    if(!wall.built||wall.hp<=0){e.phase="inside"}
+    else if(d<5){if(e.attackCd<=0){e.attackCd=e.attackRate;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
+     wall.hp=Math.max(0,wall.hp-wallDamage);burst(tx,ty,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in mittlerer Palisade: ${wall.name||getMiddleWallSegmentName(wi,state.walls.length)}!`)}}
+    else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+   }
   }else if(e.phase==="inside"){
    const tower=towerBehindWall(e.wallIndex);
    const blockingUnit=nearestBlockingUnit(e,62);
@@ -952,6 +986,11 @@ function pickAt(x,y){
   const wall=state.innerWalls[innerHit.index];
   if(wall)best=wall;
  }
+ const gateHit=hitTestMiddleGate(x,y,{CX,CY,WALL_R,tolerance:34});
+ if(!best&&gateHit){
+  const gate=state.middleGates[gateHit.gateIndex];
+  if(gate?.built)best=gate;
+ }
  const middleHit=hitTestMiddleWallSegment(x,y,{CX,CY,WALL_R,segmentCount:state.walls.length,tolerance:30});
  if(!best&&middleHit){
   const wall=getMiddleWallSegmentStatus(state,middleHit.segmentIndex);
@@ -963,6 +1002,7 @@ function showFutureLayoutHint(hit){
  if(!hit)return false;
  const messages={
   "middle-wall":"Mittlere Holzpalisade: im Baumenü auswählen und dieses Segment für 5 Holz errichten.",
+  "middle-gate":"Mittleres Holztor: im Baumenü auswählen und diesen Torplatz für 20 Holz schließen.",
   "outer-wall":"Äußerer Mauerring: wird in einer späteren Ausbaustufe mit Stein errichtet."
  };
  const text=hit.type==="outer-gate"
@@ -974,7 +1014,7 @@ function showFutureLayoutHint(hit){
 }
 function worldTap(x,y){
  if(gameOver)return;
- const futureHit=hitTestMiddleWallSegment(x,y,{CX,CY,WALL_R,segmentCount:state.walls.length})||hitTestFutureLayout(x,y,{CX,CY,WALL_R});
+ const futureHit=hitTestMiddleGate(x,y,{CX,CY,WALL_R})||hitTestMiddleWallSegment(x,y,{CX,CY,WALL_R,segmentCount:state.walls.length})||hitTestFutureLayout(x,y,{CX,CY,WALL_R});
  if(buildMode){
   const created=createAt(x,y,buildMode);
   if(!created)showFutureLayoutHint(futureHit);
@@ -1021,7 +1061,7 @@ function showEndScreen(){
 function hideEndScreen(){const screen=document.getElementById("endScreen");if(screen){screen.classList.add("hidden");screen.style.pointerEvents="none"}}
 function reset(){
  state.gold=210;state.wood=105;state.stone=0;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;
- state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
+ state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
  selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.48);ensureCurrentSiege();showToast("Neue Belagerung beginnt");
 }
 
@@ -1133,7 +1173,7 @@ function buildingProductionInfo(b){
 }
 function buildingStatsHtml(b){
  const base=b.base,isTower=base.kind==="tower",level=b.level||1;
- if(base.decorative)return `<div class="buildingOverview"><div class="statTile"><span>Bauwerk</span><b>${buildingDisplayName(b)}</b></div><div class="statTile"><span>Funktion</span><b>Noch ohne Aufgabe</b></div><div class="statTile"><span>Standort</span><b>Eigener Ehrenplatz</b></div></div><div class="statsHint">Die Kriegerstatue ist in v1.14.7 ein reines Zierbauwerk. Eine spätere Ausbauphase gibt ihr eine eigene spielerische Funktion.</div>`;
+ if(base.decorative)return `<div class="buildingOverview"><div class="statTile"><span>Bauwerk</span><b>${buildingDisplayName(b)}</b></div><div class="statTile"><span>Funktion</span><b>Noch ohne Aufgabe</b></div><div class="statTile"><span>Standort</span><b>Eigener Ehrenplatz</b></div></div><div class="statsHint">Die Kriegerstatue ist derzeit ein reines Zierbauwerk. Eine spätere Ausbauphase gibt ihr eine eigene spielerische Funktion.</div>`;
  let rows=isTower?
  `${statRow("Schaden",fmt(base.damage),fmt(b.damage),pctDelta(base.damage,b.damage))}
  ${statRow("Reichweite",fmt(base.range),fmt(b.range),pctDelta(base.range,b.range))}

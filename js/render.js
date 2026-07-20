@@ -5,6 +5,8 @@ import {
   getFutureLayoutGeometry
 } from "./map-layout.js";
 import {
+  MIDDLE_GATE_BUILD_WOOD,
+  MIDDLE_GATE_COUNT,
   MIDDLE_WALL_SEGMENT_COUNT
 } from "./fortifications.js";
 
@@ -267,6 +269,30 @@ function drawFixedInnerWall(radius=FIXED_INNER_WALL_RADIUS){
  ctx.fillStyle="#e9d69dcc";ctx.font="bold 10px system-ui";ctx.textAlign="center";ctx.fillText("INNERER MAUERRING · 8 SEGMENTE",CX,CY-radius-28);
  ctx.restore();
 }
+function drawMiddleGate(gate){
+ const a=gate.angle??gate.am??0,x=CX+Math.cos(a)*WALL_R,y=CY+Math.sin(a)*WALL_R;
+ ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);
+ if(!gate.built){
+  ctx.fillStyle="#d6bf8238";ctx.strokeStyle="#ffe6a988";ctx.lineWidth=2.5;ctx.setLineDash([7,6]);
+  ctx.fillRect(-34,-23,68,46);ctx.strokeRect(-34,-23,68,46);ctx.setLineDash([]);
+  ctx.fillStyle="#fff0bdcc";ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.fillText(`HOLZTOR · ${MIDDLE_GATE_BUILD_WOOD} HOLZ`,0,-31);
+ }else if(gate.hp>0){
+  const ratio=Math.max(0,Math.min(1,gate.hp/Math.max(1,gate.maxHp)));
+  ctx.fillStyle="#1b120caa";ctx.fillRect(-39,-27,78,55);
+  ctx.fillStyle=ratio>.45?"#6f4528":ratio>.2?"#6f3427":"#64241f";ctx.fillRect(-35,-23,70,47);
+  ctx.strokeStyle="#c18b4b";ctx.lineWidth=3;ctx.strokeRect(-35,-23,70,47);
+  for(let k=-3;k<=3;k++){ctx.fillStyle=k%2?"#4e2e1c":"#82512d";ctx.fillRect(k*9-3,-19,7,39)}
+  ctx.strokeStyle="#d8b568";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-32,0);ctx.lineTo(32,0);ctx.stroke();
+  ctx.fillStyle="#233f65";ctx.beginPath();ctx.moveTo(-10,-23);ctx.lineTo(0,-37);ctx.lineTo(10,-23);ctx.closePath();ctx.fill();
+  if(ratio<.999){ctx.fillStyle="#110b09dd";ctx.fillRect(-28,31,56,7);ctx.fillStyle=ratio>.5?"#65bd60":ratio>.25?"#d2a13e":"#d14a43";ctx.fillRect(-27,32,54*ratio,5)}
+ }else{
+  ctx.fillStyle="#4b3424";for(let k=-3;k<=3;k++){ctx.save();ctx.translate(k*9,(k%2)*5);ctx.rotate((k%3-.8)*.24);ctx.fillRect(-6,-4,12,8);ctx.restore()}
+  ctx.fillStyle="#e7c98dcc";ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.fillText("ZERSTÖRT",0,-25);
+ }
+ if(selected===gate){ctx.strokeStyle="#ffe68a";ctx.shadowBlur=14;ctx.shadowColor="#ffe68a";ctx.lineWidth=4;ctx.strokeRect(-41,-29,82,59);ctx.shadowBlur=0}
+ ctx.restore();
+}
+
 function drawFutureFortressLayout(){
  const layout=getFutureLayoutGeometry({CX,CY,WALL_R});
  ctx.save();
@@ -289,7 +315,8 @@ function drawFutureFortressLayout(){
   drawBlueprintArc(WALL_R,wall.a0+.018,wall.a1-.018,29);
  }
  ctx.fillStyle="#e8d19dcc";ctx.font="bold 10px system-ui";ctx.textAlign="center";
- ctx.fillText(`MITTLERE HOLZPALISADE · ${MIDDLE_WALL_SEGMENT_COUNT} SEGMENTE · JE 5 HOLZ`,CX,CY-WALL_R-30);
+ ctx.fillText(`MITTLERER RING · ${MIDDLE_WALL_SEGMENT_COUNT} SEGMENTE · ${MIDDLE_GATE_COUNT} TORE`,CX,CY-WALL_R-30);
+ for(const gate of state.middleGates||[])drawMiddleGate(gate);
  // Geplanter äußerer Mauerring mit vier anklickbaren Toröffnungen.
  for(let quadrant=0;quadrant<4;quadrant++){
   const a0=-Math.PI/2+quadrant*Math.PI/2+OUTER_GATE_GAP;

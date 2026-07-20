@@ -1,9 +1,10 @@
 /**
  * Bauzustand und Geometrie der Festungsringe.
  *
- * v1.14.6 verwaltet zwei aktive Verteidigungslinien:
+ * v1.14.8 verwaltet die aktiven Verteidigungslinien:
  * - der feste innere Steinring besteht aus acht echten Segmenten,
- * - die mittlere Holzpalisade besteht aus zwanzig einzeln baubaren Segmenten.
+ * - die mittlere Holzpalisade besteht aus zwanzig einzeln baubaren Segmenten,
+ * - vier separat baubare Holztore schließen die Straßen des mittleren Rings.
  */
 
 export const INNER_WALL_SEGMENT_COUNT = 8;
@@ -17,12 +18,20 @@ export const MIDDLE_WALL_SEGMENT_COUNT =
   MIDDLE_WALL_SECTION_COUNT * MIDDLE_WALL_SEGMENTS_PER_SECTION;
 export const MIDDLE_WALL_BUILD_WOOD = 5;
 
+export const MIDDLE_GATE_COUNT = 4;
+export const MIDDLE_GATE_BUILD_WOOD = 20;
+export const MIDDLE_GATE_MAX_HP = 620;
+export const MIDDLE_GATE_HALF_ANGLE = 0.105;
+
 const SECTION_NAMES = [
   "Nordost",
   "Südost",
   "Südwest",
   "Nordwest",
 ];
+
+const GATE_NAMES = ["Nordtor", "Osttor", "Südtor", "Westtor"];
+const GATE_ANGLES = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
 
 function normalizeSectionIndex(index) {
   const numeric = Number(index);
@@ -43,6 +52,165 @@ function normalizeAngleFromNorth(angle) {
   while (result < 0) result += tau;
   while (result >= tau) result -= tau;
   return result;
+}
+
+function normalizeSignedAngle(angle) {
+  let result = Number(angle) || 0;
+  const tau = Math.PI * 2;
+  while (result <= -Math.PI) result += tau;
+  while (result > Math.PI) result -= tau;
+  return result;
+}
+
+function angleDistance(a, b) {
+  return Math.abs(normalizeSignedAngle(a - b));
+}
+
+export function getMiddleWallSegmentAngles(
+  segmentIndex,
+  segmentCount = MIDDLE_WALL_SEGMENT_COUNT
+) {
+  const count = Math.max(MIDDLE_WALL_SECTION_COUNT, Number(segmentCount) || 0);
+  const index = normalizeSegmentIndex(segmentIndex, count);
+  if (index < 0) return null;
+
+  const tau = Math.PI * 2;
+  const perSection = count / MIDDLE_WALL_SECTION_COUNT;
+  const segmentInSection = index % perSection;
+  let a0 = -Math.PI / 2 + index * tau / count;
+  let a1 = -Math.PI / 2 + (index + 1) * tau / count;
+
+  // An den vier Straßen bleibt ein klarer Torraum frei. Die fünf
+  // Mauersegmente jedes Viertels behalten dabei ihre eigenen Bauplätze.
+  if (segmentInSection === 0) a0 += MIDDLE_GATE_HALF_ANGLE;
+  if (segmentInSection === perSection - 1) a1 -= MIDDLE_GATE_HALF_ANGLE;
+
+  return { a0, a1, am: (a0 + a1) / 2 };
+}
+
+export function createMiddleGates({ maxHp = MIDDLE_GATE_MAX_HP } = {}) {
+  return GATE_ANGLES.map((angle, index) => ({
+    kind: "gate",
+    ring: "middle",
+    i: index,
+    name: GATE_NAMES[index],
+    angle,
+    am: angle,
+    built: false,
+    hp: 0,
+    maxHp,
+  }));
+}
+
+export function initializeMiddleGates(gates, { built = false } = {}) {
+  for (const [index, gate] of (gates || []).entries()) {
+    gate.kind = "gate";
+    gate.ring = "middle";
+    gate.i = index;
+    gate.name = GATE_NAMES[index] || `Tor ${index + 1}`;
+    gate.angle = GATE_ANGLES[index] ?? gate.angle ?? 0;
+    gate.am = gate.angle;
+    gate.built = Boolean(built);
+    gate.hp = built ? gate.maxHp : 0;
+  }
+}
+
+export function getBuiltMiddleGateCount(state) {
+  return (state?.middleGates || []).filter(
+    (gate) => gate.built === true && Number(gate.hp) > 0
+  ).length;
+}
+
+export function getNearestMiddleGateIndexForAngle(angle) {
+  let bestIndex = 0;
+  let bestDistance = Infinity;
+  GATE_ANGLES.forEach((gateAngle, index) => {
+    const distance = angleDistance(angle, gateAngle);
+    if (distance < bestDistance) {
+      bestIndex = index;
+      bestDistance = distance;
+    }
+  });
+  return bestIndex;
+}
+
+export function getMiddleGateIndexForAngle(
+  angle,
+  tolerance = MIDDLE_GATE_HALF_ANGLE
+) {
+  let bestIndex = -1;
+  let bestDistance = Infinity;
+  GATE_ANGLES.forEach((gateAngle, index) => {
+    const distance = angleDistance(angle, gateAngle);
+    if (distance <= tolerance && distance < bestDistance) {
+      bestIndex = index;
+      bestDistance = distance;
+    }
+  });
+  return bestIndex;
+}
+
+export function getMiddleGateForPoint(state, x, y, { CX, CY }) {
+  const index = getMiddleGateIndexForAngle(Math.atan2(y - CY, x - CX));
+  return index >= 0 ? state?.middleGates?.[index] || null : null;
+}
+
+export function hitTestMiddleGate(
+  x,
+  y,
+  { CX, CY, WALL_R, tolerance = 48 }
+) {
+  const dx = x - CX;
+  const dy = y - CY;
+  if (Math.abs(Math.hypot(dx, dy) - WALL_R) > tolerance) return null;
+  const index = getMiddleGateIndexForAngle(
+    Math.atan2(dy, dx),
+    MIDDLE_GATE_HALF_ANGLE * 1.45
+  );
+  if (index < 0) return null;
+  return {
+    type: "middle-gate",
+    index,
+    gateIndex: index,
+    label: GATE_NAMES[index],
+  };
+}
+
+export function buildMiddleGateAt(x, y, context) {
+  const { state, CX, CY, WALL_R, showToast, setBuildMode, setSelected } = context;
+  const hit = hitTestMiddleGate(x, y, { CX, CY, WALL_R });
+
+  if (!hit) {
+    showToast("Holztor auf einem markierten Torplatz des mittleren Rings errichten");
+    return false;
+  }
+  if (state.inWave) {
+    showToast("Torbau ist nur während der Belagerungsphase möglich");
+    return false;
+  }
+
+  const gate = state?.middleGates?.[hit.gateIndex];
+  if (!gate) return false;
+  if (gate.built && gate.hp > 0) {
+    showToast(`${gate.name} steht bereits`);
+    return false;
+  }
+  if (state.wood < MIDDLE_GATE_BUILD_WOOD) {
+    showToast(`Benötigt ${MIDDLE_GATE_BUILD_WOOD} Holz`);
+    return false;
+  }
+
+  const rebuilding = gate.built && gate.hp <= 0;
+  state.wood -= MIDDLE_GATE_BUILD_WOOD;
+  gate.built = true;
+  gate.hp = gate.maxHp;
+  setSelected(gate);
+
+  if (getBuiltMiddleGateCount(state) >= MIDDLE_GATE_COUNT) setBuildMode(null);
+  showToast(
+    `${rebuilding ? "Holztor neu errichtet" : "Holztor errichtet"}: ${gate.name} · ${MIDDLE_GATE_BUILD_WOOD} Holz`
+  );
+  return true;
 }
 
 export function createInnerWallSegments({ maxHp = INNER_WALL_MAX_HP } = {}) {
@@ -276,10 +444,11 @@ export function hitTestMiddleWallSegment(
   const radius = Math.hypot(dx, dy);
   if (Math.abs(radius - WALL_R) > tolerance) return null;
 
-  const index = getMiddleWallSegmentIndexForAngle(
-    Math.atan2(dy, dx),
-    segmentCount
-  );
+  const angle = Math.atan2(dy, dx);
+  if (getMiddleGateIndexForAngle(angle, MIDDLE_GATE_HALF_ANGLE * 1.25) >= 0) {
+    return null;
+  }
+  const index = getMiddleWallSegmentIndexForAngle(angle, segmentCount);
   return {
     type: "middle-wall",
     index,

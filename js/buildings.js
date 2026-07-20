@@ -1,4 +1,4 @@
-import { buildMiddleWallSegmentAt } from "./fortifications.js";
+import { buildMiddleGateAt, buildMiddleWallSegmentAt } from "./fortifications.js";
 
 /**
  * Bau- und Aufwertungssystem von Fortress Commander.
@@ -59,6 +59,18 @@ export function createEntityAt(x, y, key, context) {
 
   if (blueprint.kind === "fortification") {
     return buildMiddleWallSegmentAt(x, y, {
+      state,
+      CX,
+      CY,
+      WALL_R,
+      showToast,
+      setBuildMode,
+      setSelected,
+    });
+  }
+
+  if (blueprint.kind === "fortification-gate") {
+    return buildMiddleGateAt(x, y, {
       state,
       CX,
       CY,

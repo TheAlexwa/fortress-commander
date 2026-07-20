@@ -12,7 +12,9 @@ export function renderGameUI({
   BUILD,
   WALL_SEGMENTS,
   MIDDLE_WALL_SEGMENT_COUNT,
+  MIDDLE_GATE_COUNT,
   builtMiddleWallSegments,
+  builtMiddleGates,
   selected,
   buildMode,
   paused,
@@ -71,8 +73,11 @@ export function renderGameUI({
   const builtWallSegments = typeof builtMiddleWallSegments === "function"
     ? builtMiddleWallSegments()
     : 0;
-  ui.wallInfo.textContent = `${builtWallSegments}/${MIDDLE_WALL_SEGMENT_COUNT}`;
-  ui.wallInfo.title = "Intakte Segmente der mittleren Holzpalisade";
+  const builtGates = typeof builtMiddleGates === "function"
+    ? builtMiddleGates()
+    : 0;
+  ui.wallInfo.textContent = `${builtWallSegments}/${MIDDLE_WALL_SEGMENT_COUNT} · 🚪 ${builtGates}/${MIDDLE_GATE_COUNT}`;
+  ui.wallInfo.title = "Intakte Segmente und Tore des mittleren Verteidigungsrings";
 
   const siege = state.siege;
   const siegeReady = !state.inWave && siege?.active ? Math.max(0, Number(siege.arrived) || 0) : 0;
@@ -114,10 +119,16 @@ export function renderGameUI({
 
     button.classList.toggle("active", buildMode === key);
     const requirement = buildRequirement(key);
+    const fortificationLocked =
+      (config.kind === "fortification" || config.kind === "fortification-gate") &&
+      state.inWave;
+    const fortificationComplete =
+      (config.kind === "fortification" && builtWallSegments >= MIDDLE_WALL_SEGMENT_COUNT) ||
+      (config.kind === "fortification-gate" && builtGates >= MIDDLE_GATE_COUNT);
     button.disabled =
       gameOver ||
-      (config.kind === "fortification" && state.inWave) ||
-      (config.kind === "fortification" && builtWallSegments >= MIDDLE_WALL_SEGMENT_COUNT) ||
+      fortificationLocked ||
+      fortificationComplete ||
       !requirement.ok ||
       state.gold < config.gold ||
       state.wood < config.wood ||
@@ -139,6 +150,12 @@ export function renderGameUI({
 
   if (!selected) {
     ui.selected.textContent = "Nichts ausgewählt";
+    return;
+  }
+
+  if (selected.kind === "gate") {
+    const destroyed = Number(selected.hp) <= 0;
+    ui.selected.innerHTML = `<b>${selected.name}</b><br>Lebenspunkte: ${Math.ceil(selected.hp)} / ${selected.maxHp}<br>Status: ${destroyed ? "zerstört" : "errichtet"}<br>Mittlerer Verteidigungsring · Holztor`;
     return;
   }
 
