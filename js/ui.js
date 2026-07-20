@@ -244,11 +244,10 @@ export function renderGameUI({
         : null;
     const wallTowerReady = !supportingWall || (
       supportingWall.built &&
-      supportingWall.hp > 0 &&
-      supportingWall.material === "stone"
+      supportingWall.hp > 0
     );
     const placementInfo = supportingWall
-      ? `<br>Standort: ${building.slot.type === "outer-wall" ? "äußerer" : "mittlerer"} Mauerturmplatz · ${wallTowerReady ? "einsatzbereit" : "<b>inaktiv – intakte Steinmauer nötig</b>"}`
+      ? `<br>Standort: ${building.slot.type === "outer-wall" ? "äußerer" : "mittlerer"} Mauerturmplatz · ${wallTowerReady ? "einsatzbereit" : "<b>inaktiv – intaktes Mauersegment nötig</b>"}`
       : "<br>Standort: Kernburg";
     ui.selected.innerHTML = `<b>${building.base.name} · EXP-Stufe ${building.expLevel || 1}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · EXP ${Math.floor(building.xp || 0)}/${Math.floor(building.xpMax || 90)}<br>Schaden ${Math.round(building.damage)} · Reichweite ${Math.round(building.range)}${building.pendingUpgrades ? ` · <b>${building.pendingUpgrades} EXP-Aufwertung bereit</b>` : ""}${placementInfo}<br>Aufwertung: nur über EXP und Forschung`;
     ui.upgrade.style.display = "none";

@@ -1,7 +1,7 @@
 /**
  * Bauzustand und Geometrie der Festungsringe.
  *
- * v1.15.0 verwaltet die aktiven Verteidigungslinien:
+ * v1.15.6 verwaltet die aktiven Verteidigungslinien:
  * - der feste innere Steinring besteht aus acht echten Segmenten,
  * - die mittlere Holzpalisade besteht aus zwanzig einzeln baubaren Segmenten,
  * - vier separat baubare Holztore schließen die Straßen des mittleren Rings,
@@ -22,10 +22,14 @@ export const MIDDLE_WALL_WOOD_MAX_HP = 420;
 export const MIDDLE_WALL_STONE_MAX_HP = 850;
 export const MIDDLE_WALL_STONE_COST = 8;
 
-// Vier feste Mauerturmplätze liegen jeweils auf dem mittleren Segment eines
-// Viertelkreises. Dadurch bleibt der Ring lesbar und die Zahl zusätzlicher
-// Türme kontrollierbar.
-export const MIDDLE_TOWER_SPOT_SEGMENTS = Object.freeze([2, 7, 12, 17]);
+// Zwei feste Mauerturmplätze pro Viertelkreis. Die Plätze liegen mit etwas
+// Abstand zueinander auf dem ersten und dritten Innen-Segment des Viertels.
+export const MIDDLE_TOWER_SPOT_SEGMENTS = Object.freeze([
+  1, 3,
+  6, 8,
+  11, 13,
+  16, 18,
+]);
 export const MIDDLE_TOWER_SPOT_COUNT = MIDDLE_TOWER_SPOT_SEGMENTS.length;
 
 export function isMiddleTowerSpotSegment(segmentIndex) {
@@ -50,10 +54,15 @@ export const OUTER_WALL_WOOD_MAX_HP = 420;
 export const OUTER_WALL_STONE_MAX_HP = 950;
 export const OUTER_WALL_STONE_COST = 10;
 
-// Auch der äußere Ring erhält genau einen festen Turmplatz pro Viertelkreis.
-// Bei sieben Segmenten je Viertel liegt das mittlere Segment an den Indizes
-// 3, 10, 17 und 24.
-export const OUTER_TOWER_SPOT_SEGMENTS = Object.freeze([3, 10, 17, 24]);
+// Drei feste Mauerturmplätze pro Viertelkreis. Bei sieben Segmenten je
+// Viertel liegen sie gleichmäßig auf dem ersten, mittleren und letzten
+// inneren Segment des Abschnitts.
+export const OUTER_TOWER_SPOT_SEGMENTS = Object.freeze([
+  1, 3, 5,
+  8, 10, 12,
+  15, 17, 19,
+  22, 24, 26,
+]);
 export const OUTER_TOWER_SPOT_COUNT = OUTER_TOWER_SPOT_SEGMENTS.length;
 
 export function isOuterTowerSpotSegment(segmentIndex) {

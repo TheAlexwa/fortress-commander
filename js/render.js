@@ -401,7 +401,7 @@ function wallTowerSupport(slot){
 }
 function wallTowerSpotReady(slot){
  const wall=wallTowerSupport(slot);
- return Boolean(slot?.towerSpot&&wall?.built&&wall.hp>0&&wall.material==="stone");
+ return Boolean(slot?.towerSpot&&wall?.built&&wall.hp>0);
 }
 function drawWallTowerSpots(){
  for(const slot of wallSlots){
@@ -413,9 +413,9 @@ function drawWallTowerSpots(){
   ctx.beginPath();ctx.arc(0,0,27,0,TAU);ctx.fill();ctx.stroke();
   ctx.strokeStyle=ready?"#ece3bd":"#756b59";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,17,0,TAU);ctx.stroke();
   for(let i=0;i<8;i++){const a=i/8*TAU;ctx.fillStyle=ready?"#aaa592":"#666052";ctx.fillRect(Math.cos(a)*23-4,Math.sin(a)*23-4,8,8)}
-  if(!occupied){
+  if(!occupied&&BUILD[buildMode]?.kind==="tower"){
    ctx.fillStyle=ready?"#fff1bd":"#d3bd91";ctx.font="bold 8px system-ui";ctx.textAlign="center";
-   ctx.fillText(ready?(slot.type==="outer-wall"?"AUßENTURM":"TURMPLATZ"):"STEIN NÖTIG",0,40);
+   ctx.fillText(ready?"TURM":"MAUER NÖTIG",0,40);
   }
   ctx.restore();
  }

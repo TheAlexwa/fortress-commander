@@ -34,16 +34,65 @@ function getSlotIndex(slot, { wallSlots, insideSlots, castleSlots }) {
   return -1;
 }
 
+const LEGACY_MIDDLE_TOWER_SEGMENTS = Object.freeze([2, 7, 12, 17]);
+const LEGACY_OUTER_TOWER_SEGMENTS = Object.freeze([3, 10, 17, 24]);
+
+function closestTowerSlotBySegment(type, segmentIndex, wallSlots) {
+  const candidates = wallSlots.filter(
+    (slot) => slot.type === type && slot.towerSpot === true
+  );
+  if (!candidates.length) return null;
+
+  const exact = candidates.find((slot) => slot.i === segmentIndex);
+  if (exact) return exact;
+
+  const target = Number(segmentIndex);
+  return candidates.reduce((best, slot) => {
+    if (!best) return slot;
+    return Math.abs(slot.i - target) < Math.abs(best.i - target) ? slot : best;
+  }, null);
+}
+
 function getSlotByReference(reference, { wallSlots, insideSlots, castleSlots }) {
-  const slotGroups = {
-    wall: wallSlots,
-    "outer-wall": wallSlots,
-    inside: insideSlots,
-    castle: castleSlots,
-  };
-  const slots = slotGroups[reference?.type];
+  const type = reference?.type;
   const index = Number(reference?.index);
 
+  if (type === "wall" || type === "outer-wall") {
+    const segmentIndex = Number(reference?.segmentIndex);
+    if (Number.isInteger(segmentIndex)) {
+      const slot = wallSlots.find(
+        (candidate) =>
+          candidate.type === type &&
+          candidate.towerSpot === true &&
+          candidate.i === segmentIndex
+      );
+      if (slot) return slot;
+    }
+
+    // Kompatibilität mit v1.15.4/v1.15.5: Die mittleren Plätze lagen
+    // direkt auf den Segmentindizes 2/7/12/17. Die vier äußeren Plätze
+    // folgten nach den zwanzig mittleren Slots als globale Indizes 20–23.
+    if (Number.isInteger(index)) {
+      if (type === "wall" && LEGACY_MIDDLE_TOWER_SEGMENTS.includes(index)) {
+        return closestTowerSlotBySegment(type, index, wallSlots);
+      }
+      if (type === "outer-wall" && index >= 20 && index < 24) {
+        return closestTowerSlotBySegment(
+          type,
+          LEGACY_OUTER_TOWER_SEGMENTS[index - 20],
+          wallSlots
+        );
+      }
+
+      const globalSlot = wallSlots[index];
+      if (globalSlot?.type === type) return globalSlot;
+    }
+
+    throw new Error("Speicherstand enthält einen ungültigen Mauerturmplatz.");
+  }
+
+  const slotGroups = { inside: insideSlots, castle: castleSlots };
+  const slots = slotGroups[type];
   if (!slots || !Number.isInteger(index) || index < 0 || index >= slots.length) {
     throw new Error("Speicherstand enthält einen ungültigen Bauplatz.");
   }
@@ -137,6 +186,10 @@ function serializeBuilding(building, slots) {
     slot: {
       type: slot?.type || null,
       index: getSlotIndex(slot, slots),
+      segmentIndex:
+        slot?.type === "wall" || slot?.type === "outer-wall"
+          ? Number(slot.i)
+          : null,
     },
   };
 }

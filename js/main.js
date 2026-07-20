@@ -134,8 +134,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.5";
-const GAME_RELEASE_NAME="Mauerturmplätze am äußeren Ring";
+const GAME_VERSION="1.15.6";
+const GAME_RELEASE_NAME="Mehr Mauertürme auf Holz und Stein";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -654,7 +654,7 @@ function isTowerOperational(building){
  const support=building.slot.type==="outer-wall"
   ?state.outerWalls[building.slot.i]
   :state.walls[building.slot.i];
- return Boolean(support?.built&&support.hp>0&&support.material==="stone");
+ return Boolean(support?.built&&support.hp>0);
 }
 function towerCoverage(enemy){return getTowerCoverage(state.buildings.filter(isTowerOperational),enemy)}
 function chooseAutoTarget(unit){
@@ -1137,12 +1137,12 @@ function showFutureLayoutHint(hit){
   "middle-gate":"Mittleres Holztor: im Baumenü auswählen und diesen Torplatz für 20 Holz schließen.",
   "outer-wall":"Holzpalisade auswählen und dieses Außensegment für 5 Holz errichten.",
   "outer-gate":"Holztor auswählen und diesen äußeren Torplatz für 20 Holz schließen.",
-  "middle-tower":hit.slot&&state.walls[hit.slot.i]?.material==="stone"&&state.walls[hit.slot.i]?.hp>0
+  "middle-tower":hit.slot&&state.walls[hit.slot.i]?.built&&state.walls[hit.slot.i]?.hp>0
    ? "Mittlerer Mauerturmplatz: Wähle einen Turm im Baumenü."
-   : "Dieser mittlere Mauerturmplatz wird erst auf einer intakten Steinmauer freigeschaltet.",
-  "outer-tower":hit.slot&&state.outerWalls[hit.slot.i]?.material==="stone"&&state.outerWalls[hit.slot.i]?.hp>0
+   : "Dieser mittlere Mauerturmplatz benötigt ein intaktes Holz- oder Steinsegment.",
+  "outer-tower":hit.slot&&state.outerWalls[hit.slot.i]?.built&&state.outerWalls[hit.slot.i]?.hp>0
    ? "Äußerer Mauerturmplatz: Wähle einen Turm im Baumenü."
-   : "Dieser äußere Mauerturmplatz wird erst auf einer intakten Steinmauer freigeschaltet."
+   : "Dieser äußere Mauerturmplatz benötigt ein intaktes Holz- oder Steinsegment."
  };
  const text=messages[hit.type];
  if(!text)return false;

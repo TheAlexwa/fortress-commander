@@ -189,10 +189,6 @@ export function createEntityAt(x, y, key, context) {
       showToast("Der Mauerturmplatz benötigt ein intaktes Mauersegment");
       return false;
     }
-    if (supportingWall.material !== "stone") {
-      showToast("Mauertürme können nur auf einer intakten Steinmauer errichtet werden");
-      return false;
-    }
   }
 
   state.gold -= blueprint.gold;
