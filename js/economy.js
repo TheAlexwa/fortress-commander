@@ -5,6 +5,11 @@
  * Benötigte Zustände und Hilfsfunktionen werden von main.js übergeben.
  */
 
+export function getRepairBuildingBaseHpPerTick(building) {
+  const level = Math.max(1, Math.min(5, Number(building?.level) || 1));
+  return 16 + (level - 1) * 2;
+}
+
 export function getSupportProductionPerSecond(building, buildingHasWorker) {
   const level = building.level || 1;
 

@@ -10,6 +10,38 @@ import {
  * Spielzustand und UI-Rückmeldungen werden von main.js übergeben.
  */
 
+const SUPPORT_BUILDING_MAX_LEVEL = Object.freeze({
+  house: 2,
+  lumber: 5,
+  quarry: 5,
+  workshop: 5,
+  repair: 5,
+  market: 3,
+});
+
+export function getBuildingMaxLevel(entity) {
+  return SUPPORT_BUILDING_MAX_LEVEL[entity?.key] || 1;
+}
+
+export function hasBuildingUpgradeEffect(entity) {
+  return Boolean(SUPPORT_BUILDING_MAX_LEVEL[entity?.key]);
+}
+
+export function getBuildingUpgradeCost(entity) {
+  if (!entity || entity.kind !== "building" || !hasBuildingUpgradeEffect(entity)) {
+    return { gold: 0, wood: 0, maxed: true, maxLevel: 1 };
+  }
+
+  const level = Math.max(1, Number(entity.level) || 1);
+  const maxLevel = getBuildingMaxLevel(entity);
+  return {
+    gold: Math.floor(entity.base.gold * (0.65 + level * 0.45)),
+    wood: Math.floor(entity.base.wood * (0.45 + level * 0.3)),
+    maxed: level >= maxLevel,
+    maxLevel,
+  };
+}
+
 export function getBuildRequirement(state, key) {
   const hasHouse = state.buildings.some((building) => building.key === "house");
   const hasLumber = state.buildings.some((building) => building.key === "lumber");
@@ -265,11 +297,15 @@ export function upgradeEntity(entity, context) {
 
   if (entity.kind !== "building") return false;
 
-  const goldCost = Math.floor(entity.base.gold * (0.65 + entity.level * 0.45));
-  const woodCost = Math.floor(entity.base.wood * (0.45 + entity.level * 0.3));
-  const maxLevel = entity.key === "house" ? 2 : entity.key === "market" ? 3 : 5;
+  if (!hasBuildingUpgradeEffect(entity)) {
+    showToast("Für dieses Gebäude ist keine wirksame Aufwertung verfügbar");
+    return false;
+  }
 
-  if (entity.level >= maxLevel) {
+  const { gold: goldCost, wood: woodCost, maxed, maxLevel } =
+    getBuildingUpgradeCost(entity);
+
+  if (maxed) {
     showToast(
       entity.key === "house"
         ? "Holzhaus ist bereits vollständig ausgebaut"
@@ -297,6 +333,8 @@ export function upgradeEntity(entity, context) {
         globalResearchIncreaseRate() * 100
       )} %`
     );
+  } else if (entity.key === "repair") {
+    showToast(`Handwerkerhaus Stufe ${entity.level}: Reparaturleistung erhöht`);
   } else {
     showToast("Gebäude verbessert");
   }

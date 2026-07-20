@@ -43,7 +43,11 @@ export function renderGameUI({
   repairHpPerTick,
   workshopLevels,
   globalResearchIncreaseRate,
-  marketLossPercent
+  marketLossPercent,
+  buildingUpgradePreview,
+  getBuildingUpgradeCost,
+  getBuildingMaxLevel,
+  hasBuildingUpgradeEffect
 }) {
   closeAllBlockingPanels();
 
@@ -255,8 +259,10 @@ export function renderGameUI({
     return;
   }
 
-  const goldCost = Math.floor(building.base.gold * (0.65 + building.level * 0.45));
-  const woodCost = Math.floor(building.base.wood * (0.45 + building.level * 0.3));
+  const upgradeCost = getBuildingUpgradeCost(building);
+  const goldCost = upgradeCost.gold;
+  const woodCost = upgradeCost.wood;
+  const upgradePreview = buildingUpgradePreview(building);
   let supportInfo = "";
 
   if (building.key === "house") {
@@ -270,7 +276,7 @@ export function renderGameUI({
     supportInfo = `<br>Bewohner: ${buildingHasWorker(building) ? "zugewiesen" : "nicht zugewiesen"} · Produktion: ${supportProductionPerSecond(building).toFixed(2)} Stein/Sek.`;
   }
   if (building.key === "repair") {
-    supportInfo = `<br>Bewohner: ${buildingHasWorker(building) ? "zugewiesen" : "nicht zugewiesen"} · Reparatur: ${repairHpPerTick().toFixed(1).replace(".", ",")} HP je Takt · ${building.repairEnabled === false ? "gestoppt" : "aktiv"}`;
+    supportInfo = `<br>Bewohner: ${buildingHasWorker(building) ? "zugewiesen" : "nicht zugewiesen"} · Reparatur: ${repairHpPerTick(building).toFixed(1).replace(".", ",")} HP je Takt · ${building.repairEnabled === false ? "gestoppt" : "aktiv"}`;
   }
   if (building.key === "workshop") {
     supportInfo = `<br>Forschung: 🔬 ${Math.floor(state.researchPoints || 0)} · Technologiestufen: ${workshopLevels()}<br>Globaler Kostenanstieg je fremder Forschungsstufe: ${Math.round(globalResearchIncreaseRate() * 100)} %`;
@@ -296,10 +302,16 @@ export function renderGameUI({
     ? building.level >= 2 ? "Holzhaus" : "Zeltlager"
     : building.base.name;
 
-  ui.selected.innerHTML = `<b>${buildingName} Stufe ${building.level}</b>${supportInfo}<br>Upgrade: ${goldCost} Gold / ${woodCost} Holz`;
+  const upgradeInfo = upgradePreview
+    ? upgradePreview.maxed
+      ? `<br>${upgradePreview.summary}`
+      : `<br>Nächste Stufe: ${upgradePreview.summary}<br>Upgrade: ${goldCost} Gold / ${woodCost} Holz`
+    : "<br>Keine wirksame Gebäudeaufwertung verfügbar";
+  ui.selected.innerHTML = `<b>${buildingName} Stufe ${building.level}</b>${supportInfo}${upgradeInfo}`;
 
-  const maxLevel = building.key === "house" ? 2 : building.key === "market" ? 3 : 5;
+  const maxLevel = getBuildingMaxLevel(building);
   ui.upgrade.disabled =
+    !hasBuildingUpgradeEffect(building) ||
     building.level >= maxLevel ||
     state.gold < goldCost ||
     state.wood < woodCost;

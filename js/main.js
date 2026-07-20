@@ -28,6 +28,7 @@ import {
  getTotalGoldPerSecond,
  getMarketLossPercent,
  getMarketOutput,
+ getRepairBuildingBaseHpPerTick,
  runEconomySupportTick
 } from "./economy.js";
 
@@ -45,7 +46,10 @@ import {
  getBuildRequirement,
  createEntityAt,
  upgradeEntity,
- sellEntity
+ sellEntity,
+ getBuildingMaxLevel,
+ getBuildingUpgradeCost,
+ hasBuildingUpgradeEffect
 } from "./buildings.js";
 
 import {
@@ -134,8 +138,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.6";
-const GAME_RELEASE_NAME="Mehr Mauertürme auf Holz und Stein";
+const GAME_VERSION="1.15.7";
+const GAME_RELEASE_NAME="Geprüfte Gebäudeaufwertungen";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -362,10 +366,9 @@ function assignedResidents(){return getAssignedResidents(state)}
 function freeResidents(){return getFreeResidents(state)}
 function buildingHasWorker(building){return hasBuildingWorker(building)}
 const REPAIR_TICK_SECONDS=1;
-const BASE_REPAIR_HP_PER_TICK=16;
 const BASE_REPAIR_WOOD_PER_TICK=0.5;
 function researchLevel(id){return getResearchLevel(state.research,id)}
-function repairHpPerTick(){return getRepairHpPerTick(state.research,BASE_REPAIR_HP_PER_TICK)}
+function repairHpPerTick(building){return getRepairHpPerTick(state.research,getRepairBuildingBaseHpPerTick(building))}
 function repairWoodPerTick(){return getRepairWoodPerTick(state.research,BASE_REPAIR_WOOD_PER_TICK)}
 function craftsmanMoveSpeed(){return getCraftsmanMoveSpeed(state.research)}
 function fortressAutoRepairPercent(){return getFortressAutoRepairPercent(state.research)}
@@ -559,7 +562,8 @@ function updateUI(){
   totalWoodPerSecond,totalStonePerSecond,syncResidents,assignedResidents,totalResidents,freeResidents,
   waveCount,buildRequirement,residentCapacityForHouse,buildingHasWorker,
   supportProductionPerSecond,repairHpPerTick,workshopLevels,
-  globalResearchIncreaseRate,marketLossPercent
+  globalResearchIncreaseRate,marketLossPercent,buildingUpgradePreview,
+  getBuildingUpgradeCost,getBuildingMaxLevel,hasBuildingUpgradeEffect
  });
 }
 
@@ -685,6 +689,46 @@ function burst(x,y,color,n){for(let i=0;i<n;i++){const a=Math.random()*TAU,s=20+
 function supportProductionPerSecond(building){
  return getSupportProductionPerSecond(building,buildingHasWorker);
 }
+function supportProductionAtLevel(building,level){
+ return getSupportProductionPerSecond({...building,level},()=>true);
+}
+function workshopResearchIncreaseRateForLevel(level){
+ return [0,.30,.25,.20,.15,.10][Math.max(1,Math.min(5,Number(level)||1))];
+}
+function deNumber(value,digits=2){
+ return Number(value||0).toFixed(digits).replace(".",",");
+}
+function buildingUpgradePreview(building){
+ if(!building||building.kind!=="building"||!hasBuildingUpgradeEffect(building))return null;
+ const level=Math.max(1,Number(building.level)||1),maxLevel=getBuildingMaxLevel(building);
+ if(level>=maxLevel)return {maxed:true,label:"Maximalstufe erreicht",current:"",next:"",summary:"Keine weitere wirksame Gebäudestufe verfügbar."};
+ const nextLevel=level+1,nextBuilding={...building,level:nextLevel};
+ if(building.key==="house"){
+  const currentResidents=residentCapacityForHouse(building),nextResidents=residentCapacityForHouse(nextBuilding);
+  return {maxed:false,label:"Bewohner & Einkommen",current:`${currentResidents} Plätze · ${deNumber(currentResidents*.18)} Gold/Sek.`,next:`${nextResidents} Plätze · ${deNumber(nextResidents*.18)} Gold/Sek.`,summary:`Bewohnerplätze ${currentResidents} → ${nextResidents} · Goldproduktion ${deNumber(currentResidents*.18)} → ${deNumber(nextResidents*.18)}/Sek.`};
+ }
+ if(building.key==="lumber"){
+  const current=supportProductionAtLevel(building,level),next=supportProductionAtLevel(building,nextLevel);
+  return {maxed:false,label:"Holzproduktion",current:`${deNumber(current)} Holz/Sek.`,next:`${deNumber(next)} Holz/Sek.`,summary:`Holzproduktion ${deNumber(current)} → ${deNumber(next)}/Sek.`};
+ }
+ if(building.key==="quarry"){
+  const current=supportProductionAtLevel(building,level),next=supportProductionAtLevel(building,nextLevel);
+  return {maxed:false,label:"Steinproduktion",current:`${deNumber(current)} Stein/Sek.`,next:`${deNumber(next)} Stein/Sek.`,summary:`Steinproduktion ${deNumber(current)} → ${deNumber(next)}/Sek.`};
+ }
+ if(building.key==="repair"){
+  const current=repairHpPerTick(building),next=repairHpPerTick(nextBuilding);
+  return {maxed:false,label:"Reparaturleistung",current:`${deNumber(current,1)} HP/Takt`,next:`${deNumber(next,1)} HP/Takt`,summary:`Reparaturleistung ${deNumber(current,1)} → ${deNumber(next,1)} HP/Takt · Holzbedarf bleibt ${deNumber(repairWoodPerTick(),2)}`};
+ }
+ if(building.key==="market"){
+  const currentGold=supportProductionAtLevel(building,level),nextGold=supportProductionAtLevel(building,nextLevel),currentLoss=marketLossPercent(building),nextLoss=marketLossPercent(nextBuilding);
+  return {maxed:false,label:"Handel & Einkommen",current:`${deNumber(currentGold)} Gold/Sek. · ${currentLoss}% Verlust`,next:`${deNumber(nextGold)} Gold/Sek. · ${nextLoss}% Verlust`,summary:`Goldproduktion ${deNumber(currentGold)} → ${deNumber(nextGold)}/Sek. · Handelsverlust ${currentLoss}% → ${nextLoss}%`};
+ }
+ if(building.key==="workshop"){
+  const current=Math.round(workshopResearchIncreaseRateForLevel(level)*100),next=Math.round(workshopResearchIncreaseRateForLevel(nextLevel)*100);
+  return {maxed:false,label:"Forschungskosten",current:`${current}% Aufschlag`,next:`${next}% Aufschlag`,summary:`Globaler Forschungsaufschlag ${current}% → ${next}% je fremder Forschungsstufe`};
+ }
+ return null;
+}
 function totalGoldPerSecond(){
  return getTotalGoldPerSecond(state,{syncResidents,residentCapacityForHouse,buildingHasWorker});
 }
@@ -777,7 +821,7 @@ function updateCraftsmen(dt){
    if(state.wood<repairWoodPerTick()){c.repairTimer=0;c.mode="waiting";goHome(c);continue}
    c.repairTimer-=REPAIR_TICK_SECONDS;
    state.wood=Math.max(0,state.wood-repairWoodPerTick());
-   const repaired=Math.min(repairHpPerTick(),Math.max(0,info.need()));
+   const repaired=Math.min(repairHpPerTick(c.home),Math.max(0,info.need()));
    info.apply(repaired);state.repairedHp+=repaired;
    burst(info.x,info.y,"#e7c36b",2);
   }
@@ -1308,7 +1352,7 @@ function buildingProductionInfo(b){
  if(b.key==="house")return {label:"Goldproduktion",value:`+${(residentCapacityForHouse(b)*.18).toFixed(2)} Gold/Sek.`,state:active?"läuft":"nur in aktiver Welle"};
  if(b.key==="lumber")return {label:"Holzproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Holz/Sek.`,state:buildingHasWorker(b)?(active?"läuft":"wartet auf Welle"):"kein Bewohner"};
  if(b.key==="quarry")return {label:"Steinproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Stein/Sek.`,state:buildingHasWorker(b)?(active?"läuft":"wartet auf Welle"):"kein Bewohner"};
- if(b.key==="repair")return {label:"Reparaturleistung",value:`+${repairHpPerTick().toFixed(1).replace(".",",")} HP/Takt · −${repairWoodPerTick().toFixed(2).replace(".",",")} Holz`,state:!buildingHasWorker(b)?"kein Bewohner":b.repairEnabled===false?"gestoppt":active?"läuft bei Schaden":"wartet"};
+ if(b.key==="repair")return {label:"Reparaturleistung",value:`+${repairHpPerTick(b).toFixed(1).replace(".",",")} HP/Takt · −${repairWoodPerTick().toFixed(2).replace(".",",")} Holz`,state:!buildingHasWorker(b)?"kein Bewohner":b.repairEnabled===false?"gestoppt":active?"läuft bei Schaden":"wartet"};
  if(b.key==="market")return {label:"Goldproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Gold/Sek.`,state:buildingHasWorker(b)?(active?"läuft":"wartet auf Welle"):"kein Bewohner"};
  if(b.key==="workshop")return {label:"Forschung",value:`${workshopLevels()} Stufen`,state:`🔬 ${Math.floor(state.researchPoints||0)} verfügbar`};
  return {label:"Produktion",value:"—",state:"—"};
@@ -1330,8 +1374,7 @@ function buildingStatsHtml(b){
  <div class="statsSection"><h3>Kampfwerte</h3><div class="statRow header"><div>Wert</div><div>Grundwert</div><div>Aktuell</div><div>Änderung</div></div>${rows}</div>
  <div class="statsHint">Türme werden nicht direkt mit Gold oder Holz verbessert. Individuelle Aufwertungen erfolgen über Kampf-EXP; globale Turmforschung folgt in einem eigenen Schritt.</div>`;
  const prod=buildingProductionInfo(b),workerNeeded=["lumber","quarry","repair","market"].includes(b.key),workerText=workerNeeded?(buildingHasWorker(b)?"1 / 1 zugewiesen":"0 / 1 zugewiesen"):b.key==="house"?`${residentCapacityForHouse(b)} Bewohnerplätze`:"Kein Arbeitsplatz";
- const g=Math.floor(b.base.gold*(.65+b.level*.45)),w=Math.floor(b.base.wood*(.45+b.level*.3));
- const maxLevel=b.key==="house"?2:b.key==="market"?3:5,canUpgrade=b.level<maxLevel&&state.gold>=g&&state.wood>=w;
+ const cost=getBuildingUpgradeCost(b),g=cost.gold,w=cost.wood,maxLevel=cost.maxLevel,canUpgrade=!cost.maxed&&state.gold>=g&&state.wood>=w,preview=buildingUpgradePreview(b);
  return `<div class="buildingOverview">
   <div class="statTile"><span>Gebäude</span><b>${buildingDisplayName(b)}</b></div>
   <div class="statTile"><span>Stufe</span><b>${level} / ${maxLevel}</b></div>
@@ -1341,6 +1384,7 @@ function buildingStatsHtml(b){
  <div class="statsSection"><h3>Gebäudewerte</h3><div class="statRow header"><div>Wert</div><div>Grundwert</div><div>Aktuell</div><div>Änderung</div></div>${rows}</div>
  ${b.key==="market"?`<div class="statsHint">Handelsverlust: ${marketLossPercent(b)} %. Höhere Marktplatzstufen verbessern Produktion und Tauschrate.</div>`:""}
  ${b.key==="workshop"?`<div class="statsHint">Öffne die Forschung über die Werkstatt. Verfügbar: 🔬 ${Math.floor(state.researchPoints||0)} · Erforschte Stufen: ${workshopLevels()}</div>`:""}
+ ${preview?`<div class="statsSection"><h3>${preview.maxed?"Gebäude vollständig ausgebaut":`Nächste Stufe ${level+1}`}</h3><div class="upgradeCard"><b>${preview.label}</b><small>${preview.summary}</small></div></div>`:""}
  <div class="buildingActionBar">
   ${workerNeeded?`<button type="button" data-building-worker="${b.bid}" class="${buildingHasWorker(b)?"danger":"primary"}">${buildingHasWorker(b)?"Bewohner abziehen":"Bewohner zuweisen"}</button>`:""}
   ${b.key==="repair"&&buildingHasWorker(b)?`<button type="button" data-building-repair="${b.bid}">${b.repairEnabled===false?"Arbeit starten":"Arbeit stoppen"}</button>`:""}
@@ -1462,14 +1506,14 @@ function openResourceDetails(){
 }
 
 function upgradeEntityCost(entity){
- if(!entity)return {gold:0,wood:0,maxed:true};
- // Einheiten und Türme werden nicht direkt mit Gold oder Holz verbessert.
- if(entity.kind==="unit"||entity.kind==="building"&&(entity.base?.kind==="tower"||entity.base?.decorative))return {gold:0,wood:0,maxed:true};
+ if(!entity)return {gold:0,wood:0,maxed:true,max:1};
+ // Einheiten, Türme und Zierbauten werden nicht direkt mit Gold oder Holz verbessert.
+ if(entity.kind==="unit"||entity.kind==="building"&&(entity.base?.kind==="tower"||entity.base?.decorative))return {gold:0,wood:0,maxed:true,max:1};
  if(entity.kind==="building"){
-  const max=entity.key==="house"?2:entity.key==="market"?3:5;
-  return {gold:Math.floor(entity.base.gold*(.65+(entity.level||1)*.45)),wood:Math.floor(entity.base.wood*(.45+(entity.level||1)*.3)),maxed:(entity.level||1)>=max,max};
+  const cost=getBuildingUpgradeCost(entity);
+  return {gold:cost.gold,wood:cost.wood,maxed:cost.maxed,max:cost.maxLevel};
  }
- return {gold:0,wood:0,maxed:true};
+ return {gold:0,wood:0,maxed:true,max:1};
 }
 function upgradeEntityName(entity){return entity.kind==="unit"?(entity.key==="guard"?"Burgwache":"Bogenschütze"):buildingDisplayName(entity)}
 function upgradeEntityIcon(entity){if(entity.kind==="unit")return entity.key==="guard"?"🛡️":"🏹";return {archer:"🏹",crossbow:"🎯",catapult:"🪨",house:entity.level>=2?"🏠":"⛺",lumber:"🪵",quarry:"🪨",statue:"🗿",workshop:"⚒️",repair:"👷",market:"🏪"}[entity.key]||"🏰"}
@@ -1493,7 +1537,7 @@ function upgradeRecommendation(){
 }
 function upgradeCenterHtml(){
  const workshop=state.buildings.find(b=>b.key==="workshop"),upgradable=state.buildings.filter(e=>!upgradeEntityCost(e).maxed),affordable=upgradable.filter(e=>{const c=upgradeEntityCost(e);return state.gold>=c.gold&&state.wood>=c.wood});
- const buildingRows=state.buildings.length?state.buildings.map(b=>{const isTower=b.base.kind==="tower",c=upgradeEntityCost(b),can=!c.maxed&&state.gold>=c.gold&&state.wood>=c.wood;if(b.base.decorative)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)}</b><small>Zierbauwerk auf eigenem Ehrenplatz · Funktion folgt später.</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" disabled>Keine Aufwertung</button></div></div>`;if(isTower)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · EXP-Stufe ${b.expLevel||1}</b><small>EXP ${Math.floor(b.xp||0)}/${Math.floor(b.xpMax||90)} · Schaden ${Math.round(b.damage)} · Reichweite ${Math.round(b.range)}${b.pendingUpgrades?` · ${b.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung über EXP oder Forschung"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">${b.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${b.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`;return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · Stufe ${b.level||1}</b><small>${b.key==="workshop"?`Globaler Forschungsaufschlag: ${Math.round(globalResearchIncreaseRate()*100)} % je fremder Stufe.`:`Versorgungsgebäude · investiert ${Math.floor(b.investedGold||0)} Gold / ${Math.floor(b.investedWood||0)} Holz`}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" data-upgrade-buy="building:${b.bid}" ${can?"":"disabled"}>${c.maxed?"✓ MAX":`⬆ ${c.gold} 🪙${c.wood?` · ${c.wood} 🪵`:""}`}</button></div></div>`}).join(""):'<div class="statsHint">Noch keine Gebäude errichtet.</div>';
+ const buildingRows=state.buildings.length?state.buildings.map(b=>{const isTower=b.base.kind==="tower",c=upgradeEntityCost(b),can=!c.maxed&&state.gold>=c.gold&&state.wood>=c.wood;if(b.base.decorative)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)}</b><small>Zierbauwerk auf eigenem Ehrenplatz · Funktion folgt später.</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" disabled>Keine Aufwertung</button></div></div>`;if(isTower)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · EXP-Stufe ${b.expLevel||1}</b><small>EXP ${Math.floor(b.xp||0)}/${Math.floor(b.xpMax||90)} · Schaden ${Math.round(b.damage)} · Reichweite ${Math.round(b.range)}${b.pendingUpgrades?` · ${b.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung über EXP oder Forschung"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">${b.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${b.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`;const preview=buildingUpgradePreview(b);return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · Stufe ${b.level||1}</b><small>${preview?(preview.maxed?preview.summary:preview.summary):"Keine wirksame Gebäudeaufwertung verfügbar."}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" data-upgrade-buy="building:${b.bid}" ${can?"":"disabled"}>${c.maxed?"✓ MAX":`⬆ ${c.gold} 🪙${c.wood?` · ${c.wood} 🪵`:""}`}</button></div></div>`}).join(""):'<div class="statsHint">Noch keine Gebäude errichtet.</div>';
  const unitRows=state.units.length?state.units.map(u=>`<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(u)}</div><div><b>${upgradeEntityName(u)} · Erfahrungsstufe ${u.expLevel||1}</b><small>EXP ${Math.floor(u.xp||0)}/${Math.floor(u.xpMax||65)} · Schaden ${Math.round(u.damage)} · Leben ${Math.round(u.maxHp)}${u.pendingUpgrades?` · ${u.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung nur durch EXP oder Forschung"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="unit:${u.uid}">${u.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${u.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`).join(""):'<div class="statsHint">Noch keine mobilen Einheiten ausgebildet.</div>';
  const research=allResearchTechs().map(t=>`<div class="researchCenterItem"><b>${t.icon} ${t.name}</b><small>${t.desc}</small><div class="level">Stufe ${researchLevel(t.id)}/${t.max}${researchLevel(t.id)<t.max?` · nächste Kosten ${researchCost(t)} 🔬`:" · MAX"}</div></div>`).join("");
  const bonuses=activeGlobalBonuses();
@@ -1654,8 +1698,9 @@ function updateSelectionHud(){
  selectionAutoBtn.classList.toggle("hidden",!isUnit);
  const canShowRange=isUnit||(selected.kind==="building"&&selected.base.kind==="tower");
  selectionRangeBtn.classList.toggle("hidden",!canShowRange);
- const isNormalBuilding=selected.kind==="building"&&selected.base.kind!=="tower"&&!selected.base.decorative;
- const normalBuildingCanUpgrade=isNormalBuilding&&(selected.level||1)<(selected.key==="house"?2:5);
+ const isNormalBuilding=selected.kind==="building"&&selected.base.kind!=="tower"&&!selected.base.decorative&&hasBuildingUpgradeEffect(selected);
+ const normalBuildingCost=isNormalBuilding?getBuildingUpgradeCost(selected):null;
+ const normalBuildingCanUpgrade=isNormalBuilding&&!normalBuildingCost.maxed;
  const xpUpgradeReady=(isUnit||(selected.kind==="building"&&selected.base.kind==="tower"))&&(selected.pendingUpgrades||0)>0;
  const fortificationUpgrade=getMiddleFortificationUpgrade(selected);
  const canOfferStoneUpgrade=fortificationUpgrade.eligible&&!fortificationUpgrade.upgraded&&selected.built&&selected.hp>0;
@@ -1665,10 +1710,9 @@ function updateSelectionHud(){
   selectionUpgradeBtn.querySelector("small").textContent=`Zu ${fortificationUpgrade.label} · ${fortificationUpgrade.cost}🪨`;
   selectionUpgradeBtn.disabled=state.inWave||state.stone<fortificationUpgrade.cost;
  }else if(normalBuildingCanUpgrade){
-  const g=Math.floor(selected.base.gold*(.65+(selected.level||1)*.45));
-  const w=Math.floor(selected.base.wood*(.45+(selected.level||1)*.3));
+  const g=normalBuildingCost.gold,w=normalBuildingCost.wood,preview=buildingUpgradePreview(selected);
   selectionUpgradeBtn.querySelector("span").textContent="⬆";
-  selectionUpgradeBtn.querySelector("small").textContent=selected.key==="house"?`Zum Holzhaus · ${g}🪙 ${w}🪵`:`Aufwerten · ${g}🪙 ${w}🪵`;
+  selectionUpgradeBtn.querySelector("small").textContent=selected.key==="house"?`Zum Holzhaus · ${g}🪙 ${w}🪵`:`${preview?.label||"Aufwerten"} · ${g}🪙 ${w}🪵`;
   selectionUpgradeBtn.disabled=state.gold<g||state.wood<w;
  }else{
   selectionUpgradeBtn.querySelector("span").textContent="✦";

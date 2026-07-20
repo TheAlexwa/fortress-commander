@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.15.6 – Erweiterte Mauerturmplätze</title>
+<title>Fortress Commander v1.15.7 – Gebäudeaufwertungen geprüft</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,7 +20,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Spiel starten">Spiel starten</button>
-  <div id="gameVersionBadge">v1.15.6</div>
+  <div id="gameVersionBadge">v1.15.7</div>
   <div id="developmentNotice"><strong>🏗 Festungsumbau in Entwicklung</strong><span>Mauertürme stehen jetzt bereits auf Holzpalisaden. Der mittlere Ring bietet acht, der äußere Ring zwölf feste Turmplätze.</span></div>
  </div>
 </div>
@@ -78,7 +78,7 @@
     <article class="guideCard"><h3>🪵 Holzfäller</h3><p>Produziert Holz ausschließlich während einer aktiven, nicht pausierten Welle. Benötigt einen Bewohner.</p><div class="guideMeta"><span>70 Gold</span><span>1 Bewohner</span><span>Holzproduktion</span></div></article>
     <article class="guideCard"><h3>🪨 Steinbruch</h3><p>Produziert Stein während aktiver Wellen und benötigt einen Bewohner. Stein ist der vorbereitende Rohstoff für kommende Mauern, Tore und schwere Festungsbauten.</p><div class="guideMeta"><span>90 Gold</span><span>25 Holz</span><span>1 Bewohner</span></div></article>
     <article class="guideCard"><h3>🗿 Kriegerstatue</h3><p>Ein dekoratives Bauwerk auf einem eigenen Ehrenplatz. In dieser Version besitzt die Statue noch keine Funktion.</p><div class="guideMeta"><span>45 Gold</span><span>15 Stein</span><span>Eigener Bauplatz</span></div></article>
-    <article class="guideCard"><h3>👷 Handwerkerhaus</h3><p>Stellt einen Handwerker bereit. Nach einer Welle repariert er beschädigte Mauern, Türme und die Burg automatisch und verbraucht dabei Holz.</p><div class="guideMeta"><span>90 Gold</span><span>35 Holz</span><span>1 Bewohner</span></div></article>
+    <article class="guideCard"><h3>👷 Handwerkerhaus</h3><p>Stellt einen Handwerker bereit. Während eines Angriffs repariert er beschädigte Mauern, Tore, Türme und die Burg und verbraucht dabei Holz. Gebäudestufen erhöhen die Reparaturleistung von 16 bis 24 HP pro Takt, bevor Forschung wirkt.</p><div class="guideMeta"><span>90 Gold</span><span>35 Holz</span><span>1 Bewohner</span></div></article>
     <article class="guideCard"><h3>⚒️ Werkstatt</h3><p>Öffnet das Forschungszentrum. Jede gekaufte Forschungsstufe erhöht die Kosten aller anderen Technologien global. Der Aufschlag sinkt durch Werkstatt-Ausbau: Stufe 1 = 30 %, Stufe 2 = 25 %, Stufe 3 = 20 %, Stufe 4 = 15 %, Stufe 5 = 10 % je fremder Forschungsstufe.</p><div class="guideMeta"><span>110 Gold</span><span>40 Holz</span><span>Globale Forschung</span></div></article>
     <article class="guideCard"><h3>🏪 Marktplatz</h3><p>Spätes Wirtschaftsgebäude für zusätzliche Goldeinnahmen und Ressourcentausch. Benötigt einen Bewohner.</p><div class="guideMeta"><span>150 Gold</span><span>60 Holz</span><span>Ressourcentausch</span></div></article>
    </div><div class="guideTip"><b>Freischaltfolge:</b> Zeltlager → Holzfäller → Steinbruch oder Handwerkerhaus → Werkstatt → Marktplatz.</div><div class="guideTip"><b>🏗 Umbauhinweis:</b> Beide Verteidigungsringe können mit Stein verstärkt werden. Der mittlere Ring besitzt acht und der äußere Ring zwölf feste Mauerturmplätze; intakte Holzpalisaden reichen bereits als Unterlage.</div></div>
@@ -96,7 +96,7 @@
 
   <details class="guideSection">
    <summary>🌊 Wellen, Reparatur & Strategie</summary>
-   <div class="guideBody"><div class="guideTip"><b>⛺ Belagerungsphase:</b> Zwischen den Angriffen sammeln sich Gegner sichtbar in drei Außenlagern. Der Button <b>Angriff</b> schickt alle bereits eingetroffenen Gegner gleichzeitig los; noch nicht eingetroffene Einheiten folgen als Verstärkung. Die gesamte Wellenstärke bleibt gleich – längeres Warten vergrößert nur den ersten Angriffspulk.</div><div class="guideTip"><b>🔱 Upgrade-Zentrale:</b> Das Upgrade-Symbol im unteren Hauptmenü öffnet eine Gesamtübersicht für Gebäude, Einheiten, Forschung, globale Boni und Empfehlungen. Reguläre Versorgungsgebäude können dort direkt aufgewertet werden. Einheiten und Türme erhalten keine direkten Gold-/Holz-Upgrades; ihre individuelle Entwicklung läuft über Kampf-EXP.</div><div class="guideTip"><b>Globale Forschungskosten:</b> Forschung in einem Zweig verteuert alle anderen Zweige. Eine höherstufige Werkstatt reduziert diesen globalen Aufschlag von 30 % bis auf 10 %.</div><ul><li>Gold und Holz oben links zeigen Bestand und aktuelle Produktion. Antippen öffnet die ausführliche Übersicht.</li><li>Nach jeder bestandenen Welle erhältst du Forschungspunkte und eine Schadensübersicht.</li><li>Handwerker reparieren 16 Lebenspunkte pro Sekunde und verbrauchen 0,5 Holz pro Reparaturtakt, bevor Forschung wirkt.</li><li>Kleine und normale Gegner verursachen an Mauern nur 25 % ihres normalen Schadens; Schildträger, Berserker und Bosse verursachen vollen Mauerschaden.</li></ul><div class="guideTip">Baue zuerst mindestens einen schnellen Turm. Ergänze danach Unterkünfte und Holzproduktion, bevor die Reparaturkosten stark steigen.</div></div>
+   <div class="guideBody"><div class="guideTip"><b>⛺ Belagerungsphase:</b> Zwischen den Angriffen sammeln sich Gegner sichtbar in drei Außenlagern. Der Button <b>Angriff</b> schickt alle bereits eingetroffenen Gegner gleichzeitig los; noch nicht eingetroffene Einheiten folgen als Verstärkung. Die gesamte Wellenstärke bleibt gleich – längeres Warten vergrößert nur den ersten Angriffspulk.</div><div class="guideTip"><b>🔱 Upgrade-Zentrale:</b> Das Upgrade-Symbol im unteren Hauptmenü öffnet eine Gesamtübersicht für Gebäude, Einheiten, Forschung, globale Boni und Empfehlungen. Reguläre Versorgungsgebäude können dort direkt aufgewertet werden. Einheiten und Türme erhalten keine direkten Gold-/Holz-Upgrades; ihre individuelle Entwicklung läuft über Kampf-EXP.</div><div class="guideTip"><b>Globale Forschungskosten:</b> Forschung in einem Zweig verteuert alle anderen Zweige. Eine höherstufige Werkstatt reduziert diesen globalen Aufschlag von 30 % bis auf 10 %.</div><ul><li>Gold und Holz oben links zeigen Bestand und aktuelle Produktion. Antippen öffnet die ausführliche Übersicht.</li><li>Nach jeder bestandenen Welle erhältst du Forschungspunkte und eine Schadensübersicht.</li><li>Handwerker reparieren je nach Gebäudestufe 16 bis 24 Lebenspunkte pro Takt und verbrauchen 0,5 Holz pro Reparaturtakt, bevor Forschung wirkt.</li><li>Kleine und normale Gegner verursachen an Mauern nur 25 % ihres normalen Schadens; Schildträger, Berserker und Bosse verursachen vollen Mauerschaden.</li></ul><div class="guideTip">Baue zuerst mindestens einen schnellen Turm. Ergänze danach Unterkünfte und Holzproduktion, bevor die Reparaturkosten stark steigen.</div></div>
   </details>
 
   <details class="guideSection">
@@ -216,7 +216,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.15.6 · 8 mittlere und 12 äußere Mauerturmplätze funktionieren jetzt auf Holz und Stein.</div>
+  <div class="workshopFoot">v1.15.7 · Gebäudeaufwertungen zeigen ihren nächsten Effekt; Handwerkerhäuser reparieren mit jeder Stufe stärker.</div>
  </section>
 </div>
 
