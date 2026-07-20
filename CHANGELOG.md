@@ -1,5 +1,10 @@
 # Fortress Commander – Changelog
 
+## v1.15.25 – Festungshof-Bereinigung
+- der Festungshof verwendet jetzt eine bereinigte Bodengrafik ohne weiße Ränder und ohne eingebrannte Bauplatz-Overlays
+- die Grafik ist sauber freigestellt und besser auf den nutzbaren Innenbereich abgestimmt
+- der bestehende Renderpfad bleibt unverändert; nur das Hof-Asset und die Versionsangaben wurden aktualisiert
+
 ## v1.15.24 – Festungshof-Freistellung
 - der sichtbare Karohintergrund außerhalb des runden Festungshofs wurde entfernt
 - `assets/environment/fortress-yard.webp` besitzt jetzt echte Transparenz außerhalb der Arena
