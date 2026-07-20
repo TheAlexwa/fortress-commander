@@ -9,7 +9,11 @@
  */
 
 export const INNER_WALL_SEGMENT_COUNT = 8;
-export const INNER_WALL_MAX_HP = 360;
+export const INNER_WALL_BUILD_WOOD = 5;
+export const INNER_WALL_WOOD_MAX_HP = 420;
+export const INNER_WALL_STONE_MAX_HP = 850;
+export const INNER_WALL_STONE_COST = 8;
+export const INNER_WALL_MAX_HP = INNER_WALL_WOOD_MAX_HP;
 export const INNER_WALL_GATE_GAP = 0.13;
 export const INNER_WALL_DIVIDER_GAP = 0.025;
 
@@ -276,7 +280,7 @@ export function buildMiddleGateAt(x, y, context) {
   return true;
 }
 
-export function createInnerWallSegments({ maxHp = INNER_WALL_MAX_HP } = {}) {
+export function createInnerWallSegments({ maxHp = INNER_WALL_WOOD_MAX_HP } = {}) {
   const walls = [];
 
   for (let quarterIndex = 0; quarterIndex < 4; quarterIndex++) {
@@ -300,6 +304,7 @@ export function createInnerWallSegments({ maxHp = INNER_WALL_MAX_HP } = {}) {
         a0,
         a1,
         am: (a0 + a1) / 2,
+        material: "wood",
         built: true,
         hp: maxHp,
         maxHp,
@@ -314,7 +319,11 @@ export function initializeInnerWallSegments(innerWalls, { fullHealth = true } = 
   for (const wall of innerWalls || []) {
     wall.kind = "wall";
     wall.ring = "inner";
-    wall.built = true;
+    wall.material = wall.material === "stone" ? "stone" : "wood";
+    wall.built = wall.built !== false;
+    wall.maxHp = wall.material === "stone"
+      ? Math.max(1, Number(wall.maxHp) || INNER_WALL_STONE_MAX_HP)
+      : Math.max(1, Number(wall.maxHp) || INNER_WALL_WOOD_MAX_HP);
     wall.hp = fullHealth ? wall.maxHp : Math.max(0, Number(wall.hp) || 0);
   }
 }
@@ -597,22 +606,24 @@ export const buildMiddleWallSectionAt = buildMiddleWallSegmentAt;
 
 export function getMiddleFortificationUpgrade(entity) {
   const ring = entity?.ring;
-  const supportedRing = ring === "middle" || ring === "outer";
+  const supportedRing = ring === "inner" || ring === "middle" || ring === "outer";
   const isWall = entity?.kind === "wall";
   const isGate = entity?.kind === "gate";
-  const eligible = supportedRing && (isWall || isGate);
+  const eligible = supportedRing && (isWall || isGate) && !(ring === "inner" && isGate);
   const outer = ring === "outer";
+  const inner = ring === "inner";
   const cost = isGate
     ? (outer ? OUTER_GATE_STONE_COST : MIDDLE_GATE_STONE_COST)
-    : (outer ? OUTER_WALL_STONE_COST : MIDDLE_WALL_STONE_COST);
+    : (outer ? OUTER_WALL_STONE_COST : inner ? INNER_WALL_STONE_COST : MIDDLE_WALL_STONE_COST);
   const maxHp = isGate
     ? (outer ? OUTER_GATE_STONE_MAX_HP : MIDDLE_GATE_STONE_MAX_HP)
-    : (outer ? OUTER_WALL_STONE_MAX_HP : MIDDLE_WALL_STONE_MAX_HP);
+    : (outer ? OUTER_WALL_STONE_MAX_HP : inner ? INNER_WALL_STONE_MAX_HP : MIDDLE_WALL_STONE_MAX_HP);
   const material = entity?.material === "stone" ? "stone" : "wood";
   return {
     eligible,
     ring,
     outer,
+    inner,
     isWall,
     isGate,
     material,

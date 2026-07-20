@@ -243,7 +243,8 @@ function createSnapshot({
         maxHp: wall.maxHp,
       })),
       innerWalls: (state.innerWalls || []).map((wall) => ({
-        built: true,
+        material: wall.material === "stone" ? "stone" : "wood",
+        built: wall.built !== false,
         hp: wall.hp,
         maxHp: wall.maxHp,
       })),
@@ -460,12 +461,23 @@ export function loadGameState({
     : null;
   (state.innerWalls || []).forEach((wall, index) => {
     const savedWall = savedInnerWalls?.[index];
-    // Ältere Spielstände erhalten den neuen inneren Ring vollständig intakt.
-    wall.built = true;
-    wall.maxHp = Math.max(1, Number(savedWall?.maxHp) || wall.maxHp);
-    wall.hp = savedWall
-      ? Math.max(0, Number(savedWall.hp) || 0)
-      : wall.maxHp;
+    const material = savedWall?.material === "stone" ? "stone" : "wood";
+    const hasMaterial = Object.prototype.hasOwnProperty.call(savedWall || {}, "material");
+    wall.material = material;
+    wall.built = savedWall?.built !== false;
+    const targetMax = material === "stone" ? wall.maxHp : wall.maxHp;
+    if (savedWall && hasMaterial) {
+      wall.maxHp = Math.max(1, Number(savedWall.maxHp) || targetMax);
+      wall.hp = Math.max(0, Number(savedWall.hp) || 0);
+    } else if (savedWall) {
+      const legacyMax = Math.max(1, Number(savedWall.maxHp) || targetMax);
+      const legacyRatio = Math.max(0, Math.min(1, (Number(savedWall.hp) || 0) / legacyMax));
+      wall.maxHp = targetMax;
+      wall.hp = wall.maxHp * legacyRatio;
+    } else {
+      wall.maxHp = targetMax;
+      wall.hp = wall.maxHp;
+    }
   });
   const savedMiddleGates = Array.isArray(savedState.middleGates)
     ? savedState.middleGates

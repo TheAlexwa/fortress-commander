@@ -196,7 +196,7 @@ export function renderGameUI({
     const stateLabel = destroyed ? "zerstört" : "errichtet";
     const upgrade = getMiddleFortificationUpgrade(selected);
     const title = inner
-      ? "Innerer Mauerring"
+      ? (upgrade.upgraded ? "Innere Steinmauer" : "Innere Holzpalisade")
       : selected.ring === "outer"
         ? (upgrade.upgraded ? "Äußere Steinmauer" : "Äußere Holzpalisade")
         : upgrade.upgraded

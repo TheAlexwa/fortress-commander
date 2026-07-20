@@ -1,5 +1,10 @@
 # Fortress Commander – Changelog
 
+## v1.15.27 – Innerer Mauerring-Ausbau
+- der innere Mauerring startet jetzt als Holzpalisade statt als feste Steinmauer
+- innere Segmente können wie die mittlere und äußere Holzpalisade zu Steinmauern ausgebaut werden
+- innere Mauersegmente speichern jetzt ihr Material korrekt in Spielständen
+
 ## v1.15.26 – Festungshof-Skalierung
 - der Festungshof wurde vergrößert und auf den Innenbereich bis an den Mauerring angepasst
 - die saubere Freistellung bleibt erhalten; nur die Skalierung und Platzierung im Asset wurden optimiert
