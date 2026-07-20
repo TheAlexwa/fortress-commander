@@ -1,5 +1,10 @@
 # Fortress Commander – Changelog
 
+## v1.15.22 – Holzburg-Grafik
+- die zentrale Holzburg verwendet jetzt eine neue comicartige Hauptgrafik
+- Rendering lädt das neue Asset `assets/buildings/wood-fortress-center.webp` direkt aus dem Asset-Ordner
+- die bisherige Canvas-Zeichnung der Holzburg bleibt als Fallback erhalten, falls das Asset nicht geladen werden kann
+
 ## v1.15.21 – Handwerkerhaus-Grafik
 - das Handwerkerhaus (`repair`) verwendet jetzt eine eigene comicartige Gebäudegrafik
 - Rendering lädt das neue Asset `assets/buildings/repair-house.webp` direkt aus dem Asset-Ordner

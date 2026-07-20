@@ -83,6 +83,9 @@ const buildingSprites = Object.fromEntries(
   Object.entries(BUILDING_SPRITE_DEFS).map(([key, def]) => [key, { image: loadUnitSprite(def.src), def }])
 );
 
+const FORTRESS_SPRITE_DEF = { src: "assets/buildings/wood-fortress-center.webp", width: 226, height: 250, offsetY: -4 };
+const fortressSprite = { image: loadUnitSprite(FORTRESS_SPRITE_DEF.src), def: FORTRESS_SPRITE_DEF };
+
 export function renderGameFrame(environment) {
   ({
     ctx, state, BUILD, wallSlots, insideSlots, castleSlots, selected, buildMode, rangeDisplayMode, unitCommandMode, paused,
@@ -575,41 +578,8 @@ function drawCastle(){
    ctx.fillStyle=ratio>.5?"#64bd60":ratio>.25?"#d2a13e":"#d14a43";ctx.fillRect(bx-bw/2+1,by-3,(bw-2)*Math.max(0,ratio),5);
   }
  }
- // Kleine Holzfestung als Zentrum des neuen Aufbausystems.
- ctx.fillStyle="#10100d77";ctx.beginPath();ctx.ellipse(CX+8,CY+43,92,40,0,0,TAU);ctx.fill();
- // niedrige Holzpalisade um den Kernbau
- for(let i=0;i<18;i++){
-  const a=i/18*TAU,r=77,x=CX+Math.cos(a)*r,y=CY+Math.sin(a)*r*.72+10;
-  ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);
-  ctx.fillStyle=i%2?"#704526":"#87552d";
-  ctx.beginPath();ctx.moveTo(-4,12);ctx.lineTo(-5,-12);ctx.lineTo(0,-20);ctx.lineTo(5,-12);ctx.lineTo(4,12);ctx.closePath();ctx.fill();
-  ctx.strokeStyle="#332116";ctx.lineWidth=1.2;ctx.stroke();ctx.restore();
- }
- // Fundament und Hauptgebäude
- ctx.fillStyle="#4e3927";ctx.fillRect(CX-55,CY-40,110,92);
- const timber=ctx.createLinearGradient(CX-55,CY-40,CX+55,CY+52);
- timber.addColorStop(0,"#a66c36");timber.addColorStop(.5,"#754824");timber.addColorStop(1,"#4c301f");
- ctx.fillStyle=timber;ctx.fillRect(CX-49,CY-36,98,82);
- ctx.strokeStyle="#2d2018";ctx.lineWidth=5;ctx.strokeRect(CX-49,CY-36,98,82);
- // Fachwerk
- ctx.strokeStyle="#2f2016";ctx.lineWidth=4;
- ctx.beginPath();ctx.moveTo(CX-46,CY-33);ctx.lineTo(CX+46,CY+43);ctx.moveTo(CX+46,CY-33);ctx.lineTo(CX-46,CY+43);ctx.moveTo(CX,CY-35);ctx.lineTo(CX,CY+45);ctx.stroke();
- // Holzdach
- const roof=ctx.createLinearGradient(CX-68,CY-78,CX+68,CY-28);
- roof.addColorStop(0,"#385f78");roof.addColorStop(.5,"#173d60");roof.addColorStop(1,"#102a43");
- ctx.fillStyle=roof;ctx.beginPath();ctx.moveTo(CX-66,CY-35);ctx.lineTo(CX,CY-79);ctx.lineTo(CX+66,CY-35);ctx.closePath();ctx.fill();
- ctx.strokeStyle="#d1ae60";ctx.lineWidth=2.4;ctx.stroke();
- // kleines Tor und seitliche Stützen
- ctx.fillStyle="#21170f";ctx.fillRect(CX-13,CY+13,26,34);ctx.strokeStyle="#b57a3f";ctx.lineWidth=2;ctx.strokeRect(CX-13,CY+13,26,34);
- for(const ox of [-43,43]){
-  ctx.fillStyle="#5b3921";ctx.fillRect(CX+ox-8,CY-45,16,84);
-  ctx.fillStyle="#2f5672";ctx.beginPath();ctx.moveTo(CX+ox-14,CY-44);ctx.lineTo(CX+ox,CY-59);ctx.lineTo(CX+ox+14,CY-44);ctx.closePath();ctx.fill();
-  ctx.strokeStyle="#cba85e";ctx.lineWidth=1.5;ctx.stroke();
- }
- // Fahne der jungen Festung
- ctx.strokeStyle="#36261a";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(CX,CY-108);ctx.lineTo(CX,CY-72);ctx.stroke();
- ctx.fillStyle="#1d4e7b";ctx.beginPath();ctx.moveTo(CX,CY-106);ctx.lineTo(CX+34,CY-97);ctx.lineTo(CX,CY-85);ctx.closePath();ctx.fill();
- ctx.fillStyle="#e3c86d";ctx.font="bold 12px serif";ctx.textAlign="center";ctx.fillText("♜",CX+13,CY-94);
+ // Zentrale Holzfestung als Sprite mit Fallback auf die alte Canvas-Zeichnung.
+ drawFortressCenterSprite();
  // Sichtbarer Lebensbalken der Hauptburg
  const castleHpRatio=Math.max(0,Math.min(1,state.hp/state.maxHp));
  const castleBarY=CY-142,castleBarW=156;
@@ -715,6 +685,49 @@ function drawUtilityBuildingSprite(building){
   if(building.key!=="market"){ctx.moveTo(10,-6);ctx.lineTo(5,5)}
   ctx.stroke();
  }
+ return true;
+}
+
+function drawFortressCenterFallback(){
+ ctx.fillStyle="#10100d77";ctx.beginPath();ctx.ellipse(CX+8,CY+43,92,40,0,0,TAU);ctx.fill();
+ for(let i=0;i<18;i++){
+  const a=i/18*TAU,r=77,x=CX+Math.cos(a)*r,y=CY+Math.sin(a)*r*.72+10;
+  ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);
+  ctx.fillStyle=i%2?"#704526":"#87552d";
+  ctx.beginPath();ctx.moveTo(-4,12);ctx.lineTo(-5,-12);ctx.lineTo(0,-20);ctx.lineTo(5,-12);ctx.lineTo(4,12);ctx.closePath();ctx.fill();
+  ctx.strokeStyle="#332116";ctx.lineWidth=1.2;ctx.stroke();ctx.restore();
+ }
+ ctx.fillStyle="#4e3927";ctx.fillRect(CX-55,CY-40,110,92);
+ const timber=ctx.createLinearGradient(CX-55,CY-40,CX+55,CY+52);
+ timber.addColorStop(0,"#a66c36");timber.addColorStop(.5,"#754824");timber.addColorStop(1,"#4c301f");
+ ctx.fillStyle=timber;ctx.fillRect(CX-49,CY-36,98,82);
+ ctx.strokeStyle="#2d2018";ctx.lineWidth=5;ctx.strokeRect(CX-49,CY-36,98,82);
+ ctx.strokeStyle="#2f2016";ctx.lineWidth=4;
+ ctx.beginPath();ctx.moveTo(CX-46,CY-33);ctx.lineTo(CX+46,CY+43);ctx.moveTo(CX+46,CY-33);ctx.lineTo(CX-46,CY+43);ctx.moveTo(CX,CY-35);ctx.lineTo(CX,CY+45);ctx.stroke();
+ const roof=ctx.createLinearGradient(CX-68,CY-78,CX+68,CY-28);
+ roof.addColorStop(0,"#385f78");roof.addColorStop(.5,"#173d60");roof.addColorStop(1,"#102a43");
+ ctx.fillStyle=roof;ctx.beginPath();ctx.moveTo(CX-66,CY-35);ctx.lineTo(CX,CY-79);ctx.lineTo(CX+66,CY-35);ctx.closePath();ctx.fill();
+ ctx.strokeStyle="#d1ae60";ctx.lineWidth=2.4;ctx.stroke();
+ ctx.fillStyle="#21170f";ctx.fillRect(CX-13,CY+13,26,34);ctx.strokeStyle="#b57a3f";ctx.lineWidth=2;ctx.strokeRect(CX-13,CY+13,26,34);
+ for(const ox of [-43,43]){
+  ctx.fillStyle="#5b3921";ctx.fillRect(CX+ox-8,CY-45,16,84);
+  ctx.fillStyle="#2f5672";ctx.beginPath();ctx.moveTo(CX+ox-14,CY-44);ctx.lineTo(CX+ox,CY-59);ctx.lineTo(CX+ox+14,CY-44);ctx.closePath();ctx.fill();
+  ctx.strokeStyle="#cba85e";ctx.lineWidth=1.5;ctx.stroke();
+ }
+ ctx.strokeStyle="#36261a";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(CX,CY-108);ctx.lineTo(CX,CY-72);ctx.stroke();
+ ctx.fillStyle="#1d4e7b";ctx.beginPath();ctx.moveTo(CX,CY-106);ctx.lineTo(CX+34,CY-97);ctx.lineTo(CX,CY-85);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#e3c86d";ctx.font="bold 12px serif";ctx.textAlign="center";ctx.fillText("♜",CX+13,CY-94);
+}
+
+function drawFortressCenterSprite(){
+ const sprite=fortressSprite;
+ if(!sprite||!sprite.image.complete||!sprite.image.naturalWidth){
+  drawFortressCenterFallback();
+  return false;
+ }
+ const {width,height,offsetY=0}=sprite.def;
+ ctx.fillStyle="#10100d77";ctx.beginPath();ctx.ellipse(CX+8,CY+50,102,42,0,0,TAU);ctx.fill();
+ ctx.drawImage(sprite.image,CX-width/2,CY-height/2+offsetY,width,height);
  return true;
 }
 
