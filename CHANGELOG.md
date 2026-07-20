@@ -1,5 +1,10 @@
 # Fortress Commander – Changelog
 
+## v1.15.30 – Außenbereich-Korrektur
+- die Außenbereich-Grafik wurde als durchgehende Wald- und Wiesenlandschaft ohne sichtbare Kachelgrenzen neu aufgebaut
+- die grüne Zone rund um die Festung bleibt zur Mitte hin offen und wird zu den Kartenrändern dichter bewaldet
+- das vorhandene Render-Verhalten bleibt bestehen; nur das Umgebungs-Asset wurde korrigiert
+
 ## v1.15.29 – Außenbereich-Grafik
 - der grüne Kartenboden ab dem mittleren Festungsring nutzt jetzt eine detailreichere Außenbereich-Grafik
 - Waldzonen, Sträucher, Felsen und kleine Naturdetails werden über ein neues Umgebungs-Asset dargestellt

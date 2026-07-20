@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.29";
-const GAME_RELEASE_NAME="Außenbereich-Grafik";
+const GAME_VERSION="1.15.30";
+const GAME_RELEASE_NAME="Außenbereich-Korrektur";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
