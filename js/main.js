@@ -138,8 +138,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.7";
-const GAME_RELEASE_NAME="Geprüfte Gebäudeaufwertungen";
+const GAME_VERSION="1.15.8";
+const GAME_RELEASE_NAME="Turmstufen & EXP-Zähler";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -1675,7 +1675,11 @@ function updateSelectionHud(){
   details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${selected.key==="guard"?`🛡️ ${Math.round((selected.armor||0)*100)}% · ${selected.retreating?"Rückzug":selected.stance==="offense"?"Ausfall":"Burg halten"} · `:""}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP`;
  }else if(selected.kind==="building"){
   icon=selected.base.kind==="tower"?"🏰":selected.base.decorative?"🗿":"🏠";
-  name=selected.base.decorative?(selected.base.name||selected.key):`${selected.key==="house"?(selected.level>=2?"Holzhaus":"Zeltlager"):(selected.base.name||selected.key)} · Stufe ${selected.level||1}`;
+  name=selected.base.decorative
+   ?(selected.base.name||selected.key)
+   :selected.base.kind==="tower"
+    ?`${selected.base.name||selected.key} · EXP-Stufe ${selected.expLevel||1}`
+    :`${selected.key==="house"?(selected.level>=2?"Holzhaus":"Zeltlager"):(selected.base.name||selected.key)} · Stufe ${selected.level||1}`;
   details=selected.base.decorative
    ?"Zierbauwerk · Funktion folgt später"
    :selected.base.kind==="tower"
@@ -1730,6 +1734,18 @@ function updateSelectionHud(){
  selectionRangeBtn.querySelector("span").textContent=rangeIcons[rangeDisplayMode];
  selectionRangeBtn.querySelector("small").textContent=`Reichweite: ${rangeLabels[rangeDisplayMode]}`;
  selectionRangeBtn.classList.toggle("active",rangeDisplayMode>0);
+ const updateTalentButton=(btn,t,counts)=>{
+  btn.classList.toggle("hidden",!t);
+  if(!t)return;
+  btn.dataset.talent=t.id;
+  btn.querySelector("b").textContent=t.icon;
+  btn.querySelector("small").textContent=t.label;
+  const count=Math.max(0,Number(counts?.[t.id]||0));
+  let badge=btn.querySelector(".talentCount");
+  if(!badge){badge=document.createElement("span");badge.className="talentCount";btn.prepend(badge)}
+  badge.textContent=`★ ${count}`;
+  badge.setAttribute("aria-label",`Bisher ${count} ${count===1?"Aufwertung":"Aufwertungen"}`);
+ };
  if(isUnit){
   const labels=[
    {id:"damage",icon:"⚔",label:"+24% Schaden"},
@@ -1738,10 +1754,8 @@ function updateSelectionHud(){
    {id:"rate",icon:"✦",label:"−16% Laden"},
    {id:"range",icon:"◎",label:"+12% Reichweite"}
   ];
-  [...selectionTalentBar.querySelectorAll("[data-talent]")].forEach((btn,i)=>{
-   const t=labels[i];btn.classList.toggle("hidden",!t);
-   if(t){btn.dataset.talent=t.id;btn.querySelector("b").textContent=t.icon;btn.querySelector("small").textContent=t.label}
-  });
+  const counts=selected.upgradeStats||{};
+  [...selectionTalentBar.querySelectorAll("[data-talent]")].forEach((btn,i)=>updateTalentButton(btn,labels[i],counts));
  }else if(selected.kind==="building"&&selected.base.kind==="tower"){
   const labels=[
    {id:"damage",icon:"⚔",label:"+20% Schaden"},
@@ -1749,10 +1763,8 @@ function updateSelectionHud(){
    {id:"rate",icon:"✦",label:"−12% Laden"},
    {id:"health",icon:"♥",label:"+22% Leben"}
   ];
-  [...selectionTalentBar.querySelectorAll("[data-talent]")].forEach((btn,i)=>{
-   const t=labels[i];btn.classList.toggle("hidden",!t);
-   if(t){btn.dataset.talent=t.id;btn.querySelector("b").textContent=t.icon;btn.querySelector("small").textContent=t.label}
-  });
+  const counts=selected.expUpgradeStats||{};
+  [...selectionTalentBar.querySelectorAll("[data-talent]")].forEach((btn,i)=>updateTalentButton(btn,labels[i],counts));
  }else selectionTalentBar.classList.add("hidden");
 }
 

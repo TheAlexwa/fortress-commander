@@ -411,12 +411,17 @@ footer:before,footer:after{display:none}
 #selectionTalentBar.hidden{display:none}
 #selectionTalentBar button.hidden{display:none}
 #selectionTalentBar button{
- min-height:47px;padding:4px 5px;border-radius:11px;
+ min-height:47px;padding:4px 5px;border-radius:11px;position:relative;
  display:flex;flex-direction:column;align-items:center;justify-content:center;
  background:linear-gradient(#173b55,#0b1c2a);border:1px solid #68bdec88;
  color:#e5f6ff;box-shadow:inset 0 1px #fff2
 }
 #selectionTalentBar b{font-size:17px}#selectionTalentBar small{font-size:8px;font-weight:900;margin-top:2px}
+#selectionTalentBar .talentCount{
+ position:absolute;top:3px;right:4px;min-width:25px;padding:1px 4px;border-radius:8px;
+ background:#0a1620dd;border:1px solid #9ddcff88;color:#ffe49a;
+ font-size:8px;font-weight:1000;line-height:1.25;text-align:center;pointer-events:none
+}
 @media(max-width:520px){
  #selectionHud{left:7px;right:7px;bottom:8px;max-width:none;padding:7px 8px}
  #selectionPortrait{width:39px;height:39px}
