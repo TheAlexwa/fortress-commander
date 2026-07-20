@@ -87,6 +87,8 @@ const FORTRESS_SPRITE_DEF = { src: "assets/buildings/wood-fortress-center.webp",
 const fortressSprite = { image: loadUnitSprite(FORTRESS_SPRITE_DEF.src), def: FORTRESS_SPRITE_DEF };
 const FORTRESS_YARD_SPRITE_DEF = { src: "assets/environment/fortress-yard.webp", width: 664, height: 664, offsetY: 0 };
 const fortressYardSprite = { image: loadUnitSprite(FORTRESS_YARD_SPRITE_DEF.src), def: FORTRESS_YARD_SPRITE_DEF };
+const OUTER_LANDSCAPE_SPRITE_DEF = { src: "assets/environment/outer-landscape.webp", width: 3000, height: 2200, offsetY: 0 };
+const outerLandscapeSprite = { image: loadUnitSprite(OUTER_LANDSCAPE_SPRITE_DEF.src), def: OUTER_LANDSCAPE_SPRITE_DEF };
 
 export function renderGameFrame(environment) {
   ({
@@ -106,6 +108,11 @@ function drawGround(){
   const n=Math.sin(x*.087+y*.051),px=x+Math.sin(y*.11)*7,py=y+Math.cos(x*.073)*6;
   ctx.globalAlpha=.08+Math.abs(n)*.08;ctx.fillStyle=n>0?"#c6d47d":"#17351f";
   ctx.beginPath();ctx.ellipse(px,py,2.5+Math.abs(n)*2.4,1.1,Math.sin(x+y),0,TAU);ctx.fill();
+ }
+ if(outerLandscapeSprite.image.complete&&outerLandscapeSprite.image.naturalWidth){
+  ctx.globalAlpha=.96;
+  ctx.drawImage(outerLandscapeSprite.image,0,0,WORLD_W,WORLD_H);
+  ctx.globalAlpha=1;
  }
  // dunkler Waldrand
  const edge=170;
@@ -142,30 +149,33 @@ function drawPaths(){
 }
 function drawWorldDetails(){
  ctx.save();
- // Felsen und Blumen
- for(let i=0;i<125;i++){
-  const x=(i*241+67)%WORLD_W,y=(i*173+101)%WORLD_H;
-  if(Math.hypot(x-CX,y-CY)<WALL_R+285)continue;
-  if(i%3===0){
-   ctx.fillStyle="#3d493e";ctx.beginPath();ctx.ellipse(x+4,y+5,8+(i%5),4+(i%3),-.35,0,TAU);ctx.fill();
-   ctx.fillStyle="#697366";ctx.beginPath();ctx.ellipse(x,y,6+(i%4),3+(i%2),-.35,0,TAU);ctx.fill();
-   ctx.strokeStyle="#9ba39466";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x-3,y-1);ctx.lineTo(x+3,y-2);ctx.stroke();
-  }else{
-   ctx.strokeStyle="#234e2d";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y+5);ctx.lineTo(x-3,y-5);ctx.moveTo(x,y+5);ctx.lineTo(x+4,y-6);ctx.stroke();
-   if(i%7===0){ctx.fillStyle=i%14===0?"#f5d66f":"#cc80bd";ctx.beginPath();ctx.arc(x+4,y-7,2.4,0,TAU);ctx.fill()}
+ const hasOuterLandscape=outerLandscapeSprite.image.complete&&outerLandscapeSprite.image.naturalWidth;
+ if(!hasOuterLandscape){
+  // Felsen und Blumen
+  for(let i=0;i<125;i++){
+   const x=(i*241+67)%WORLD_W,y=(i*173+101)%WORLD_H;
+   if(Math.hypot(x-CX,y-CY)<WALL_R+285)continue;
+   if(i%3===0){
+    ctx.fillStyle="#3d493e";ctx.beginPath();ctx.ellipse(x+4,y+5,8+(i%5),4+(i%3),-.35,0,TAU);ctx.fill();
+    ctx.fillStyle="#697366";ctx.beginPath();ctx.ellipse(x,y,6+(i%4),3+(i%2),-.35,0,TAU);ctx.fill();
+    ctx.strokeStyle="#9ba39466";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x-3,y-1);ctx.lineTo(x+3,y-2);ctx.stroke();
+   }else{
+    ctx.strokeStyle="#234e2d";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,y+5);ctx.lineTo(x-3,y-5);ctx.moveTo(x,y+5);ctx.lineTo(x+4,y-6);ctx.stroke();
+    if(i%7===0){ctx.fillStyle=i%14===0?"#f5d66f":"#cc80bd";ctx.beginPath();ctx.arc(x+4,y-7,2.4,0,TAU);ctx.fill()}
+   }
   }
- }
- // dichter Nadelwald außerhalb der Burg
- for(let i=0;i<84;i++){
-  const a=(i*2.399963)%TAU,r=WALL_R+305+((i*137)%360);
-  const x=CX+Math.cos(a)*r,y=CY+Math.sin(a)*r;
-  if(x<25||x>WORLD_W-25||y<25||y>WORLD_H-25)continue;
-  const s=15+(i%6)*2;
-  ctx.fillStyle="#111b16aa";ctx.beginPath();ctx.ellipse(x+6,y+10,s*.8,s*.35,0,0,TAU);ctx.fill();
-  ctx.fillStyle="#3a281c";ctx.fillRect(x-3,y-2,6,s*.9);
-  ctx.fillStyle="#183d27";ctx.beginPath();ctx.moveTo(x,y-s*1.5);ctx.lineTo(x-s,y+s*.45);ctx.lineTo(x+s,y+s*.45);ctx.closePath();ctx.fill();
-  ctx.fillStyle="#28603a";ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x-s*.8,y+s*.2);ctx.lineTo(x+s*.8,y+s*.2);ctx.closePath();ctx.fill();
-  ctx.fillStyle="#4f814a55";ctx.beginPath();ctx.moveTo(x-2,y-s*.82);ctx.lineTo(x-s*.45,y);ctx.lineTo(x+s*.15,y);ctx.closePath();ctx.fill();
+  // dichter Nadelwald außerhalb der Burg
+  for(let i=0;i<84;i++){
+   const a=(i*2.399963)%TAU,r=WALL_R+305+((i*137)%360);
+   const x=CX+Math.cos(a)*r,y=CY+Math.sin(a)*r;
+   if(x<25||x>WORLD_W-25||y<25||y>WORLD_H-25)continue;
+   const s=15+(i%6)*2;
+   ctx.fillStyle="#111b16aa";ctx.beginPath();ctx.ellipse(x+6,y+10,s*.8,s*.35,0,0,TAU);ctx.fill();
+   ctx.fillStyle="#3a281c";ctx.fillRect(x-3,y-2,6,s*.9);
+   ctx.fillStyle="#183d27";ctx.beginPath();ctx.moveTo(x,y-s*1.5);ctx.lineTo(x-s,y+s*.45);ctx.lineTo(x+s,y+s*.45);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#28603a";ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x-s*.8,y+s*.2);ctx.lineTo(x+s*.8,y+s*.2);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#4f814a55";ctx.beginPath();ctx.moveTo(x-2,y-s*.82);ctx.lineTo(x-s*.45,y);ctx.lineTo(x+s*.15,y);ctx.closePath();ctx.fill();
+  }
  }
  // Banner entlang der Wege
  for(let i=0;i<8;i++){

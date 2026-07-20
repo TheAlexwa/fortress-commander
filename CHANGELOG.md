@@ -1,5 +1,10 @@
 # Fortress Commander – Changelog
 
+## v1.15.29 – Außenbereich-Grafik
+- der grüne Kartenboden ab dem mittleren Festungsring nutzt jetzt eine detailreichere Außenbereich-Grafik
+- Waldzonen, Sträucher, Felsen und kleine Naturdetails werden über ein neues Umgebungs-Asset dargestellt
+- die bisherigen prozeduralen Außenbereich-Details bleiben als Fallback erhalten, falls das Asset nicht geladen werden kann
+
 ## v1.15.28 – Turmplatz-Sichtbarkeit
 - Turmfundamente am mittleren und äußeren Mauerring werden nur noch bei ausgewähltem Turmbau angezeigt
 - bereits belegte Turmplätze erhalten keine zusätzliche Fundament-Markierung
