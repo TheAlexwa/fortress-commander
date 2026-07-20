@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.15";
-const GAME_RELEASE_NAME="Kampfanimationen";
+const GAME_VERSION="1.15.19";
+const GAME_RELEASE_NAME="Wohngebäude-Grafiken";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -601,9 +601,10 @@ function buildRequirement(key){return getBuildRequirement(state,key)}
 
 function isPanelVisible(id){const el=document.getElementById(id);return !!(el&&!el.classList.contains("hidden"));}
 function isBlockingPanelOpen(){
- return ["statsScreen","workshopPanel","marketPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision"].some(isPanelVisible);
+ return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision"].some(isPanelVisible);
 }
 function closeTopBlockingPanel(){
+ if(isPanelVisible("testResourcePanel")){closeTestResourcePanel();return "Testfenster geschlossen"}
  if(isPanelVisible("enemyInfoOverlay")){closeEnemyInfo(true);return "Fenster geschlossen"}
  if(isPanelVisible("marketPanel")){closeMarketPanel();return "Fenster geschlossen"}
  if(isPanelVisible("workshopPanel")){closeWorkshopPanel(true);return "Fenster geschlossen"}
@@ -1390,6 +1391,8 @@ const statsScreen=document.getElementById("statsScreen");
 const statsContent=document.getElementById("statsContent");
 const statsTitle=document.getElementById("statsTitle");
 const statsCloseBtn=document.getElementById("statsCloseBtn");
+const testResourcePanel=document.getElementById("testResourcePanel");
+const testResourceCloseBtn=document.getElementById("testResourceCloseBtn");
 const selectionMoveBtn=document.getElementById("selectionMoveBtn");
 const selectionAutoBtn=document.getElementById("selectionAutoBtn");
 const selectionModeBtn=document.getElementById("selectionModeBtn");
@@ -1531,6 +1534,7 @@ function resourceDetailsHtml(){
   <div class="statTile"><span>Gold im Kampf</span><b>+${goldRate.toFixed(2)}/s</b></div>
   <div class="statTile"><span>Holz im Kampf</span><b>+${rate.toFixed(2)}/s</b></div>
   <div class="statTile"><span>Stein im Kampf</span><b>+${stoneRate.toFixed(2)}/s</b></div>
+  <button type="button" class="statTile testResourceTile" data-open-test-resources><span>🧪 Testressourcen</span><b>Auswahl öffnen</b><small>Nur zum Testen</small></button>
  </div>
  <div class="statsSection"><h3>🪙 Goldwirtschaft</h3>
   <div class="rosterItem"><div class="rosterIcon">⚔</div><div><b>Besiegte Gegner</b><small>Gegner geben beim Besiegen Gold.</small></div><div class="rosterBadge">${state.kills}</div></div>
@@ -1581,6 +1585,29 @@ function toggleWorkplaceResident(bid){
   requestAnimationFrame(()=>{closeAllBlockingPanels();canvas.style.pointerEvents="auto";last=performance.now()});
  }
 }
+function openTestResourcePanel(){
+ testResourcePanel.classList.remove("hidden");
+}
+function closeTestResourcePanel(){
+ testResourcePanel.classList.add("hidden");
+}
+function grantTestResource(type){
+ const grants={
+  gold:{label:"Gold",icon:"🪙",apply:()=>state.gold+=500},
+  wood:{label:"Holz",icon:"🪵",apply:()=>state.wood+=500},
+  stone:{label:"Stein",icon:"🪨",apply:()=>state.stone+=500},
+  research:{label:"Forschung",icon:"🔬",apply:()=>state.researchPoints=(state.researchPoints||0)+500}
+ };
+ const grant=grants[type];
+ if(!grant)return;
+ grant.apply();
+ closeTestResourcePanel();
+ updateUI();
+ statsContent.innerHTML=resourceDetailsHtml();
+ saveGame(true);
+ showToast(`🧪 Test: +500 ${grant.label}`);
+}
+
 function openResourceDetails(){
  prepareStatsScreen();
  statsTitle.textContent="Rohstoffübersicht";
@@ -1654,9 +1681,17 @@ navUpgrade.addEventListener("click",()=>{
 navStats.addEventListener("click",()=>{clearNavActionState();navButtons.forEach(b=>b.classList.remove("active"));navStats.classList.add("active");openStats()});
 navResearch.addEventListener("click",()=>{clearNavActionState();navButtons.forEach(b=>b.classList.remove("active"));navResearch.classList.add("active");openWorkshopPanel()});
 statsCloseBtn.addEventListener("click",closeStats);
+testResourceCloseBtn.addEventListener("click",closeTestResourcePanel);
+testResourcePanel.addEventListener("click",e=>{
+ const grant=e.target.closest("[data-test-resource]");
+ if(grant){e.preventDefault();grantTestResource(grant.dataset.testResource);return}
+ if(e.target===testResourcePanel)closeTestResourcePanel();
+});
 ui.resourceOverviewBtn.addEventListener("click",openResourceDetails);
 ui.populationOverviewBtn.addEventListener("click",openPopulationDetails);
 statsContent.addEventListener("click",e=>{
+ const openTestResources=e.target.closest("[data-open-test-resources]");
+ if(openTestResources){e.preventDefault();e.stopPropagation();openTestResourcePanel();return}
  const buyUpgrade=e.target.closest("[data-upgrade-buy]");
  if(buyUpgrade){e.preventDefault();e.stopPropagation();const entity=findUpgradeEntity(buyUpgrade.dataset.upgradeBuy);if(entity?.kind==="building"){selected=entity;upgradeSelected();updateUI();statsContent.innerHTML=upgradeCenterHtml()}return}
  const focusUpgrade=e.target.closest("[data-upgrade-focus]");

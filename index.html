@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.15.15 – Kampfanimationen</title>
+<title>Fortress Commander v1.15.19 – Wohngebäude-Grafiken</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,7 +20,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Spiel starten">Spiel starten</button>
-  <div id="gameVersionBadge">v1.15.15</div>
+  <div id="gameVersionBadge">v1.15.19</div>
   <div id="developmentNotice"><strong>🏗 Festungsumbau in Entwicklung</strong><span>Mauertürme stehen jetzt bereits auf Holzpalisaden. Der mittlere Ring bietet acht, der äußere Ring zwölf feste Turmplätze.</span></div>
  </div>
 </div>
@@ -219,7 +219,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.15.15 · Bogenschütze und Burgwache besitzen jetzt timergekoppelte Kampfanimationen.</div>
+  <div class="workshopFoot">v1.15.19 · Zeltlager und Holzhaus nutzen jetzt neue comicartige Gebäudegrafiken.</div>
  </section>
 </div>
 
@@ -230,6 +230,23 @@
    <button id="statsCloseBtn" type="button" aria-label="Statistiken schließen">✕</button>
   </div>
   <div id="statsContent"></div>
+ </section>
+</div>
+
+<div id="testResourcePanel" class="hidden" aria-label="Testressourcen auswählen">
+ <section class="testResourceDialog" role="dialog" aria-modal="true" aria-labelledby="testResourceTitle">
+  <div class="testResourceHeader">
+   <div><small>NUR FÜR ENTWICKLUNG & TESTS</small><h2 id="testResourceTitle">🧪 Testressourcen</h2></div>
+   <button id="testResourceCloseBtn" type="button" aria-label="Testressourcen schließen">✕</button>
+  </div>
+  <p class="testResourceWarning">Diese Schaltflächen verändern den aktuellen Spielstand und umgehen die normale Wirtschaft. Bitte ausschließlich zum Testen verwenden.</p>
+  <div class="testResourceChoices">
+   <button type="button" data-test-resource="gold"><span>🪙</span><b>+500 Gold</b><small>Testguthaben hinzufügen</small></button>
+   <button type="button" data-test-resource="wood"><span>🪵</span><b>+500 Holz</b><small>Testguthaben hinzufügen</small></button>
+   <button type="button" data-test-resource="stone"><span>🪨</span><b>+500 Stein</b><small>Testguthaben hinzufügen</small></button>
+   <button type="button" data-test-resource="research"><span>🔬</span><b>+500 Forschung</b><small>Testpunkte hinzufügen</small></button>
+  </div>
+  <div class="testResourceFoot">🧪 Testfunktion – nicht Teil der regulären Spielbalance</div>
  </section>
 </div>
 

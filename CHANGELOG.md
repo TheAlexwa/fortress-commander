@@ -1,5 +1,15 @@
 # Fortress Commander – Changelog
 
+## v1.15.19 – Wohngebäude-Grafiken
+- Zeltlager und Holzhaus verwenden neue comicartige Gebäudegrafiken
+- das Rendering lädt die neuen Wohngebäude-Assets direkt aus dem Asset-Ordner
+- die bisherige Vektorzeichnung bleibt als Fallback erhalten, falls ein Asset nicht geladen werden kann
+
+## v1.15.18 – Testressourcen
+- Rohstoffübersicht erhält eine klar als Testfunktion markierte Werkzeug-Kachel
+- Auswahlfenster ermöglicht jeweils +500 Gold, Holz, Stein oder Forschung
+- Testgutschriften aktualisieren die Anzeige sofort und werden im Spielstand gespeichert
+
 ## v1.15.15 – Kampfanimationen
 - Bogenschütze erhält eine kurze Spann- und Schussanimation
 - Burgwache erhält einen sichtbaren Schwertschlag mit Hieb-Bogen
