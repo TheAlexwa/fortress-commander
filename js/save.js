@@ -145,7 +145,10 @@ function restoreBuilding(savedBuilding, context) {
   const allowedSlot =
     blueprint.kind === "tower"
       ? slot.type === "wall" || slot.type === "castle"
-      : slot.type === "inside";
+      : slot.type === "inside" &&
+        (blueprint.slotRole === "statue"
+          ? slot.role === "statue"
+          : slot.role !== "statue");
   if (!allowedSlot) {
     throw new Error("Gebäude und Bauplatz passen im Speicherstand nicht zusammen.");
   }

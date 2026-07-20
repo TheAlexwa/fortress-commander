@@ -81,14 +81,15 @@ import {
   prepareSiegePhase,
   updateSiegePhase
 } from "./siege.js";
+import { hitTestFutureLayout } from "./map-layout.js";
 
 // Fortress Commander – zentrale Initialisierung und Spielschleife.
 // Fachlogik, Darstellung und Eingaben liegen in eigenständigen Modulen.
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.14.0";
-const GAME_RELEASE_NAME="Stein & Steinbruch";
+const GAME_VERSION="1.14.3";
+const GAME_RELEASE_NAME="Festungsstruktur neu geordnet";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -216,7 +217,8 @@ const BUILD={
  quarry:{name:"Steinbruch",kind:"inside",gold:90,wood:25,color:"#77736b"},
  workshop:{name:"Werkstatt",kind:"inside",gold:110,wood:40,color:"#6b6b70"},
  repair:{name:"Handwerkerhaus",kind:"inside",gold:90,wood:35,color:"#8b7063"},
- market:{name:"Marktplatz",kind:"inside",gold:150,wood:60,color:"#8a6b3d"}
+ market:{name:"Marktplatz",kind:"inside",gold:150,wood:60,color:"#8a6b3d"},
+ statue:{name:"Kriegerstatue",kind:"inside",gold:45,wood:0,stone:15,color:"#8f7958",slotRole:"statue",decorative:true}
 };
 const state={gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,
  enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],craftsmen:[],residents:[],siege:null,spawnQueue:[],repairActive:false,repairedHp:0,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
@@ -229,9 +231,17 @@ function initMap(){
   state.walls.push({i,a0,a1,am,hp:WALL_MAX_HP,maxHp:WALL_MAX_HP});
   wallSlots.push({type:"wall",i,x:CX+Math.cos(am)*(WALL_R-48),y:CY+Math.sin(am)*(WALL_R-48),building:null});
  }
- const gap=112,coords=[[-1.5,-1],[-.5,-1],[.5,-1],[1.5,-1],[-1.5,0],[1.5,0],[-1.5,1],[-.5,1],[.5,1],[1.5,1]];
- for(const [gx,gy] of coords)insideSlots.push({type:"inside",x:CX+gx*gap,y:CY+gy*gap,building:null});
- const castleCorners=[[-58,-51],[58,-51],[-58,51],[58,51]];
+ const villageSlots=[
+  [-184,-72],[184,-78],[-184,88],[184,94],
+  [-286,-82],[-250,186],[-82,286],[160,274],[286,88],[246,-194]
+ ];
+ for(const [ox,oy] of villageSlots){
+  insideSlots.push({type:"inside",role:"support",x:CX+ox,y:CY+oy,building:null});
+ }
+ // Ein eigener Ehrenplatz für die Kriegerstatue. Normale Versorgungsgebäude
+ // können diesen Platz nicht belegen.
+ insideSlots.push({type:"inside",role:"statue",x:CX+92,y:CY+218,building:null});
+ const castleCorners=[[-92,-92],[92,-92],[-92,92],[92,92]];
  castleCorners.forEach(([ox,oy],i)=>castleSlots.push({type:"castle",i,x:CX+ox,y:CY+oy,building:null}));
 }
 function resize(){
@@ -890,9 +900,26 @@ function pickAt(x,y){
  for(const w of state.walls){const px=CX+Math.cos(w.am)*WALL_R,py=CY+Math.sin(w.am)*WALL_R,d=Math.hypot(x-px,y-py);if(d<bd){bd=d;best=w;best.kind="wall"}}
  return best;
 }
+function showFutureLayoutHint(hit){
+ if(!hit)return false;
+ const messages={
+  "outer-wall":"Äußerer Mauerring: wird in einer späteren Ausbaustufe mit Stein errichtet."
+ };
+ const text=hit.type==="outer-gate"
+  ?`Tor ${hit.label}: wird in einem kommenden Ausbau-Update freigeschaltet.`
+  :messages[hit.type];
+ if(!text)return false;
+ showToast(text);
+ return true;
+}
 function worldTap(x,y){
  if(gameOver)return;
- if(buildMode){createAt(x,y,buildMode);return}
+ const futureHit=hitTestFutureLayout(x,y,{CX,CY,WALL_R});
+ if(buildMode){
+  const created=createAt(x,y,buildMode);
+  if(!created)showFutureLayoutHint(futureHit);
+  return;
+ }
  if(selected&&selected.kind==="unit"&&unitCommandMode==="move"){
   const d=Math.hypot(x-CX,y-CY);
   if(d<WALL_R-25&&d>95){
@@ -903,7 +930,9 @@ function worldTap(x,y){
  }
  const picked=pickAt(x,y);
  if(picked&&picked.kind==="enemy"){openEnemyInfo(picked);selected=null;unitCommandMode=null;return}
- selected=picked;unitCommandMode=null;
+ if(picked){selected=picked;unitCommandMode=null;return}
+ if(showFutureLayoutHint(futureHit)){selected=null;unitCommandMode=null;return}
+ selected=null;unitCommandMode=null;
 }
 
 function showPauseMenu(){
@@ -1044,6 +1073,7 @@ function buildingProductionInfo(b){
 }
 function buildingStatsHtml(b){
  const base=b.base,isTower=base.kind==="tower",level=b.level||1;
+ if(base.decorative)return `<div class="buildingOverview"><div class="statTile"><span>Bauwerk</span><b>${buildingDisplayName(b)}</b></div><div class="statTile"><span>Funktion</span><b>Noch ohne Aufgabe</b></div><div class="statTile"><span>Standort</span><b>Eigener Ehrenplatz</b></div></div><div class="statsHint">Die Kriegerstatue ist in v1.14.3 ein reines Zierbauwerk. Eine spätere Ausbauphase gibt ihr eine eigene spielerische Funktion.</div>`;
  let rows=isTower?
  `${statRow("Schaden",fmt(base.damage),fmt(b.damage),pctDelta(base.damage,b.damage))}
  ${statRow("Reichweite",fmt(base.range),fmt(b.range),pctDelta(base.range,b.range))}
@@ -1183,7 +1213,7 @@ function openResourceDetails(){
 function upgradeEntityCost(entity){
  if(!entity)return {gold:0,wood:0,maxed:true};
  // Einheiten und Türme werden nicht direkt mit Gold oder Holz verbessert.
- if(entity.kind==="unit"||entity.kind==="building"&&entity.base?.kind==="tower")return {gold:0,wood:0,maxed:true};
+ if(entity.kind==="unit"||entity.kind==="building"&&(entity.base?.kind==="tower"||entity.base?.decorative))return {gold:0,wood:0,maxed:true};
  if(entity.kind==="building"){
   const max=entity.key==="house"?2:entity.key==="market"?3:5;
   return {gold:Math.floor(entity.base.gold*(.65+(entity.level||1)*.45)),wood:Math.floor(entity.base.wood*(.45+(entity.level||1)*.3)),maxed:(entity.level||1)>=max,max};
@@ -1191,7 +1221,7 @@ function upgradeEntityCost(entity){
  return {gold:0,wood:0,maxed:true};
 }
 function upgradeEntityName(entity){return entity.kind==="unit"?(entity.key==="guard"?"Burgwache":"Bogenschütze"):buildingDisplayName(entity)}
-function upgradeEntityIcon(entity){if(entity.kind==="unit")return entity.key==="guard"?"🛡️":"🏹";return {archer:"🏹",crossbow:"🎯",catapult:"🪨",house:entity.level>=2?"🏠":"⛺",lumber:"🪵",workshop:"⚒️",repair:"👷",market:"🏪"}[entity.key]||"🏰"}
+function upgradeEntityIcon(entity){if(entity.kind==="unit")return entity.key==="guard"?"🛡️":"🏹";return {archer:"🏹",crossbow:"🎯",catapult:"🪨",house:entity.level>=2?"🏠":"⛺",lumber:"🪵",quarry:"🪨",statue:"🗿",workshop:"⚒️",repair:"👷",market:"🏪"}[entity.key]||"🏰"}
 function allResearchTechs(){return getAllResearchTechs()}
 function activeGlobalBonuses(){
  const bonuses=[];
@@ -1212,7 +1242,7 @@ function upgradeRecommendation(){
 }
 function upgradeCenterHtml(){
  const workshop=state.buildings.find(b=>b.key==="workshop"),upgradable=state.buildings.filter(e=>!upgradeEntityCost(e).maxed),affordable=upgradable.filter(e=>{const c=upgradeEntityCost(e);return state.gold>=c.gold&&state.wood>=c.wood});
- const buildingRows=state.buildings.length?state.buildings.map(b=>{const isTower=b.base.kind==="tower",c=upgradeEntityCost(b),can=!c.maxed&&state.gold>=c.gold&&state.wood>=c.wood;if(isTower)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · EXP-Stufe ${b.expLevel||1}</b><small>EXP ${Math.floor(b.xp||0)}/${Math.floor(b.xpMax||90)} · Schaden ${Math.round(b.damage)} · Reichweite ${Math.round(b.range)}${b.pendingUpgrades?` · ${b.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung über EXP oder Forschung"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">${b.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${b.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`;return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · Stufe ${b.level||1}</b><small>${b.key==="workshop"?`Globaler Forschungsaufschlag: ${Math.round(globalResearchIncreaseRate()*100)} % je fremder Stufe.`:`Versorgungsgebäude · investiert ${Math.floor(b.investedGold||0)} Gold / ${Math.floor(b.investedWood||0)} Holz`}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" data-upgrade-buy="building:${b.bid}" ${can?"":"disabled"}>${c.maxed?"✓ MAX":`⬆ ${c.gold} 🪙${c.wood?` · ${c.wood} 🪵`:""}`}</button></div></div>`}).join(""):'<div class="statsHint">Noch keine Gebäude errichtet.</div>';
+ const buildingRows=state.buildings.length?state.buildings.map(b=>{const isTower=b.base.kind==="tower",c=upgradeEntityCost(b),can=!c.maxed&&state.gold>=c.gold&&state.wood>=c.wood;if(b.base.decorative)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)}</b><small>Zierbauwerk auf eigenem Ehrenplatz · Funktion folgt später.</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" disabled>Keine Aufwertung</button></div></div>`;if(isTower)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · EXP-Stufe ${b.expLevel||1}</b><small>EXP ${Math.floor(b.xp||0)}/${Math.floor(b.xpMax||90)} · Schaden ${Math.round(b.damage)} · Reichweite ${Math.round(b.range)}${b.pendingUpgrades?` · ${b.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung über EXP oder Forschung"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">${b.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${b.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`;return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · Stufe ${b.level||1}</b><small>${b.key==="workshop"?`Globaler Forschungsaufschlag: ${Math.round(globalResearchIncreaseRate()*100)} % je fremder Stufe.`:`Versorgungsgebäude · investiert ${Math.floor(b.investedGold||0)} Gold / ${Math.floor(b.investedWood||0)} Holz`}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" data-upgrade-buy="building:${b.bid}" ${can?"":"disabled"}>${c.maxed?"✓ MAX":`⬆ ${c.gold} 🪙${c.wood?` · ${c.wood} 🪵`:""}`}</button></div></div>`}).join(""):'<div class="statsHint">Noch keine Gebäude errichtet.</div>';
  const unitRows=state.units.length?state.units.map(u=>`<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(u)}</div><div><b>${upgradeEntityName(u)} · Erfahrungsstufe ${u.expLevel||1}</b><small>EXP ${Math.floor(u.xp||0)}/${Math.floor(u.xpMax||65)} · Schaden ${Math.round(u.damage)} · Leben ${Math.round(u.maxHp)}${u.pendingUpgrades?` · ${u.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung nur durch EXP oder Forschung"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="unit:${u.uid}">${u.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${u.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`).join(""):'<div class="statsHint">Noch keine mobilen Einheiten ausgebildet.</div>';
  const research=allResearchTechs().map(t=>`<div class="researchCenterItem"><b>${t.icon} ${t.name}</b><small>${t.desc}</small><div class="level">Stufe ${researchLevel(t.id)}/${t.max}${researchLevel(t.id)<t.max?` · nächste Kosten ${researchCost(t)} 🔬`:" · MAX"}</div></div>`).join("");
  const bonuses=activeGlobalBonuses();
@@ -1288,7 +1318,7 @@ selectionUpgradeBtn.addEventListener("click",e=>{
  e.preventDefault();e.stopPropagation();closeStats();hideRepairDecision();
  if(!selected)return;
  // Normale Gebäudeaufwertung: auf Mobilgeräten direkt über die Auswahlleiste erreichbar.
- if(selected.kind==="building"&&selected.base.kind!=="tower"){
+ if(selected.kind==="building"&&selected.base.kind!=="tower"&&!selected.base.decorative){
   const before=selected.level||1;
   upgradeSelected();
   if(selected&&selected.key==="house"&&(selected.level||1)>before){
@@ -1345,9 +1375,11 @@ function updateSelectionHud(){
   icon=selected.key==="guard"?"🛡️":"🏹";name=`${selected.key==="guard"?"Burgwache":"Bogenschütze"} · Stufe ${selected.expLevel||1}`;
   details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${selected.key==="guard"?`🛡️ ${Math.round((selected.armor||0)*100)}% · ${selected.retreating?"Rückzug":selected.stance==="offense"?"Ausfall":"Burg halten"} · `:""}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP`;
  }else if(selected.kind==="building"){
-  icon=selected.base.kind==="tower"?"🏰":"🏠";
-  name=`${selected.key==="house"?(selected.level>=2?"Holzhaus":"Zeltlager"):(selected.base.name||selected.key)} · Stufe ${selected.level||1}`;
-  details=selected.base.kind==="tower"
+  icon=selected.base.kind==="tower"?"🏰":selected.base.decorative?"🗿":"🏠";
+  name=selected.base.decorative?(selected.base.name||selected.key):`${selected.key==="house"?(selected.level>=2?"Holzhaus":"Zeltlager"):(selected.base.name||selected.key)} · Stufe ${selected.level||1}`;
+  details=selected.base.decorative
+   ?"Zierbauwerk · Funktion folgt später"
+   :selected.base.kind==="tower"
    ?`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · 🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||90)} EXP`
    :selected.key==="house"?`👥 ${residentCapacityForHouse(selected)} Bewohner · 🪙 +${(residentCapacityForHouse(selected)*.18).toFixed(2)}/Sek.`
    :selected.key==="lumber"?`👤 ${buildingHasWorker(selected)?"besetzt":"frei"} · 🪵 ${supportProductionPerSecond(selected).toFixed(2)}/Sek.`
@@ -1363,7 +1395,7 @@ function updateSelectionHud(){
  selectionAutoBtn.classList.toggle("hidden",!isUnit);
  const canShowRange=isUnit||(selected.kind==="building"&&selected.base.kind==="tower");
  selectionRangeBtn.classList.toggle("hidden",!canShowRange);
- const isNormalBuilding=selected.kind==="building"&&selected.base.kind!=="tower";
+ const isNormalBuilding=selected.kind==="building"&&selected.base.kind!=="tower"&&!selected.base.decorative;
  const normalBuildingCanUpgrade=isNormalBuilding&&(selected.level||1)<(selected.key==="house"?2:5);
  const xpUpgradeReady=(isUnit||(selected.kind==="building"&&selected.base.kind==="tower"))&&(selected.pendingUpgrades||0)>0;
  selectionUpgradeBtn.classList.toggle("hidden",!(normalBuildingCanUpgrade||xpUpgradeReady));

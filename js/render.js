@@ -1,4 +1,9 @@
 import { getSiegeCampCounts, getSiegeCampPositions } from "./siege.js";
+import {
+  FIXED_INNER_WALL_RADIUS,
+  OUTER_GATE_GAP,
+  getFutureLayoutGeometry
+} from "./map-layout.js";
 
 // Zentrale Canvas-Darstellung von Fortress Commander.
 // Die Spielzustände bleiben in main.js; dieses Modul erhält nur die zum Zeichnen benötigten Referenzen.
@@ -58,11 +63,24 @@ function drawGround(){
 }
 function drawPaths(){
  ctx.save();ctx.lineCap="round";
- for(const [x,y] of [[CX,0],[WORLD_W,CY],[CX,WORLD_H],[0,CY]]){
-  ctx.strokeStyle="#2b241a88";ctx.lineWidth=82;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(CX,CY);ctx.stroke();
-  const pg=ctx.createLinearGradient(x,y,CX,CY);pg.addColorStop(0,"#806e4e");pg.addColorStop(.5,"#b19a68");pg.addColorStop(1,"#8c7651");
-  ctx.strokeStyle=pg;ctx.lineWidth=66;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(CX,CY);ctx.stroke();
-  ctx.strokeStyle="#d7c79a44";ctx.lineWidth=48;ctx.setLineDash([8,16]);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(CX,CY);ctx.stroke();ctx.setLineDash([]);
+ const routes=[
+  {start:[CX,0],c1:[CX-55,CY-610],c2:[CX+55,CY-300]},
+  {start:[WORLD_W,CY],c1:[CX+720,CY-60],c2:[CX+320,CY+52]},
+  {start:[CX,WORLD_H],c1:[CX+70,CY+610],c2:[CX-45,CY+305]},
+  {start:[0,CY],c1:[CX-720,CY+70],c2:[CX-320,CY-48]},
+ ];
+ for(const route of routes){
+  const [sx,sy]=route.start,[c1x,c1y]=route.c1,[c2x,c2y]=route.c2;
+  ctx.strokeStyle="#2b241a88";ctx.lineWidth=82;ctx.beginPath();ctx.moveTo(sx,sy);ctx.bezierCurveTo(c1x,c1y,c2x,c2y,CX,CY);ctx.stroke();
+  const pg=ctx.createLinearGradient(sx,sy,CX,CY);pg.addColorStop(0,"#806e4e");pg.addColorStop(.5,"#b19a68");pg.addColorStop(1,"#8c7651");
+  ctx.strokeStyle=pg;ctx.lineWidth=66;ctx.beginPath();ctx.moveTo(sx,sy);ctx.bezierCurveTo(c1x,c1y,c2x,c2y,CX,CY);ctx.stroke();
+  ctx.strokeStyle="#d7c79a44";ctx.lineWidth=48;ctx.setLineDash([8,16]);ctx.beginPath();ctx.moveTo(sx,sy);ctx.bezierCurveTo(c1x,c1y,c2x,c2y,CX,CY);ctx.stroke();ctx.setLineDash([]);
+ }
+ // Dorfwege verbinden die organisch verteilten Bauplätze.
+ for(const radius of [184,292]){
+  ctx.strokeStyle="#2b241a66";ctx.lineWidth=38;ctx.beginPath();ctx.arc(CX,CY,radius,0,TAU);ctx.stroke();
+  ctx.strokeStyle="#a99061";ctx.lineWidth=27;ctx.beginPath();ctx.arc(CX,CY,radius,0,TAU);ctx.stroke();
+  ctx.strokeStyle="#d7c79a2d";ctx.lineWidth=18;ctx.setLineDash([7,13]);ctx.beginPath();ctx.arc(CX,CY,radius,0,TAU);ctx.stroke();ctx.setLineDash([]);
  }
  ctx.restore();
 }
@@ -71,7 +89,7 @@ function drawWorldDetails(){
  // Felsen und Blumen
  for(let i=0;i<125;i++){
   const x=(i*241+67)%WORLD_W,y=(i*173+101)%WORLD_H;
-  if(Math.hypot(x-CX,y-CY)<WALL_R+55)continue;
+  if(Math.hypot(x-CX,y-CY)<WALL_R+285)continue;
   if(i%3===0){
    ctx.fillStyle="#3d493e";ctx.beginPath();ctx.ellipse(x+4,y+5,8+(i%5),4+(i%3),-.35,0,TAU);ctx.fill();
    ctx.fillStyle="#697366";ctx.beginPath();ctx.ellipse(x,y,6+(i%4),3+(i%2),-.35,0,TAU);ctx.fill();
@@ -83,7 +101,7 @@ function drawWorldDetails(){
  }
  // dichter Nadelwald außerhalb der Burg
  for(let i=0;i<84;i++){
-  const a=(i*2.399963)%TAU,r=WALL_R+110+((i*137)%520);
+  const a=(i*2.399963)%TAU,r=WALL_R+305+((i*137)%360);
   const x=CX+Math.cos(a)*r,y=CY+Math.sin(a)*r;
   if(x<25||x>WORLD_W-25||y<25||y>WORLD_H-25)continue;
   const s=15+(i%6)*2;
@@ -156,6 +174,106 @@ function drawSiegeCamps(){
  });
 }
 
+function drawBlueprintArc(radius,a0,a1,width=24){
+ ctx.save();
+ ctx.strokeStyle="#f1dfaa55";ctx.lineWidth=width;ctx.lineCap="butt";ctx.setLineDash([24,14]);
+ ctx.beginPath();ctx.arc(CX,CY,radius,a0,a1);ctx.stroke();
+ ctx.strokeStyle="#fff1bd99";ctx.lineWidth=2;ctx.setLineDash([8,8]);
+ ctx.beginPath();ctx.arc(CX,CY,radius,a0,a1);ctx.stroke();
+ ctx.setLineDash([]);ctx.restore();
+}
+function drawBlueprintGate(radius,a,label){
+ const x=CX+Math.cos(a)*radius,y=CY+Math.sin(a)*radius;
+ ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);
+ ctx.fillStyle="#d6bf8250";ctx.strokeStyle="#fff0b6aa";ctx.lineWidth=2.5;ctx.setLineDash([8,6]);
+ ctx.fillRect(-42,-25,84,50);ctx.strokeRect(-42,-25,84,50);
+ ctx.setLineDash([]);ctx.strokeStyle="#fff0b677";ctx.lineWidth=2;
+ ctx.beginPath();ctx.arc(0,10,17,Math.PI,TAU);ctx.stroke();
+ ctx.fillStyle="#fff0bdcc";ctx.font="bold 10px system-ui";ctx.textAlign="center";ctx.fillText(label,0,-34);
+ ctx.restore();
+}
+function drawWarriorStatue(statue){
+ const {x,y}=statue;
+ ctx.save();ctx.translate(x,y);
+ ctx.fillStyle="#211b146f";ctx.beginPath();ctx.ellipse(5,27,39,19,0,0,TAU);ctx.fill();
+ ctx.fillStyle="#a38d64";ctx.beginPath();ctx.arc(0,18,27,0,TAU);ctx.fill();
+ ctx.strokeStyle="#e3c98188";ctx.lineWidth=3;ctx.stroke();
+ for(let i=0;i<8;i++){
+  const a=i/8*TAU;ctx.strokeStyle="#64583f88";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(Math.cos(a)*8,18+Math.sin(a)*8);ctx.lineTo(Math.cos(a)*25,18+Math.sin(a)*25);ctx.stroke();
+ }
+ ctx.fillStyle="#565b59";ctx.fillRect(-19,5,38,15);ctx.strokeStyle="#c9c3a9";ctx.lineWidth=2;ctx.strokeRect(-19,5,38,15);
+ ctx.fillStyle="#777d78";ctx.fillRect(-13,-3,26,10);ctx.strokeStyle="#3f4543";ctx.strokeRect(-13,-3,26,10);
+ ctx.fillStyle="#927447";ctx.fillRect(-6,-35,12,34);ctx.beginPath();ctx.arc(0,-44,9,0,TAU);ctx.fill();
+ ctx.strokeStyle="#927447";ctx.lineWidth=7;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(-2,-30);ctx.lineTo(-17,-13);ctx.moveTo(3,-29);ctx.lineTo(16,-20);ctx.stroke();
+ ctx.fillStyle="#6d583a";ctx.strokeStyle="#d2b66f";ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(-18,-11,10,15,-.25,0,TAU);ctx.fill();ctx.stroke();
+ ctx.strokeStyle="#d8c58c";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(15,-19);ctx.lineTo(27,-54);ctx.stroke();
+ ctx.fillStyle="#efe1ae";ctx.beginPath();ctx.moveTo(28,-60);ctx.lineTo(22,-49);ctx.lineTo(32,-51);ctx.closePath();ctx.fill();
+ ctx.strokeStyle="#f0d98a77";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,-44,10,0,TAU);ctx.stroke();
+ ctx.fillStyle="#fff0bd";ctx.strokeStyle="#241a10";ctx.lineWidth=3;ctx.font="bold 10px system-ui";ctx.textAlign="center";ctx.strokeText("KRIEGERSTATUE",0,47);ctx.fillText("KRIEGERSTATUE",0,47);
+ ctx.restore();
+}
+function drawFixedInnerWall(radius=FIXED_INNER_WALL_RADIUS){
+ ctx.save();ctx.lineCap="butt";
+ for(let quadrant=0;quadrant<4;quadrant++){
+  const center=-Math.PI/2+quadrant*Math.PI/2;
+  const a0=center+.18;
+  const a1=center+Math.PI/2-.18;
+  ctx.strokeStyle="#20170f99";ctx.lineWidth=27;ctx.beginPath();ctx.arc(CX+3,CY+5,radius,a0,a1);ctx.stroke();
+  ctx.strokeStyle="#6f5132";ctx.lineWidth=23;ctx.beginPath();ctx.arc(CX,CY,radius,a0,a1);ctx.stroke();
+  ctx.strokeStyle="#bd9861";ctx.lineWidth=4;ctx.beginPath();ctx.arc(CX,CY,radius,a0,a1);ctx.stroke();
+  const stones=8;
+  for(let k=0;k<stones;k++){
+   const a=a0+(a1-a0)*(k+.5)/stones,x=CX+Math.cos(a)*radius,y=CY+Math.sin(a)*radius;
+   ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);ctx.fillStyle=k%2?"#8e704a":"#765a3b";ctx.fillRect(-8,-12,16,24);ctx.strokeStyle="#3d2d20";ctx.lineWidth=1.2;ctx.strokeRect(-8,-12,16,24);ctx.restore();
+  }
+ }
+ // Vier kleine, feste Toröffnungen verbinden Kernburg und Dorfbereich.
+ for(const a of [-Math.PI/2,0,Math.PI/2,Math.PI]){
+  const x=CX+Math.cos(a)*radius,y=CY+Math.sin(a)*radius;
+  ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);
+  ctx.fillStyle="#4a321f";ctx.fillRect(-18,-13,36,27);ctx.strokeStyle="#d1aa68";ctx.lineWidth=2;ctx.strokeRect(-18,-13,36,27);
+  ctx.fillStyle="#17130f";ctx.beginPath();ctx.roundRect(-8,-2,16,18,6);ctx.fill();ctx.restore();
+ }
+ ctx.fillStyle="#e9d69dbb";ctx.font="bold 10px system-ui";ctx.textAlign="center";ctx.fillText("FESTER INNERER MAUERRING",CX,CY-radius-28);
+ ctx.restore();
+}
+function drawFutureFortressLayout(){
+ const layout=getFutureLayoutGeometry({CX,CY,WALL_R});
+ ctx.save();
+ // Dorf- und Versorgungsplätze liegen zwischen Kernburg und mittlerem Mauerring.
+ for(const slot of insideSlots){
+  if(slot.building)continue;
+  const statueSlot=slot.role==="statue";
+  ctx.fillStyle=statueSlot?"#d8b66d24":"#d8c79718";
+  ctx.strokeStyle=statueSlot?"#ffe09a99":"#f2dfaa55";
+  ctx.lineWidth=2;ctx.setLineDash(statueSlot?[5,5]:[8,7]);
+  if(statueSlot){ctx.beginPath();ctx.arc(slot.x,slot.y,35,0,TAU);ctx.fill();ctx.stroke();}
+  else{ctx.beginPath();ctx.roundRect(slot.x-38,slot.y-31,76,62,14);ctx.fill();ctx.stroke();}
+  ctx.setLineDash([]);ctx.fillStyle=statueSlot?"#ffe8adcc":"#efe0b277";ctx.font="bold 9px system-ui";ctx.textAlign="center";
+  ctx.fillText(statueSlot?"EHRENPLATZ":"BAUPLATZ",slot.x,slot.y+4);
+ }
+ drawFixedInnerWall(layout.fixedInnerRadius);
+ // Der aktive Palisadenring ist der mittlere Verteidigungsring dieser Übergangsversion.
+ ctx.fillStyle="#e8d19daa";ctx.font="bold 10px system-ui";ctx.textAlign="center";
+ ctx.fillText("MITTLERER MAUERRING · AKTUELLE PALISADE",CX,CY-WALL_R-30);
+ // Geplanter äußerer Mauerring mit vier anklickbaren Toröffnungen.
+ for(let quadrant=0;quadrant<4;quadrant++){
+  const a0=-Math.PI/2+quadrant*Math.PI/2+OUTER_GATE_GAP;
+  const a1=-Math.PI/2+(quadrant+1)*Math.PI/2-OUTER_GATE_GAP;
+  const pieces=3;
+  for(let part=0;part<pieces;part++){
+   const span=(a1-a0)/pieces;
+   drawBlueprintArc(layout.outerRadius,a0+part*span+.018,a0+(part+1)*span-.018,25);
+  }
+ }
+ drawBlueprintGate(layout.outerRadius,-Math.PI/2,"TOR NORD");
+ drawBlueprintGate(layout.outerRadius,0,"TOR OST");
+ drawBlueprintGate(layout.outerRadius,Math.PI/2,"TOR SÜD");
+ drawBlueprintGate(layout.outerRadius,Math.PI,"TOR WEST");
+ ctx.fillStyle="#f0dfb4cc";ctx.font="bold 12px system-ui";ctx.textAlign="center";
+ ctx.fillText("ÄUSSERER MAUERRING · SPÄTER BAUBAR",CX,CY-layout.outerRadius-48);
+ ctx.restore();
+}
 function drawGatehouse(a){
  const x=CX+Math.cos(a)*WALL_R,y=CY+Math.sin(a)*WALL_R;
  ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);
@@ -221,32 +339,41 @@ function drawCastle(){
   ctx.fillStyle="#183e68";ctx.beginPath();ctx.moveTo(-20,-10);ctx.lineTo(0,-27);ctx.lineTo(20,-10);ctx.closePath();ctx.fill();
   ctx.strokeStyle="#d4b269";ctx.lineWidth=2;ctx.stroke();ctx.restore();
  }
- // Hauptburg, massiver und detaillierter
- ctx.fillStyle="#11141777";ctx.fillRect(CX-77,CY-65,164,150);
- const stone=ctx.createLinearGradient(CX-80,CY-80,CX+80,CY+85);
- stone.addColorStop(0,"#8f999b");stone.addColorStop(.55,"#596468");stone.addColorStop(1,"#353f43");
- ctx.fillStyle=stone;ctx.fillRect(CX-66,CY-61,132,126);
- ctx.strokeStyle="#222a2d";ctx.lineWidth=7;ctx.strokeRect(CX-66,CY-61,132,126);
- // zentrale Dachfläche
- ctx.fillStyle="#183e70";ctx.beginPath();ctx.moveTo(CX-71,CY-58);ctx.lineTo(CX,CY-94);ctx.lineTo(CX+71,CY-58);ctx.closePath();ctx.fill();
- ctx.strokeStyle="#d4b15d";ctx.lineWidth=2;ctx.stroke();
- // Ecktürme
- for(const [ox,oy] of [[-58,-51],[58,-51],[-58,51],[58,51]]){
-  ctx.fillStyle="#697579";ctx.fillRect(CX+ox-18,CY+oy-18,36,36);
-  ctx.fillStyle="#173b67";ctx.beginPath();ctx.moveTo(CX+ox-23,CY+oy-18);ctx.lineTo(CX+ox,CY+oy-38);ctx.lineTo(CX+ox+23,CY+oy-18);ctx.closePath();ctx.fill();
-  ctx.strokeStyle="#cfad62";ctx.lineWidth=1.5;ctx.stroke();
+ // Kleine Holzfestung als Zentrum des neuen Aufbausystems.
+ ctx.fillStyle="#10100d77";ctx.beginPath();ctx.ellipse(CX+8,CY+43,92,40,0,0,TAU);ctx.fill();
+ // niedrige Holzpalisade um den Kernbau
+ for(let i=0;i<18;i++){
+  const a=i/18*TAU,r=77,x=CX+Math.cos(a)*r,y=CY+Math.sin(a)*r*.72+10;
+  ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);
+  ctx.fillStyle=i%2?"#704526":"#87552d";
+  ctx.beginPath();ctx.moveTo(-4,12);ctx.lineTo(-5,-12);ctx.lineTo(0,-20);ctx.lineTo(5,-12);ctx.lineTo(4,12);ctx.closePath();ctx.fill();
+  ctx.strokeStyle="#332116";ctx.lineWidth=1.2;ctx.stroke();ctx.restore();
  }
- // Steinfugen
- ctx.strokeStyle="#b7c0bd33";ctx.lineWidth=1.5;
- for(let y=-42;y<55;y+=19){ctx.beginPath();ctx.moveTo(CX-61,CY+y);ctx.lineTo(CX+61,CY+y);ctx.stroke()}
- // Tor
- ctx.fillStyle="#221810";ctx.fillRect(CX-14,CY+22,28,43);
- ctx.strokeStyle="#a47742";ctx.lineWidth=2;ctx.strokeRect(CX-14,CY+22,28,43);
- ctx.fillStyle="#d5a84f";ctx.beginPath();ctx.arc(CX+6,CY+44,2.4,0,TAU);ctx.fill();
- // Fahne
- ctx.strokeStyle="#3b291e";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(CX,CY-110);ctx.lineTo(CX,CY-72);ctx.stroke();
- ctx.fillStyle="#174a82";ctx.beginPath();ctx.moveTo(CX,CY-108);ctx.lineTo(CX+35,CY-98);ctx.lineTo(CX,CY-86);ctx.closePath();ctx.fill();
- ctx.fillStyle="#e2c56d";ctx.font="bold 12px serif";ctx.textAlign="center";ctx.fillText("♜",CX+13,CY-95);
+ // Fundament und Hauptgebäude
+ ctx.fillStyle="#4e3927";ctx.fillRect(CX-55,CY-40,110,92);
+ const timber=ctx.createLinearGradient(CX-55,CY-40,CX+55,CY+52);
+ timber.addColorStop(0,"#a66c36");timber.addColorStop(.5,"#754824");timber.addColorStop(1,"#4c301f");
+ ctx.fillStyle=timber;ctx.fillRect(CX-49,CY-36,98,82);
+ ctx.strokeStyle="#2d2018";ctx.lineWidth=5;ctx.strokeRect(CX-49,CY-36,98,82);
+ // Fachwerk
+ ctx.strokeStyle="#2f2016";ctx.lineWidth=4;
+ ctx.beginPath();ctx.moveTo(CX-46,CY-33);ctx.lineTo(CX+46,CY+43);ctx.moveTo(CX+46,CY-33);ctx.lineTo(CX-46,CY+43);ctx.moveTo(CX,CY-35);ctx.lineTo(CX,CY+45);ctx.stroke();
+ // Holzdach
+ const roof=ctx.createLinearGradient(CX-68,CY-78,CX+68,CY-28);
+ roof.addColorStop(0,"#385f78");roof.addColorStop(.5,"#173d60");roof.addColorStop(1,"#102a43");
+ ctx.fillStyle=roof;ctx.beginPath();ctx.moveTo(CX-66,CY-35);ctx.lineTo(CX,CY-79);ctx.lineTo(CX+66,CY-35);ctx.closePath();ctx.fill();
+ ctx.strokeStyle="#d1ae60";ctx.lineWidth=2.4;ctx.stroke();
+ // kleines Tor und seitliche Stützen
+ ctx.fillStyle="#21170f";ctx.fillRect(CX-13,CY+13,26,34);ctx.strokeStyle="#b57a3f";ctx.lineWidth=2;ctx.strokeRect(CX-13,CY+13,26,34);
+ for(const ox of [-43,43]){
+  ctx.fillStyle="#5b3921";ctx.fillRect(CX+ox-8,CY-45,16,84);
+  ctx.fillStyle="#2f5672";ctx.beginPath();ctx.moveTo(CX+ox-14,CY-44);ctx.lineTo(CX+ox,CY-59);ctx.lineTo(CX+ox+14,CY-44);ctx.closePath();ctx.fill();
+  ctx.strokeStyle="#cba85e";ctx.lineWidth=1.5;ctx.stroke();
+ }
+ // Fahne der jungen Festung
+ ctx.strokeStyle="#36261a";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(CX,CY-108);ctx.lineTo(CX,CY-72);ctx.stroke();
+ ctx.fillStyle="#1d4e7b";ctx.beginPath();ctx.moveTo(CX,CY-106);ctx.lineTo(CX+34,CY-97);ctx.lineTo(CX,CY-85);ctx.closePath();ctx.fill();
+ ctx.fillStyle="#e3c86d";ctx.font="bold 12px serif";ctx.textAlign="center";ctx.fillText("♜",CX+13,CY-94);
  // Sichtbarer Lebensbalken der Hauptburg
  const castleHpRatio=Math.max(0,Math.min(1,state.hp/state.maxHp));
  const castleBarY=CY-142,castleBarW=156;
@@ -255,12 +382,10 @@ function drawCastle(){
  ctx.fillRect(CX-castleBarW/2,castleBarY,castleBarW*castleHpRatio,13);
  ctx.strokeStyle="#f3e5cfbb";ctx.lineWidth=1.5;ctx.strokeRect(CX-castleBarW/2-2,castleBarY-2,castleBarW+4,17);
  ctx.fillStyle="#fff8e8";ctx.font="bold 10px system-ui";ctx.textAlign="center";
- ctx.fillText(`BURG ${Math.ceil(state.hp)} / ${state.maxHp}`,CX,castleBarY+10);
- // Brunnen, Kisten, Fässer und kleine Figuren
- ctx.fillStyle="#596467";ctx.beginPath();ctx.arc(CX-105,CY+82,21,0,TAU);ctx.fill();ctx.strokeStyle="#b9c2bd";ctx.lineWidth=3;ctx.stroke();
- ctx.fillStyle="#2d586e";ctx.beginPath();ctx.arc(CX-105,CY+82,12,0,TAU);ctx.fill();
- for(const [ox,oy] of [[108,70],[126,80],[-128,-62]]){ctx.fillStyle="#744a29";ctx.fillRect(CX+ox-9,CY+oy-7,18,14);ctx.strokeStyle="#bd8748";ctx.lineWidth=2;ctx.strokeRect(CX+ox-9,CY+oy-7,18,14)}
- for(const [ox,oy] of [[95,-80],[-95,102]]){ctx.fillStyle="#5a3824";ctx.beginPath();ctx.ellipse(CX+ox,CY+oy,8,12,0,0,TAU);ctx.fill();ctx.strokeStyle="#aa7944";ctx.stroke()}
+ ctx.fillText(`HOLZFESTUNG ${Math.ceil(state.hp)} / ${state.maxHp}`,CX,castleBarY+10);
+ // Kisten, Fässer und kleine Versorgungsdetails am Festungshof.
+ for(const [ox,oy] of [[-108,72],[-126,62],[112,-68]]){ctx.fillStyle="#744a29";ctx.fillRect(CX+ox-9,CY+oy-7,18,14);ctx.strokeStyle="#bd8748";ctx.lineWidth=2;ctx.strokeRect(CX+ox-9,CY+oy-7,18,14)}
+ for(const [ox,oy] of [[-98,-78],[-114,94]]){ctx.fillStyle="#5a3824";ctx.beginPath();ctx.ellipse(CX+ox,CY+oy,8,12,0,0,TAU);ctx.fill();ctx.strokeStyle="#aa7944";ctx.stroke()}
  // Fackeln
  for(let i=0;i<10;i++){
   const a=i/10*TAU+.2,r=WALL_R-68,x=CX+Math.cos(a)*r,y=CY+Math.sin(a)*r;
@@ -274,7 +399,7 @@ function drawSlots(){
  if(!buildMode)return;
  for(const s of [...wallSlots,...insideSlots,...castleSlots]){
   if(s.building)continue;
-  const c=BUILD[buildMode],valid=c&&((c.kind==="tower"&&(s.type==="wall"||s.type==="castle"))||(c.kind==="inside"&&s.type==="inside"));
+  const c=BUILD[buildMode],valid=c&&((c.kind==="tower"&&(s.type==="wall"||s.type==="castle"))||(c.kind==="inside"&&s.type==="inside"&&(c.slotRole==="statue"?s.role==="statue":s.role!=="statue")));
   if(!valid)continue;
   ctx.save();
   const pulse=.72+Math.sin(performance.now()*.006+s.x*.01)*.18;
@@ -325,6 +450,9 @@ function drawBuildings(){
   const lv=b.level||1,isTower=b.base.kind==="tower";
   ctx.fillStyle="#07090788";ctx.beginPath();ctx.ellipse(8,20,35,15,0,0,TAU);ctx.fill();
   if(selected===b){ctx.strokeStyle="#ffe184";ctx.shadowBlur=22;ctx.shadowColor="#ffd665";ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,43,0,TAU);ctx.stroke();ctx.shadowBlur=0}
+  if(b.key==="statue"){
+   ctx.restore();drawWarriorStatue({x,y});continue;
+  }
   if(isTower){
    // stone circular base and timber frame
    ctx.fillStyle="#42413a";ctx.beginPath();ctx.ellipse(0,14,25,14,0,0,TAU);ctx.fill();ctx.strokeStyle="#89877b";ctx.lineWidth=3;ctx.stroke();
@@ -742,7 +870,7 @@ function drawEnemies(){
 
 function draw(){
  ctx.clearRect(0,0,vw,vh);ctx.save();ctx.translate(vw/2,vh/2);ctx.scale(zoom,zoom);ctx.translate(-camX,-camY);
- drawGround();drawPaths();drawWorldDetails();drawSiegeCamps();drawCastle();drawSlots();drawRangeIndicators();drawBuildings();drawUnits();drawCraftsmen();
+ drawGround();drawPaths();drawWorldDetails();drawSiegeCamps();drawCastle();drawFutureFortressLayout();drawSlots();drawRangeIndicators();drawBuildings();drawUnits();drawCraftsmen();
  for(const p of state.projectiles){ctx.save();ctx.translate(p.x,p.y);const t=p.target,ang=t?Math.atan2(t.y-p.y,t.x-p.x):0;ctx.rotate(ang);ctx.shadowBlur=14;ctx.shadowColor=p.color;ctx.strokeStyle=p.color;ctx.lineWidth=Math.max(2,p.radius*.7);ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(5,0);ctx.stroke();ctx.fillStyle="#eef6f8";ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(1,-3);ctx.lineTo(1,3);ctx.closePath();ctx.fill();ctx.restore()}
  drawEnemies();for(const p of state.particles){ctx.globalAlpha=Math.min(1,p.life*3);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,TAU);ctx.fill()}ctx.globalAlpha=1;ctx.restore();
  const vg=ctx.createRadialGradient(vw*.5,vh*.45,Math.min(vw,vh)*.12,vw*.5,vh*.5,Math.max(vw,vh)*.72);vg.addColorStop(0,"#00000000");vg.addColorStop(.72,"#00000010");vg.addColorStop(1,"#00000068");ctx.fillStyle=vg;ctx.fillRect(0,0,vw,vh);

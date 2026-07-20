@@ -125,10 +125,14 @@ export function createEntityAt(x, y, key, context) {
   const slots =
     blueprint.kind === "tower"
       ? [...wallSlots, ...castleSlots]
-      : insideSlots;
+      : insideSlots.filter((slot) =>
+          blueprint.slotRole === "statue"
+            ? slot.role === "statue"
+            : slot.role !== "statue"
+        );
 
   let bestSlot = null;
-  let bestDistance = 42;
+  let bestDistance = blueprint.slotRole === "statue" ? 48 : 42;
   for (const slot of slots) {
     const distance = Math.hypot(x - slot.x, y - slot.y);
     if (distance < bestDistance) {
@@ -141,7 +145,9 @@ export function createEntityAt(x, y, key, context) {
     showToast(
       blueprint.kind === "tower"
         ? "Turm auf einem Mauer- oder Burgplatz errichten"
-        : "Gebäude im Burghof errichten"
+        : blueprint.slotRole === "statue"
+          ? "Kriegerstatue auf dem markierten Ehrenplatz errichten"
+          : "Gebäude auf einem Dorfplatz errichten"
     );
     return false;
   }
@@ -216,6 +222,11 @@ export function upgradeEntity(entity, context) {
   } = context;
 
   if (!entity) return false;
+
+  if (entity.kind === "building" && entity.base?.decorative) {
+    showToast("Die Kriegerstatue besitzt derzeit noch keine Funktion oder Aufwertung");
+    return false;
+  }
 
   if (
     entity.kind === "unit" ||

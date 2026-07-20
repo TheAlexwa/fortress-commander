@@ -160,6 +160,13 @@ export function renderGameUI({
 
   const building = selected;
 
+  if (building.base.decorative) {
+    ui.selected.innerHTML = `<b>${building.base.name}</b><br>Reines Zierbauwerk · derzeit ohne Funktion<br>Ein späteres Update gibt der Statue eine eigene Aufgabe.`;
+    ui.upgrade.style.display = "none";
+    ui.sell.disabled = false;
+    return;
+  }
+
   if (building.base.kind === "tower") {
     ui.selected.innerHTML = `<b>${building.base.name} · EXP-Stufe ${building.expLevel || 1}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · EXP ${Math.floor(building.xp || 0)}/${Math.floor(building.xpMax || 90)}<br>Schaden ${Math.round(building.damage)} · Reichweite ${Math.round(building.range)}${building.pendingUpgrades ? ` · <b>${building.pendingUpgrades} EXP-Aufwertung bereit</b>` : ""}<br>Aufwertung: nur über EXP; Turmforschung folgt separat`;
     ui.upgrade.style.display = "none";
