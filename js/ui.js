@@ -1,3 +1,5 @@
+import { getMiddleFortificationUpgrade } from "./fortifications.js";
+
 /**
  * Benutzeroberfläche von Fortress Commander.
  *
@@ -152,6 +154,7 @@ export function renderGameUI({
 
   ui.upgrade.disabled = true;
   ui.upgrade.style.display = "inline-block";
+  ui.upgrade.textContent = "Verbessern";
   ui.sell.disabled = true;
   ui.repairWall.disabled = true;
   ui.repairWall.textContent = "Bewohner";
@@ -169,7 +172,16 @@ export function renderGameUI({
   if (selected.kind === "gate") {
     const destroyed = Number(selected.hp) <= 0;
     const ringLabel = selected.ring === "outer" ? "Äußerer Verteidigungsring" : "Mittlerer Verteidigungsring";
-    ui.selected.innerHTML = `<b>${selected.name}</b><br>Lebenspunkte: ${Math.ceil(selected.hp)} / ${selected.maxHp}<br>Status: ${destroyed ? "zerstört" : "errichtet"}<br>${ringLabel} · Holztor`;
+    const upgrade = getMiddleFortificationUpgrade(selected);
+    const materialLabel = upgrade.upgraded ? "Steintor" : "Holztor";
+    ui.selected.innerHTML = `<b>${selected.name}</b><br>Lebenspunkte: ${Math.ceil(selected.hp)} / ${selected.maxHp}<br>Status: ${destroyed ? "zerstört" : "errichtet"}<br>${ringLabel} · ${materialLabel}`;
+    if (upgrade.eligible && !upgrade.upgraded && !destroyed && selected.built) {
+      ui.upgrade.style.display = "inline-block";
+      ui.upgrade.textContent = `Zu Steintor · ${upgrade.cost} 🪨`;
+      ui.upgrade.disabled = state.inWave || state.stone < upgrade.cost;
+    } else {
+      ui.upgrade.style.display = "none";
+    }
     return;
   }
 
@@ -178,12 +190,22 @@ export function renderGameUI({
     const label = selected.name ? ` ${selected.name}` : "";
     const destroyed = selected.destroyed || Number(selected.hp) <= 0;
     const stateLabel = destroyed ? "zerstört" : "errichtet";
+    const upgrade = getMiddleFortificationUpgrade(selected);
     const title = inner
       ? "Innerer Mauerring"
       : selected.ring === "outer"
         ? "Äußere Holzpalisade"
-        : "Mittlere Holzpalisade";
+        : upgrade.upgraded
+          ? "Mittlere Steinmauer"
+          : "Mittlere Holzpalisade";
     ui.selected.innerHTML = `<b>${title}${label}</b><br>Lebenspunkte: ${Math.ceil(selected.hp)} / ${selected.maxHp}<br>Status: ${stateLabel}`;
+    if (upgrade.eligible && !upgrade.upgraded && !destroyed && selected.built) {
+      ui.upgrade.style.display = "inline-block";
+      ui.upgrade.textContent = `Zu Steinmauer · ${upgrade.cost} 🪨`;
+      ui.upgrade.disabled = state.inWave || state.stone < upgrade.cost;
+    } else {
+      ui.upgrade.style.display = "none";
+    }
     return;
   }
 

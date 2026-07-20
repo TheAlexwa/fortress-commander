@@ -18,10 +18,17 @@ export const MIDDLE_WALL_SEGMENTS_PER_SECTION = 5;
 export const MIDDLE_WALL_SEGMENT_COUNT =
   MIDDLE_WALL_SECTION_COUNT * MIDDLE_WALL_SEGMENTS_PER_SECTION;
 export const MIDDLE_WALL_BUILD_WOOD = 5;
+export const MIDDLE_WALL_WOOD_MAX_HP = 420;
+export const MIDDLE_WALL_STONE_MAX_HP = 850;
+export const MIDDLE_WALL_STONE_COST = 8;
 
 export const MIDDLE_GATE_COUNT = 4;
 export const MIDDLE_GATE_BUILD_WOOD = 20;
-export const MIDDLE_GATE_MAX_HP = 620;
+export const MIDDLE_GATE_WOOD_MAX_HP = 620;
+export const MIDDLE_GATE_STONE_MAX_HP = 1250;
+export const MIDDLE_GATE_STONE_COST = 18;
+// Alias für bestehende Aufrufer aus älteren Patches.
+export const MIDDLE_GATE_MAX_HP = MIDDLE_GATE_WOOD_MAX_HP;
 export const MIDDLE_GATE_HALF_ANGLE = 0.105;
 
 export const OUTER_WALL_SECTION_COUNT = 4;
@@ -109,6 +116,7 @@ export function createMiddleGates({ maxHp = MIDDLE_GATE_MAX_HP } = {}) {
     name: GATE_NAMES[index],
     angle,
     am: angle,
+    material: "wood",
     built: false,
     hp: 0,
     maxHp,
@@ -123,6 +131,8 @@ export function initializeMiddleGates(gates, { built = false } = {}) {
     gate.name = GATE_NAMES[index] || `Tor ${index + 1}`;
     gate.angle = GATE_ANGLES[index] ?? gate.angle ?? 0;
     gate.am = gate.angle;
+    gate.material = "wood";
+    gate.maxHp = MIDDLE_GATE_WOOD_MAX_HP;
     gate.built = Boolean(built);
     gate.hp = built ? gate.maxHp : 0;
   }
@@ -215,6 +225,8 @@ export function buildMiddleGateAt(x, y, context) {
 
   const rebuilding = gate.built && gate.hp <= 0;
   state.wood -= MIDDLE_GATE_BUILD_WOOD;
+  gate.material = "wood";
+  gate.maxHp = MIDDLE_GATE_WOOD_MAX_HP;
   gate.built = true;
   gate.hp = gate.maxHp;
   setSelected(gate);
@@ -381,6 +393,8 @@ export function initializeMiddleWallSegments(walls, { built = false } = {}) {
     wall.name = getMiddleWallSegmentName(wall.i, count);
     wall.quarterIndex = getMiddleWallSectionIndexForSegment(wall.i, count);
     wall.segmentInQuarter = getMiddleWallSegmentInSection(wall.i, count);
+    wall.material = "wood";
+    wall.maxHp = MIDDLE_WALL_WOOD_MAX_HP;
     wall.built = Boolean(built);
     wall.hp = built ? wall.maxHp : 0;
   }
@@ -525,6 +539,8 @@ export function buildMiddleWallSegmentAt(x, y, context) {
 
   const rebuilding = wall.built && wall.hp <= 0;
   state.wood -= MIDDLE_WALL_BUILD_WOOD;
+  wall.material = "wood";
+  wall.maxHp = MIDDLE_WALL_WOOD_MAX_HP;
   wall.built = true;
   wall.hp = wall.maxHp;
 
@@ -539,6 +555,62 @@ export function buildMiddleWallSegmentAt(x, y, context) {
 
 // Alias, damit ältere Importstellen nicht unvermittelt brechen.
 export const buildMiddleWallSectionAt = buildMiddleWallSegmentAt;
+
+
+export function getMiddleFortificationUpgrade(entity) {
+  const middle = entity?.ring === "middle";
+  const isWall = entity?.kind === "wall";
+  const isGate = entity?.kind === "gate";
+  const eligible = middle && (isWall || isGate);
+  const cost = isGate ? MIDDLE_GATE_STONE_COST : MIDDLE_WALL_STONE_COST;
+  const maxHp = isGate ? MIDDLE_GATE_STONE_MAX_HP : MIDDLE_WALL_STONE_MAX_HP;
+  const material = entity?.material === "stone" ? "stone" : "wood";
+  return {
+    eligible,
+    isWall,
+    isGate,
+    material,
+    upgraded: eligible && material === "stone",
+    cost,
+    maxHp,
+    label: isGate ? "Steintor" : "Steinmauer",
+  };
+}
+
+export function upgradeMiddleFortification(
+  entity,
+  { state, showToast = () => {}, setSelected = () => {} } = {}
+) {
+  const upgrade = getMiddleFortificationUpgrade(entity);
+  if (!upgrade.eligible) return false;
+  if (!entity.built || Number(entity.hp) <= 0) {
+    showToast("Zerstörte Befestigung zuerst aus Holz neu errichten");
+    return false;
+  }
+  if (state?.inWave) {
+    showToast("Steinausbau ist nur während der Belagerungsphase möglich");
+    return false;
+  }
+  if (upgrade.upgraded) {
+    showToast(`${upgrade.label} ist bereits fertig ausgebaut`);
+    return false;
+  }
+  if ((Number(state?.stone) || 0) < upgrade.cost) {
+    showToast(`Benötigt ${upgrade.cost} Stein`);
+    return false;
+  }
+
+  const oldMaxHp = Math.max(1, Number(entity.maxHp) || 1);
+  const healthRatio = Math.max(0, Math.min(1, (Number(entity.hp) || 0) / oldMaxHp));
+  state.stone -= upgrade.cost;
+  entity.material = "stone";
+  entity.maxHp = upgrade.maxHp;
+  entity.hp = upgrade.maxHp * healthRatio;
+  setSelected(entity);
+  showToast(`${upgrade.label} fertiggestellt · ${upgrade.cost} Stein`);
+  return true;
+}
+
 
 
 export function getOuterWallSegmentAngles(

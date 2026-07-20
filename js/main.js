@@ -90,6 +90,7 @@ import { FIXED_INNER_WALL_RADIUS, OUTER_WALL_OFFSET } from "./map-layout.js";
 import {
   MIDDLE_WALL_SECTION_COUNT,
   MIDDLE_WALL_SEGMENT_COUNT,
+  MIDDLE_WALL_WOOD_MAX_HP,
   MIDDLE_GATE_COUNT,
   OUTER_WALL_SEGMENT_COUNT,
   OUTER_GATE_COUNT,
@@ -108,6 +109,8 @@ import {
   getMiddleWallSegmentAngles,
   getMiddleWallSegmentName,
   getMiddleWallSegmentStatus,
+  getMiddleFortificationUpgrade,
+  upgradeMiddleFortification,
   getOuterWallSegmentIndexForAngle,
   getOuterGateForPoint,
   getOuterWallSegmentName,
@@ -129,8 +132,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.1";
-const GAME_RELEASE_NAME="Laptop-HUD & Kamera-Randpuffer";
+const GAME_VERSION="1.15.2";
+const GAME_RELEASE_NAME="Steinbefestigungen am mittleren Ring";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -242,7 +245,7 @@ const ui={
 const TAU=Math.PI*2;
 const WORLD_W=3000,WORLD_H=2200,CX=WORLD_W/2,CY=WORLD_H/2;
 const SIEGE_CAMPS=getSiegeCampPositions({WORLD_W,WORLD_H});
-const WALL_R=355,WALL_SEGMENTS=MIDDLE_WALL_SEGMENT_COUNT,WALL_MAX_HP=420;
+const WALL_R=355,WALL_SEGMENTS=MIDDLE_WALL_SEGMENT_COUNT,WALL_MAX_HP=MIDDLE_WALL_WOOD_MAX_HP;
 const OUTER_WALL_R=WALL_R+OUTER_WALL_OFFSET;
 let vw=1000,vh=700,dpr=1,last=performance.now(),paused=true,gameOver=false;
 const BASE_MIN_ZOOM=.18;
@@ -277,7 +280,7 @@ function initMap(){
   const {a0,a1,am}=angles;
   const quarterIndex=getMiddleWallSectionIndexForSegment(i,WALL_SEGMENTS);
   const segmentInQuarter=i%Math.max(1,WALL_SEGMENTS/MIDDLE_WALL_SECTION_COUNT);
-  state.walls.push({kind:"wall",ring:"middle",i,quarterIndex,segmentInQuarter,name:getMiddleWallSegmentName(i,WALL_SEGMENTS),a0,a1,am,built:false,hp:0,maxHp:WALL_MAX_HP});
+  state.walls.push({kind:"wall",ring:"middle",i,quarterIndex,segmentInQuarter,name:getMiddleWallSegmentName(i,WALL_SEGMENTS),a0,a1,am,material:"wood",built:false,hp:0,maxHp:WALL_MAX_HP});
   wallSlots.push({type:"wall",i,x:CX+Math.cos(am)*(WALL_R-48),y:CY+Math.sin(am)*(WALL_R-48),building:null});
  }
  state.innerWalls.push(...createInnerWallSegments());
@@ -588,6 +591,13 @@ function createAt(x,y,key){
  });
 }
 function upgradeSelected(){
+ const fortificationUpgrade=getMiddleFortificationUpgrade(selected);
+ if(fortificationUpgrade.eligible){
+  return upgradeMiddleFortification(selected,{
+   state,showToast,
+   setSelected:value=>{selected=value}
+  });
+ }
  return upgradeEntity(selected,{state,syncResidents,showToast,globalResearchIncreaseRate});
 }
 function sellSelected(){
@@ -1290,13 +1300,17 @@ function buildingStatsHtml(b){
 }
 function wallStatsHtml(w){
  const percent=w.maxHp?Math.ceil(w.hp/w.maxHp*100):0;
- const fallback=w.ring==="outer"?"Äußere Palisade":w.ring==="inner"?"Innerer Mauerring":"Mittlere Palisade";
+ const fallback=w.kind==="gate"?"Tor":w.ring==="outer"?"Äußere Palisade":w.ring==="inner"?"Innerer Mauerring":"Mittlere Palisade";
+ const upgrade=getMiddleFortificationUpgrade(w);
+ const material=upgrade.eligible?(upgrade.upgraded?"Stein":"Holz"):(w.ring==="inner"?"Stein":"Holz");
  const hint=w.ring==="outer"
-  ?"Der äußere Ring besteht aus 28 einzeln baubaren Holzsegmenten. Dieses Segment kann während der Belagerungsphase für 5 Holz errichtet oder neu aufgebaut werden. Äußere Tore folgen im nächsten Schritt."
+  ?"Der äußere Ring bleibt in dieser Version aus Holz. Sein Steinausbau folgt separat."
   :w.ring==="inner"
    ?"Der feste innere Mauerring schützt die Holzfestung als letzte Verteidigungslinie. Beschädigte Segmente werden von Handwerkern repariert."
-   :"Jeder Viertelkreis besteht aus fünf einzeln baubaren Palisadensegmenten. Dieses Segment kann bei einer Bresche separat für 5 Holz neu errichtet werden.";
- return `<div class="statsSummary"><div class="statTile"><span>Segment</span><b>${w.name||fallback}</b></div><div class="statTile"><span>Zustand</span><b>${percent}%</b></div><div class="statTile"><span>Leben</span><b>${Math.ceil(w.hp)} / ${Math.ceil(w.maxHp)}</b></div></div><div class="statsHint">${hint}</div>`;
+   :upgrade.upgraded
+    ?"Diese Befestigung wurde mit Stein verstärkt. Wird sie vollständig zerstört, erfolgt ein späterer Wiederaufbau zunächst wieder aus Holz."
+    :`Während der Belagerungsphase kann diese Befestigung für ${upgrade.cost} Stein ausgebaut werden. Der aktuelle Schadensanteil bleibt dabei erhalten.`;
+ return `<div class="statsSummary"><div class="statTile"><span>${w.kind==="gate"?"Tor":"Segment"}</span><b>${w.name||fallback}</b></div><div class="statTile"><span>Material</span><b>${material}</b></div><div class="statTile"><span>Zustand</span><b>${percent}%</b></div><div class="statTile"><span>Leben</span><b>${Math.ceil(w.hp)} / ${Math.ceil(w.maxHp)}</b></div></div><div class="statsHint">${hint}</div>`;
 }
 function overviewStatsHtml(){
  const units=state.units.filter(u=>u.hp>0),towers=state.buildings.filter(b=>b.base.kind==="tower"&&b.hp>0),open=units.reduce((s,u)=>s+(u.pendingUpgrades||0),0)+towers.reduce((s,b)=>s+(b.pendingUpgrades||0),0);
@@ -1444,7 +1458,7 @@ function openStats(target=selected){
  prepareStatsScreen();
  if(target&&target.kind==="unit"){statsTitle.textContent="Einheitenwerte";statsContent.innerHTML=unitStatsHtml(target)}
  else if(target&&target.kind==="building"){statsTitle.textContent=buildingDisplayName(target);statsContent.innerHTML=buildingStatsHtml(target)}
- else if(target&&(target.kind==="wall-section"||target.kind==="wall")&&target.maxHp){statsTitle.textContent=target.ring==="inner"?"Innerer Mauerring":"Palisadenwerte";statsContent.innerHTML=wallStatsHtml(target)}
+ else if(target&&(target.kind==="gate"||target.kind==="wall-section"||target.kind==="wall")&&target.maxHp){statsTitle.textContent=target.kind==="gate"?"Torwerte":target.ring==="inner"?"Innerer Mauerring":"Palisadenwerte";statsContent.innerHTML=wallStatsHtml(target)}
  else{statsTitle.textContent="Festungsstatistiken";statsContent.innerHTML=overviewStatsHtml()}
 }
 function closeStats(){statsScreen.classList.add("hidden");statsScreen.style.pointerEvents="none";statsScreen.style.visibility="hidden";statsScreen.style.display="none";last=performance.now();updateUI()}
@@ -1506,6 +1520,10 @@ selectionAutoBtn.addEventListener("click",e=>{
 selectionUpgradeBtn.addEventListener("click",e=>{
  e.preventDefault();e.stopPropagation();closeStats();hideRepairDecision();
  if(!selected)return;
+ if(getMiddleFortificationUpgrade(selected).eligible){
+  upgradeSelected();
+  return;
+ }
  // Normale Gebäudeaufwertung: auf Mobilgeräten direkt über die Auswahlleiste erreichbar.
  if(selected.kind==="building"&&selected.base.kind!=="tower"&&!selected.base.decorative){
   const before=selected.level||1;
@@ -1575,9 +1593,12 @@ function updateSelectionHud(){
    :selected.key==="repair"?`👤 ${buildingHasWorker(selected)?"besetzt":"frei"} · 👷 ${selected.repairEnabled===false?"gestoppt":"aktiv"}`
    :selected.key==="workshop"?`⚒️ Forschung · 🔬 ${Math.floor(state.researchPoints||0)} · ${workshopLevels()} Stufen`
    :"Versorgungsgebäude";
+ }else if(selected.kind==="gate"){
+  const stone=selected.material==="stone";
+  icon=stone?"🏛️":"🚪";name=`${stone?"Steintor":"Holztor"} · ${selected.name||"Tor"}`;details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${selected.hp<=0?"zerstört":selected.ring==="middle"?"mittlerer Ring":"äußerer Ring"}`;
  }else if(selected.kind==="wall-section"||selected.kind==="wall"){
-  const inner=selected.ring==="inner";
-  icon="🧱";name=inner?`Innerer Mauerring · ${selected.name||`Segment ${(selected.i||0)+1}`}`:`Palisade ${selected.name||""}`.trim();details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${selected.hp<=0||selected.destroyed?"zerstört":"errichtet"}`;
+  const inner=selected.ring==="inner",stone=selected.material==="stone";
+  icon=stone?"🏛️":"🧱";name=inner?`Innerer Mauerring · ${selected.name||`Segment ${(selected.i||0)+1}`}`:`${stone?"Steinmauer":"Palisade"} ${selected.name||""}`.trim();details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${selected.hp<=0||selected.destroyed?"zerstört":stone?"Stein":"Holz"}`;
  }
  ui.selectionPortrait.textContent=icon;
  ui.selectionText.innerHTML=`<b>${name}</b><br>${details}`;
@@ -1588,8 +1609,14 @@ function updateSelectionHud(){
  const isNormalBuilding=selected.kind==="building"&&selected.base.kind!=="tower"&&!selected.base.decorative;
  const normalBuildingCanUpgrade=isNormalBuilding&&(selected.level||1)<(selected.key==="house"?2:5);
  const xpUpgradeReady=(isUnit||(selected.kind==="building"&&selected.base.kind==="tower"))&&(selected.pendingUpgrades||0)>0;
- selectionUpgradeBtn.classList.toggle("hidden",!(normalBuildingCanUpgrade||xpUpgradeReady));
- if(normalBuildingCanUpgrade){
+ const fortificationUpgrade=getMiddleFortificationUpgrade(selected);
+ const canOfferStoneUpgrade=fortificationUpgrade.eligible&&!fortificationUpgrade.upgraded&&selected.built&&selected.hp>0;
+ selectionUpgradeBtn.classList.toggle("hidden",!(normalBuildingCanUpgrade||xpUpgradeReady||canOfferStoneUpgrade));
+ if(canOfferStoneUpgrade){
+  selectionUpgradeBtn.querySelector("span").textContent="🪨";
+  selectionUpgradeBtn.querySelector("small").textContent=`Zu ${fortificationUpgrade.label} · ${fortificationUpgrade.cost}🪨`;
+  selectionUpgradeBtn.disabled=state.inWave||state.stone<fortificationUpgrade.cost;
+ }else if(normalBuildingCanUpgrade){
   const g=Math.floor(selected.base.gold*(.65+(selected.level||1)*.45));
   const w=Math.floor(selected.base.wood*(.45+(selected.level||1)*.3));
   selectionUpgradeBtn.querySelector("span").textContent="⬆";

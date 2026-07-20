@@ -1,4 +1,10 @@
 import { restoreSiegeState, serializeSiegeState } from "./siege.js";
+import {
+  MIDDLE_GATE_STONE_MAX_HP,
+  MIDDLE_GATE_WOOD_MAX_HP,
+  MIDDLE_WALL_STONE_MAX_HP,
+  MIDDLE_WALL_WOOD_MAX_HP,
+} from "./fortifications.js";
 
 /**
  * Lokales Speichersystem von Fortress Commander.
@@ -82,7 +88,11 @@ function remapSavedBuildingWallSlots(savedBuildings, oldWallCount, newWallCount)
   });
 }
 
-function restoreMiddleWallState(savedWalls, currentWalls) {
+function restoreMiddleWallState(
+  savedWalls,
+  currentWalls,
+  { allowStone = false, woodMaxHp = null, stoneMaxHp = null } = {}
+) {
   const oldCount = savedWalls.length;
   const newCount = currentWalls.length;
 
@@ -95,13 +105,19 @@ function restoreMiddleWallState(savedWalls, currentWalls) {
         );
     const savedWall = savedWalls[sourceIndex];
     const built = savedWall?.built === undefined ? true : savedWall.built === true;
-    const savedMax = Math.max(1, Number(savedWall?.maxHp) || wall.maxHp);
+    const material = allowStone && savedWall?.material === "stone" ? "stone" : "wood";
+    const targetMax = material === "stone"
+      ? Math.max(1, Number(stoneMaxHp) || Number(wall.maxHp) || 1)
+      : Math.max(1, Number(woodMaxHp) || Number(wall.maxHp) || 1);
+    const savedMax = Math.max(1, Number(savedWall?.maxHp) || targetMax);
     const healthRatio = built
       ? Math.max(0, Math.min(1, (Number(savedWall?.hp) || 0) / savedMax))
       : 0;
 
+    wall.material = material;
+    wall.maxHp = targetMax;
     wall.built = built;
-    wall.hp = built ? wall.maxHp * healthRatio : 0;
+    wall.hp = built ? targetMax * healthRatio : 0;
   });
 }
 
@@ -161,6 +177,7 @@ function createSnapshot({
       nextResidentId: state.nextResidentId,
       research: { ...(state.research || {}) },
       walls: state.walls.map((wall) => ({
+        material: wall.material === "stone" ? "stone" : "wood",
         built: wall.built === true,
         hp: wall.hp,
         maxHp: wall.maxHp,
@@ -171,6 +188,7 @@ function createSnapshot({
         maxHp: wall.maxHp,
       })),
       middleGates: (state.middleGates || []).map((gate) => ({
+        material: gate.material === "stone" ? "stone" : "wood",
         built: gate.built === true,
         hp: gate.hp,
         maxHp: gate.maxHp,
@@ -369,7 +387,11 @@ export function loadGameState({
 
   // v1.14.6 reduziert den mittleren Ring von 24 auf 20 Segmente.
   // Ältere Spielstände werden proportional auf die neue Geometrie übertragen.
-  restoreMiddleWallState(savedState.walls, state.walls);
+  restoreMiddleWallState(savedState.walls, state.walls, {
+    allowStone: true,
+    woodMaxHp: MIDDLE_WALL_WOOD_MAX_HP,
+    stoneMaxHp: MIDDLE_WALL_STONE_MAX_HP,
+  });
 
   const savedInnerWalls = Array.isArray(savedState.innerWalls)
     ? savedState.innerWalls
@@ -388,11 +410,18 @@ export function loadGameState({
     : null;
   (state.middleGates || []).forEach((gate, index) => {
     const savedGate = savedMiddleGates?.[index];
-    gate.built = savedGate?.built === true;
-    gate.maxHp = Math.max(1, Number(savedGate?.maxHp) || gate.maxHp);
-    gate.hp = gate.built
-      ? Math.max(0, Math.min(gate.maxHp, Number(savedGate?.hp) || 0))
+    const material = savedGate?.material === "stone" ? "stone" : "wood";
+    const targetMax = material === "stone"
+      ? MIDDLE_GATE_STONE_MAX_HP
+      : MIDDLE_GATE_WOOD_MAX_HP;
+    const savedMax = Math.max(1, Number(savedGate?.maxHp) || targetMax);
+    const ratio = savedGate?.built === true
+      ? Math.max(0, Math.min(1, (Number(savedGate?.hp) || 0) / savedMax))
       : 0;
+    gate.material = material;
+    gate.built = savedGate?.built === true;
+    gate.maxHp = targetMax;
+    gate.hp = gate.built ? targetMax * ratio : 0;
   });
 
   const savedOuterWalls = Array.isArray(savedState.outerWalls)
