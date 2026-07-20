@@ -1,7 +1,6 @@
 import {
-  buildMiddleGateAt,
-  buildMiddleWallSegmentAt,
-  buildOuterWallSegmentAt,
+  buildGateAt,
+  buildPalisadeAt,
 } from "./fortifications.js";
 
 /**
@@ -63,38 +62,16 @@ export function createEntityAt(x, y, key, context) {
   if (!blueprint) return false;
 
   if (blueprint.kind === "fortification") {
-    return buildMiddleWallSegmentAt(x, y, {
-      state,
-      CX,
-      CY,
-      WALL_R,
-      showToast,
-      setBuildMode,
-      setSelected,
+    return buildPalisadeAt(x, y, {
+      state, CX, CY, WALL_R, outerRadius: OUTER_WALL_R,
+      showToast, setBuildMode, setSelected,
     });
   }
 
   if (blueprint.kind === "fortification-gate") {
-    return buildMiddleGateAt(x, y, {
-      state,
-      CX,
-      CY,
-      WALL_R,
-      showToast,
-      setBuildMode,
-      setSelected,
-    });
-  }
-
-  if (blueprint.kind === "outer-fortification") {
-    return buildOuterWallSegmentAt(x, y, {
-      state,
-      CX,
-      CY,
-      outerRadius: OUTER_WALL_R,
-      showToast,
-      setBuildMode,
-      setSelected,
+    return buildGateAt(x, y, {
+      state, CX, CY, WALL_R, outerRadius: OUTER_WALL_R,
+      showToast, setBuildMode, setSelected,
     });
   }
 

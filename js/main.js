@@ -92,12 +92,15 @@ import {
   MIDDLE_WALL_SEGMENT_COUNT,
   MIDDLE_GATE_COUNT,
   OUTER_WALL_SEGMENT_COUNT,
+  OUTER_GATE_COUNT,
   createInnerWallSegments,
   createMiddleGates,
   createOuterWallSegments,
+  createOuterGates,
   getBuiltMiddleGateCount,
   getBuiltMiddleWallSegmentCount,
   getBuiltOuterWallSegmentCount,
+  getBuiltOuterGateCount,
   getInnerWallSegmentForPoint,
   getMiddleGateForPoint,
   getNearestMiddleGateIndexForAngle,
@@ -106,16 +109,19 @@ import {
   getMiddleWallSegmentName,
   getMiddleWallSegmentStatus,
   getOuterWallSegmentIndexForAngle,
+  getOuterGateForPoint,
   getOuterWallSegmentName,
   getOuterWallSegmentStatus,
   hitTestInnerWallSegment,
   hitTestMiddleGate,
   hitTestMiddleWallSegment,
   hitTestOuterWallSegment,
+  hitTestOuterGate,
   initializeInnerWallSegments,
   initializeMiddleGates,
   initializeMiddleWallSegments,
-  initializeOuterWallSegments
+  initializeOuterWallSegments,
+  initializeOuterGates
 } from "./fortifications.js";
 
 // Fortress Commander – zentrale Initialisierung und Spielschleife.
@@ -123,8 +129,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.14.9";
-const GAME_RELEASE_NAME="Äußere Holzpalisade";
+const GAME_VERSION="1.15.0";
+const GAME_RELEASE_NAME="Außentore & freie Kartenkamera";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -230,21 +236,21 @@ const ui={
  start:document.getElementById("startWaveBtn"),pause:document.getElementById("pauseBtn"),toast:document.getElementById("toast"),
  selected:document.getElementById("selectedPanel"),levelDock:document.getElementById("levelUpDock"),upgrade:document.getElementById("upgradeBtn"),
  repairWall:document.getElementById("repairWallBtn"),craftsmanToggle:document.getElementById("craftsmanToggleBtn"),marketTrade:document.getElementById("marketTradeBtn"),sell:document.getElementById("sellBtn"),
- zoomOut:document.getElementById("zoomOutBtn"),zoomIn:document.getElementById("zoomInBtn"),zoomLabel:document.getElementById("zoomLabel"),
+ zoomOut:document.getElementById("zoomOutBtn"),zoomIn:document.getElementById("zoomInBtn"),zoomCenter:document.getElementById("zoomCenterBtn"),zoomLabel:document.getElementById("zoomLabel"),
  selectionHud:document.getElementById("selectionHud"),selectionText:document.getElementById("selectionText"),selectionPortrait:document.getElementById("selectionPortrait")
 };
 const TAU=Math.PI*2;
-const WORLD_W=2400,WORLD_H=1700,CX=WORLD_W/2,CY=WORLD_H/2;
+const WORLD_W=3000,WORLD_H=2200,CX=WORLD_W/2,CY=WORLD_H/2;
 const SIEGE_CAMPS=getSiegeCampPositions({WORLD_W,WORLD_H});
 const WALL_R=355,WALL_SEGMENTS=MIDDLE_WALL_SEGMENT_COUNT,WALL_MAX_HP=420;
 const OUTER_WALL_R=WALL_R+OUTER_WALL_OFFSET;
 let vw=1000,vh=700,dpr=1,last=performance.now(),paused=true,gameOver=false;
-let zoom=.48,minZoom=.15,maxZoom=1.45,camX=CX,camY=CY;
+const BASE_MIN_ZOOM=.18;
+let zoom=.42,maxZoom=1.45,camX=CX,camY=CY;
 let buildMode=null,selected=null,unitCommandMode=null,toastTimer=0;
 let autosaveSuppressed=false,gameSessionStarted=false;
 const BUILD={
  palisade:{name:"Holzpalisade",kind:"fortification",gold:0,wood:5,color:"#81512d"},
- outerPalisade:{name:"Äußere Holzpalisade",kind:"outer-fortification",gold:0,wood:5,color:"#765033"},
  gate:{name:"Holztor",kind:"fortification-gate",gold:0,wood:20,color:"#6f4528"},
  archer:{name:"Bogenturm",kind:"tower",gold:60,wood:20,hp:260,range:215,rate:.72,damage:17,speed:470,color:"#b98a4d"},
  crossbow:{name:"Armbrustturm",kind:"tower",gold:95,wood:30,hp:320,range:265,rate:1.45,damage:46,speed:560,color:"#73513b"},
@@ -260,11 +266,11 @@ const BUILD={
  statue:{name:"Kriegerstatue",kind:"inside",gold:45,wood:0,stone:15,color:"#8f7958",slotRole:"statue",decorative:true}
 };
 const state={gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,
- enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],craftsmen:[],residents:[],siege:null,spawnQueue:[],repairActive:false,repairedHp:0,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
+ enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],outerGates:[],craftsmen:[],residents:[],siege:null,spawnQueue:[],repairActive:false,repairedHp:0,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
 const wallSlots=[],insideSlots=[],castleSlots=[];
 
 function initMap(){
- state.walls.length=0;state.innerWalls.length=0;state.middleGates.length=0;state.outerWalls.length=0;wallSlots.length=0;insideSlots.length=0;castleSlots.length=0;
+ state.walls.length=0;state.innerWalls.length=0;state.middleGates.length=0;state.outerWalls.length=0;state.outerGates.length=0;wallSlots.length=0;insideSlots.length=0;castleSlots.length=0;
  for(let i=0;i<WALL_SEGMENTS;i++){
   const angles=getMiddleWallSegmentAngles(i,WALL_SEGMENTS);
   const {a0,a1,am}=angles;
@@ -276,6 +282,7 @@ function initMap(){
  state.innerWalls.push(...createInnerWallSegments());
  state.middleGates.push(...createMiddleGates());
  state.outerWalls.push(...createOuterWallSegments());
+ state.outerGates.push(...createOuterGates());
  const villageSlots=[
   [-190,-115],[150,-165],[-228,20],[225,55],
   [-190,155],[-75,245],[85,245],[245,-95],[-110,-245],[15,-235]
@@ -289,20 +296,26 @@ function initMap(){
  const castleCorners=[[-92,-92],[92,-92],[-92,92],[92,92]];
  castleCorners.forEach(([ox,oy],i)=>castleSlots.push({type:"castle",i,x:CX+ox,y:CY+oy,building:null}));
 }
+function effectiveMinZoom(){return BASE_MIN_ZOOM;}
 function resize(){
  const r=wrap.getBoundingClientRect();vw=r.width;vh=r.height;dpr=Math.min(2,devicePixelRatio||1);
  canvas.width=Math.floor(vw*dpr);canvas.height=Math.floor(vh*dpr);canvas.style.width=vw+"px";canvas.style.height=vh+"px";
  ctx.setTransform(dpr,0,0,dpr,0,0);
+ zoom=Math.max(effectiveMinZoom(),Math.min(maxZoom,zoom));
+ clampCamera();
+ if(ui.zoomLabel)ui.zoomLabel.textContent=Math.round(zoom*100)+"%";
 }
 function clampCamera(){
  const halfW=vw/(2*zoom),halfH=vh/(2*zoom);
- camX=Math.max(halfW,Math.min(WORLD_W-halfW,camX));camY=Math.max(halfH,Math.min(WORLD_H-halfH,camY));
+ camX=halfW>=WORLD_W/2?CX:Math.max(halfW,Math.min(WORLD_W-halfW,camX));
+ camY=halfH>=WORLD_H/2?CY:Math.max(halfH,Math.min(WORLD_H-halfH,camY));
 }
 function setZoom(v,focusX=vw/2,focusY=vh/2){
- const before=screenToWorld(focusX,focusY);zoom=Math.max(minZoom,Math.min(maxZoom,v));
+ const before=screenToWorld(focusX,focusY);zoom=Math.max(effectiveMinZoom(),Math.min(maxZoom,v));
  const after=screenToWorld(focusX,focusY);camX+=before.x-after.x;camY+=before.y-after.y;clampCamera();
  ui.zoomLabel.textContent=Math.round(zoom*100)+"%";
 }
+function centerCamera(){camX=CX;camY=CY;clampCamera();}
 function screenToWorld(x,y){return{x:camX+(x-vw/2)/zoom,y:camY+(y-vh/2)/zoom}}
 function showToast(t){ui.toast.textContent=t;ui.toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>ui.toast.classList.remove("show"),1900)}
 function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
@@ -461,9 +474,17 @@ function loadGame(){
   hideRepairDecision();hideEndScreen();closeEnemyInfo(false);
   selected=null;buildMode=null;unitCommandMode=null;gameOver=false;paused=true;autosaveSuppressed=false;
   syncResidents();assignCraftsmen();ensureCurrentSiege();
-  camX=Number.isFinite(loaded.view.camX)?loaded.view.camX:CX;
-  camY=Number.isFinite(loaded.view.camY)?loaded.view.camY:CY;
-  setZoom(Number.isFinite(loaded.view.zoom)?loaded.view.zoom:.48);
+  const sameMapVersion=String(loaded.gameVersion||"").startsWith("1.15.");
+  if(!sameMapVersion){
+   const shiftX=CX-1200,shiftY=CY-850;
+   for(const unit of state.units){
+    for(const key of ["x","targetX","homeX"])if(Number.isFinite(unit[key]))unit[key]+=shiftX;
+    for(const key of ["y","targetY","homeY"])if(Number.isFinite(unit[key]))unit[key]+=shiftY;
+   }
+  }
+  camX=sameMapVersion&&Number.isFinite(loaded.view.camX)?loaded.view.camX:CX;
+  camY=sameMapVersion&&Number.isFinite(loaded.view.camY)?loaded.view.camY:CY;
+  setZoom(sameMapVersion&&Number.isFinite(loaded.view.zoom)?loaded.view.zoom:.42);
   clampCamera();last=performance.now();lastDockSignature="";
   refreshSaveStatus();updateUI();
   showToast(`Spielstand geladen · Welle ${loaded.wave}`);
@@ -504,10 +525,11 @@ function deleteSave(){
 
 function updateUI(){
  return renderGameUI({
-  state,ui,BUILD,WALL_SEGMENTS,MIDDLE_WALL_SEGMENT_COUNT,MIDDLE_GATE_COUNT,OUTER_WALL_SEGMENT_COUNT,selected,buildMode,paused,gameOver,
+  state,ui,BUILD,WALL_SEGMENTS,MIDDLE_WALL_SEGMENT_COUNT,MIDDLE_GATE_COUNT,OUTER_WALL_SEGMENT_COUNT,OUTER_GATE_COUNT,selected,buildMode,paused,gameOver,
   builtMiddleWallSegments:()=>getBuiltMiddleWallSegmentCount(state),
   builtMiddleGates:()=>getBuiltMiddleGateCount(state),
   builtOuterWallSegments:()=>getBuiltOuterWallSegmentCount(state),
+  builtOuterGates:()=>getBuiltOuterGateCount(state),
   navResearch,navResearchBadge,closeAllBlockingPanels,totalGoldPerSecond,
   totalWoodPerSecond,totalStonePerSecond,syncResidents,assignedResidents,totalResidents,freeResidents,
   waveCount,buildRequirement,residentCapacityForHouse,buildingHasWorker,
@@ -641,7 +663,7 @@ function repairTargetInfo(target){
 function damagedRepairTargets(){
  const list=[];
  if(state.hp<state.maxHp)list.push({kind:"castle"});
- list.push(...[...state.outerWalls,...state.walls,...state.innerWalls,...state.middleGates].filter(w=>w.built&&w.hp<w.maxHp).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp));
+ list.push(...[...state.outerWalls,...state.outerGates,...state.walls,...state.innerWalls,...state.middleGates].filter(w=>w.built&&w.hp<w.maxHp).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp));
  list.push(...state.buildings.filter(b=>b.base.kind==="tower"&&b.hp>0&&b.hp<b.maxHp).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp));
  return list;
 }
@@ -849,27 +871,35 @@ function update(dt){
  for(const e of state.enemies){
   e.attackCd-=dt;const dx=CX-e.x,dy=CY-e.y,dCenter=Math.max(1,Math.hypot(dx,dy));
   if(e.phase==="outer"){
-   const wi=getOuterWallSegmentIndexForAngle(
-    Math.atan2(e.y-CY,e.x-CX),
-    state.outerWalls.length
-   );
-   const wall=getOuterWallSegmentStatus(state,wi);
-   e.outerWallIndex=wi;
+   const outerGate=Number.isInteger(e.approachGateIndex)
+    ?state.outerGates[e.approachGateIndex]||null
+    :getOuterGateForPoint(state,e.x,e.y,{CX,CY});
    const targetR=OUTER_WALL_R+e.radius+4;
-   const tx=CX+(e.x-CX)/dCenter*targetR,ty=CY+(e.y-CY)/dCenter*targetR;
-   const d=Math.hypot(tx-e.x,ty-e.y);
-   if(!wall||!wall.built||wall.hp<=0){
-    if(d<5)e.phase="outside";
-    else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
-   }else if(d<5){
-    if(e.attackCd<=0){
-     e.attackCd=e.attackRate;
-     const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
-     wall.hp=Math.max(0,wall.hp-wallDamage);
-     burst(tx,ty,"#8a5d3c",5);
-     if(wall.hp<=0)showToast(`Bresche in äußerer Palisade: ${wall.name||getOuterWallSegmentName(wi,state.outerWalls.length)}!`);
-    }
-   }else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+   if(outerGate){
+    e.outerGateIndex=outerGate.i;e.outerWallIndex=null;
+    const tx=CX+Math.cos(outerGate.angle)*targetR,ty=CY+Math.sin(outerGate.angle)*targetR;
+    const d=Math.hypot(tx-e.x,ty-e.y);
+    if(!outerGate.built||outerGate.hp<=0){
+     if(d<5)e.phase="outside";
+     else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+    }else if(d<5){
+     if(e.attackCd<=0){e.attackCd=e.attackRate;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
+      outerGate.hp=Math.max(0,outerGate.hp-gateDamage);burst(tx,ty,"#775039",6);if(outerGate.hp<=0)showToast(`Das ${outerGate.name} wurde durchbrochen!`)}
+    }else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+   }else{
+    const wi=getOuterWallSegmentIndexForAngle(Math.atan2(e.y-CY,e.x-CX),state.outerWalls.length);
+    const wall=getOuterWallSegmentStatus(state,wi);
+    e.outerWallIndex=wi;e.outerGateIndex=null;
+    const tx=CX+(e.x-CX)/dCenter*targetR,ty=CY+(e.y-CY)/dCenter*targetR;
+    const d=Math.hypot(tx-e.x,ty-e.y);
+    if(!wall||!wall.built||wall.hp<=0){
+     if(d<5)e.phase="outside";
+     else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+    }else if(d<5){
+     if(e.attackCd<=0){e.attackCd=e.attackRate;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
+      wall.hp=Math.max(0,wall.hp-wallDamage);burst(tx,ty,"#8a5d3c",5);if(wall.hp<=0)showToast(`Bresche in äußerer Palisade: ${wall.name||getOuterWallSegmentName(wi,state.outerWalls.length)}!`)}
+    }else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+   }
   }else if(e.phase==="outside"){
    const gate=Number.isInteger(e.approachGateIndex)
     ?state.middleGates[e.approachGateIndex]||null
@@ -1030,6 +1060,11 @@ function pickAt(x,y){
   const wall=getMiddleWallSegmentStatus(state,middleHit.segmentIndex);
   if(wall?.built){best=wall}
  }
+ const outerGateHit=hitTestOuterGate(x,y,{CX,CY,radius:OUTER_WALL_R,tolerance:38});
+ if(!best&&outerGateHit){
+  const gate=state.outerGates[outerGateHit.gateIndex];
+  if(gate?.built)best=gate;
+ }
  const outerHit=hitTestOuterWallSegment(x,y,{CX,CY,radius:OUTER_WALL_R,segmentCount:state.outerWalls.length,tolerance:28});
  if(!best&&outerHit){
   const wall=getOuterWallSegmentStatus(state,outerHit.segmentIndex);
@@ -1042,7 +1077,8 @@ function showFutureLayoutHint(hit){
  const messages={
   "middle-wall":"Mittlere Holzpalisade: im Baumenü auswählen und dieses Segment für 5 Holz errichten.",
   "middle-gate":"Mittleres Holztor: im Baumenü auswählen und diesen Torplatz für 20 Holz schließen.",
-  "outer-wall":"Äußere Holzpalisade: im Baumenü auswählen und dieses Außensegment für 5 Holz errichten."
+  "outer-wall":"Holzpalisade auswählen und dieses Außensegment für 5 Holz errichten.",
+  "outer-gate":"Holztor auswählen und diesen äußeren Torplatz für 20 Holz schließen."
  };
  const text=messages[hit.type];
  if(!text)return false;
@@ -1053,6 +1089,7 @@ function worldTap(x,y){
  if(gameOver)return;
  const futureHit=hitTestMiddleGate(x,y,{CX,CY,WALL_R})
   ||hitTestMiddleWallSegment(x,y,{CX,CY,WALL_R,segmentCount:state.walls.length})
+  ||hitTestOuterGate(x,y,{CX,CY,radius:OUTER_WALL_R})
   ||hitTestOuterWallSegment(x,y,{CX,CY,radius:OUTER_WALL_R,segmentCount:state.outerWalls.length});
  if(buildMode){
   const created=createAt(x,y,buildMode);
@@ -1100,8 +1137,8 @@ function showEndScreen(){
 function hideEndScreen(){const screen=document.getElementById("endScreen");if(screen){screen.classList.add("hidden");screen.style.pointerEvents="none"}}
 function reset(){
  state.gold=210;state.wood=105;state.stone=0;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;
- state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeOuterWallSegments(state.outerWalls,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
- selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.48);ensureCurrentSiege();showToast("Neue Belagerung beginnt");
+ state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeOuterWallSegments(state.outerWalls,{built:false});initializeOuterGates(state.outerGates,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
+ selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();showToast("Neue Belagerung beginnt");
 }
 
 document.querySelectorAll(".buildBtn").forEach(b=>b.addEventListener("click",()=>{hideRepairDecision();const k=b.dataset.build;buildMode=buildMode===k?null:k;selected=null;unitCommandMode=null}));
@@ -1123,7 +1160,7 @@ document.getElementById("deleteSaveBtn").onclick=e=>{e.preventDefault();e.stopPr
 document.getElementById("pauseRestartBtn").onclick=e=>{e.preventDefault();e.stopPropagation();document.getElementById("pauseRestartConfirm").classList.remove("hidden")};
 document.getElementById("cancelPauseRestartBtn").onclick=e=>{e.preventDefault();e.stopPropagation();document.getElementById("pauseRestartConfirm").classList.add("hidden")};
 document.getElementById("confirmPauseRestartBtn").onclick=e=>{e.preventDefault();e.stopPropagation();reset()};
-ui.zoomOut.onclick=()=>setZoom(zoom-.1);ui.zoomIn.onclick=()=>setZoom(zoom+.1);
+ui.zoomOut.onclick=()=>setZoom(zoom-.1);ui.zoomIn.onclick=()=>setZoom(zoom+.1);if(ui.zoomCenter)ui.zoomCenter.onclick=()=>{centerCamera();showToast("Karte zentriert")};
 attachGameInput({
  canvas,
  startScreen,
@@ -1132,6 +1169,7 @@ attachGameInput({
  setZoom,
  getCamera:()=>({x:camX,y:camY}),
  setCamera:(x,y)=>{camX=x;camY=y},
+ centerCamera,
  clampCamera,
  screenToWorld,
  worldTap,

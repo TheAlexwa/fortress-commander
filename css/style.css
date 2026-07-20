@@ -736,3 +736,9 @@ body.orientationBlocked{overflow:hidden;touch-action:none}body.orientationBlocke
  .siegePhaseNotice{left:6px;right:6px;width:auto;transform:none;top:52px}
  .siegePhaseNotice span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
+
+/* v1.15.0 – frei bewegliche größere Karte */
+#game{cursor:grab}
+#game:active{cursor:grabbing}
+#zoomCenterBtn{font-size:18px!important}
+@media(min-width:900px){#gameWrap{min-height:560px}}

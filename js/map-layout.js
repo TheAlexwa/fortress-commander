@@ -1,7 +1,7 @@
 /**
  * Geometrie der sichtbaren Ausbauplanung für den Festungsumbau.
  *
- * v1.14.9 ordnet die drei Verteidigungsringe klar:
+ * v1.15.0 ordnet die drei Verteidigungsringe klar:
  * - innerer Mauerring: acht feste, zerstörbare Steinsegmente,
  * - mittlerer Mauerring: zwanzig einzeln baubare Holzpalisaden-Segmente,
  * - äußerer Mauerring: achtundzwanzig einzeln baubare Holzsegmente.
@@ -9,7 +9,7 @@
 
 export const FIXED_INNER_WALL_RADIUS = 132;
 export const OUTER_WALL_OFFSET = 235;
-export const OUTER_GATE_GAP = 0.16;
+export const OUTER_GATE_GAP = 0.082;
 
 const CARDINAL_ANGLES = [
   -Math.PI / 2,

@@ -8,7 +8,9 @@ import {
   MIDDLE_GATE_COUNT,
   MIDDLE_WALL_SEGMENT_COUNT,
   OUTER_WALL_BUILD_WOOD,
-  OUTER_WALL_SEGMENT_COUNT
+  OUTER_WALL_SEGMENT_COUNT,
+  OUTER_GATE_BUILD_WOOD,
+  OUTER_GATE_COUNT
 } from "./fortifications.js";
 
 // Zentrale Canvas-Darstellung von Fortress Commander.
@@ -294,6 +296,30 @@ function drawMiddleGate(gate){
  ctx.restore();
 }
 
+function drawOuterGate(gate,radius){
+ const a=gate.angle??gate.am??0,x=CX+Math.cos(a)*radius,y=CY+Math.sin(a)*radius;
+ ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);
+ if(!gate.built){
+  ctx.fillStyle="#c7d7bf2b";ctx.strokeStyle="#e7f2d08f";ctx.lineWidth=2.5;ctx.setLineDash([7,6]);
+  ctx.fillRect(-39,-25,78,50);ctx.strokeRect(-39,-25,78,50);ctx.setLineDash([]);
+  ctx.fillStyle="#f5e8bacc";ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.fillText(`AUSSENTOR · ${OUTER_GATE_BUILD_WOOD} HOLZ`,0,-33);
+ }else if(gate.hp>0){
+  const ratio=Math.max(0,Math.min(1,gate.hp/Math.max(1,gate.maxHp)));
+  ctx.fillStyle="#17110daa";ctx.fillRect(-43,-29,86,59);
+  ctx.fillStyle=ratio>.45?"#5e432c":ratio>.2?"#633226":"#57221e";ctx.fillRect(-39,-25,78,51);
+  ctx.strokeStyle="#b99257";ctx.lineWidth=3;ctx.strokeRect(-39,-25,78,51);
+  for(let k=-4;k<=4;k++){ctx.fillStyle=k%2?"#47301f":"#765236";ctx.fillRect(k*8-3,-21,6,43)}
+  ctx.strokeStyle="#d0b274";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-36,0);ctx.lineTo(36,0);ctx.stroke();
+  ctx.fillStyle="#4a633c";ctx.beginPath();ctx.moveTo(-11,-25);ctx.lineTo(0,-41);ctx.lineTo(11,-25);ctx.closePath();ctx.fill();
+  if(ratio<.999){ctx.fillStyle="#110b09dd";ctx.fillRect(-30,34,60,7);ctx.fillStyle=ratio>.5?"#65bd60":ratio>.25?"#d2a13e":"#d14a43";ctx.fillRect(-29,35,58*ratio,5)}
+ }else{
+  ctx.fillStyle="#49372a";for(let k=-3;k<=3;k++){ctx.save();ctx.translate(k*10,(k%2)*5);ctx.rotate((k%3-.8)*.24);ctx.fillRect(-7,-4,14,8);ctx.restore()}
+  ctx.fillStyle="#e7c98dcc";ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.fillText("ZERSTÖRT",0,-27);
+ }
+ if(selected===gate){ctx.strokeStyle="#ffe68a";ctx.shadowBlur=14;ctx.shadowColor="#ffe68a";ctx.lineWidth=4;ctx.strokeRect(-45,-31,90,63);ctx.shadowBlur=0}
+ ctx.restore();
+}
+
 function drawOuterWallSegment(wall,radius){
  const ratio=Math.max(0,Math.min(1,wall.hp/Math.max(1,wall.maxHp)));
  const alive=wall.hp>0;
@@ -347,8 +373,9 @@ function drawFutureFortressLayout(){
   if(wall.built)drawOuterWallSegment(wall,layout.outerRadius);
   else drawBlueprintArc(layout.outerRadius,wall.a0+.014,wall.a1-.014,23);
  }
+ for(const gate of state.outerGates||[])drawOuterGate(gate,layout.outerRadius);
  ctx.fillStyle="#f0dfb4cc";ctx.font="bold 12px system-ui";ctx.textAlign="center";
- ctx.fillText(`ÄUSSERE HOLZPALISADE · ${OUTER_WALL_SEGMENT_COUNT} SEGMENTE · JE ${OUTER_WALL_BUILD_WOOD} HOLZ`,CX,CY-layout.outerRadius-38);
+ ctx.fillText(`ÄUSSERER RING · ${OUTER_WALL_SEGMENT_COUNT} SEGMENTE · ${OUTER_GATE_COUNT} TORE`,CX,CY-layout.outerRadius-46);
  ctx.restore();
 }
 function drawGatehouse(a){
@@ -945,7 +972,10 @@ function drawEnemies(){
 }
 
 function draw(){
- ctx.clearRect(0,0,vw,vh);ctx.save();ctx.translate(vw/2,vh/2);ctx.scale(zoom,zoom);ctx.translate(-camX,-camY);
+ ctx.clearRect(0,0,vw,vh);
+ // Bei starkem Herauszoomen bleibt der Bereich außerhalb der Welt grün statt schwarz.
+ ctx.fillStyle="#1d3525";ctx.fillRect(0,0,vw,vh);
+ ctx.save();ctx.translate(vw/2,vh/2);ctx.scale(zoom,zoom);ctx.translate(-camX,-camY);
  drawGround();drawPaths();drawWorldDetails();drawSiegeCamps();drawCastle();drawFutureFortressLayout();drawSlots();drawRangeIndicators();drawBuildings();drawUnits();drawCraftsmen();
  for(const p of state.projectiles){ctx.save();ctx.translate(p.x,p.y);const t=p.target,ang=t?Math.atan2(t.y-p.y,t.x-p.x):0;ctx.rotate(ang);ctx.shadowBlur=14;ctx.shadowColor=p.color;ctx.strokeStyle=p.color;ctx.lineWidth=Math.max(2,p.radius*.7);ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(5,0);ctx.stroke();ctx.fillStyle="#eef6f8";ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(1,-3);ctx.lineTo(1,3);ctx.closePath();ctx.fill();ctx.restore()}
  drawEnemies();for(const p of state.particles){ctx.globalAlpha=Math.min(1,p.life*3);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,TAU);ctx.fill()}ctx.globalAlpha=1;ctx.restore();

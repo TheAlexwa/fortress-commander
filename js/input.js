@@ -10,6 +10,7 @@ export function attachGameInput({
   setZoom,
   getCamera,
   setCamera,
+  centerCamera,
   clampCamera,
   screenToWorld,
   worldTap,
@@ -97,12 +98,7 @@ export function attachGameInput({
       return;
     }
 
-    if (
-      pointerDown &&
-      pointerDown.id === event.pointerId &&
-      !getBuildMode() &&
-      !getSelected()
-    ) {
+    if (pointerDown && pointerDown.id === event.pointerId) {
       const dx = event.clientX - pointerDown.x;
       const dy = event.clientY - pointerDown.y;
       if (Math.hypot(dx, dy) > 8) dragged = true;
@@ -153,6 +149,27 @@ export function attachGameInput({
       ) {
         enterGame();
       }
+      return;
+    }
+
+    const panKeys = {
+      ArrowLeft: [-1, 0], a: [-1, 0], A: [-1, 0],
+      ArrowRight: [1, 0], d: [1, 0], D: [1, 0],
+      ArrowUp: [0, -1], w: [0, -1], W: [0, -1],
+      ArrowDown: [0, 1], s: [0, 1], S: [0, 1],
+    };
+    const pan = panKeys[event.key];
+    if (pan) {
+      event.preventDefault();
+      const camera = getCamera();
+      const step = (event.shiftKey ? 230 : 115) / Math.max(0.1, getZoom());
+      setCamera(camera.x + pan[0] * step, camera.y + pan[1] * step);
+      clampCamera();
+      return;
+    }
+    if (event.key === "Home" && typeof centerCamera === "function") {
+      event.preventDefault();
+      centerCamera();
       return;
     }
 

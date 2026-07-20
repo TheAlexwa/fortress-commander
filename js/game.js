@@ -22,7 +22,7 @@ export function getWallHealthSum(state) {
     (sum, wall) => sum + (wall.built ? wall.hp : 0),
     0
   );
-  const gates = (state.middleGates || []).reduce(
+  const gates = [...(state.middleGates || []), ...(state.outerGates || [])].reduce(
     (sum, gate) => sum + (gate.built ? gate.hp : 0),
     0
   );
@@ -203,6 +203,7 @@ export function applyWaveAutoRepair(state, percent) {
     ...state.walls,
     ...(state.innerWalls || []),
     ...(state.middleGates || []),
+    ...(state.outerGates || []),
   ]) {
     if (!wall.built) continue;
     const gain = Math.min(wall.maxHp - wall.hp, wall.maxHp * percent);
@@ -224,6 +225,7 @@ export function getTotalRepairDamage(state) {
     ...state.walls,
     ...(state.innerWalls || []),
     ...(state.middleGates || []),
+    ...(state.outerGates || []),
   ].reduce(
     (sum, wall) => sum + (wall.built ? Math.max(0, wall.maxHp - wall.hp) : 0),
     0

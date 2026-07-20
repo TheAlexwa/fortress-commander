@@ -1,11 +1,11 @@
 /**
  * Bauzustand und Geometrie der Festungsringe.
  *
- * v1.14.9 verwaltet die aktiven Verteidigungslinien:
+ * v1.15.0 verwaltet die aktiven Verteidigungslinien:
  * - der feste innere Steinring besteht aus acht echten Segmenten,
  * - die mittlere Holzpalisade besteht aus zwanzig einzeln baubaren Segmenten,
  * - vier separat baubare Holztore schließen die Straßen des mittleren Rings,
- * - die äußere Holzpalisade besteht aus achtundzwanzig einzeln baubaren Segmenten.
+ * - die äußere Holzpalisade besteht aus achtundzwanzig Segmenten und vier Toren.
  */
 
 export const INNER_WALL_SEGMENT_COUNT = 8;
@@ -30,6 +30,11 @@ export const OUTER_WALL_SEGMENT_COUNT =
   OUTER_WALL_SECTION_COUNT * OUTER_WALL_SEGMENTS_PER_SECTION;
 export const OUTER_WALL_BUILD_WOOD = 5;
 export const OUTER_WALL_MAX_HP = 420;
+
+export const OUTER_GATE_COUNT = 4;
+export const OUTER_GATE_BUILD_WOOD = 20;
+export const OUTER_GATE_MAX_HP = 760;
+export const OUTER_GATE_HALF_ANGLE = 0.082;
 
 const SECTION_NAMES = [
   "Nordost",
@@ -545,8 +550,13 @@ export function getOuterWallSegmentAngles(
   if (index < 0) return null;
 
   const span = Math.PI * 2 / count;
-  const a0 = -Math.PI / 2 + index * span;
-  const a1 = a0 + span;
+  const perSection = count / OUTER_WALL_SECTION_COUNT;
+  const segmentInSection = index % perSection;
+  let a0 = -Math.PI / 2 + index * span;
+  let a1 = a0 + span;
+  // Auch der äußere Ring lässt an den vier Straßen einen eigenen Torraum frei.
+  if (segmentInSection === 0) a0 += OUTER_GATE_HALF_ANGLE;
+  if (segmentInSection === perSection - 1) a1 -= OUTER_GATE_HALF_ANGLE;
   return { a0, a1, am: (a0 + a1) / 2 };
 }
 
@@ -633,10 +643,11 @@ export function hitTestOuterWallSegment(
   const dy = y - CY;
   if (Math.abs(Math.hypot(dx, dy) - radius) > tolerance) return null;
 
-  const index = getOuterWallSegmentIndexForAngle(
-    Math.atan2(dy, dx),
-    segmentCount
-  );
+  const angle = Math.atan2(dy, dx);
+  if (getOuterGateIndexForAngle(angle, OUTER_GATE_HALF_ANGLE * 1.35) >= 0) {
+    return null;
+  }
+  const index = getOuterWallSegmentIndexForAngle(angle, segmentCount);
   return {
     type: "outer-wall",
     index,
@@ -697,4 +708,162 @@ export function buildOuterWallSegmentAt(x, y, context) {
     `${rebuilding ? "Außensegment neu errichtet" : "Außensegment errichtet"}: ${wall.name} · ${OUTER_WALL_BUILD_WOOD} Holz`
   );
   return true;
+}
+
+
+export function createOuterGates({ maxHp = OUTER_GATE_MAX_HP } = {}) {
+  return GATE_ANGLES.map((angle, index) => ({
+    kind: "gate",
+    ring: "outer",
+    i: index,
+    name: `Äußeres ${GATE_NAMES[index]}`,
+    angle,
+    am: angle,
+    built: false,
+    hp: 0,
+    maxHp,
+  }));
+}
+
+export function initializeOuterGates(gates, { built = false } = {}) {
+  for (const [index, gate] of (gates || []).entries()) {
+    gate.kind = "gate";
+    gate.ring = "outer";
+    gate.i = index;
+    gate.name = `Äußeres ${GATE_NAMES[index] || `Tor ${index + 1}`}`;
+    gate.angle = GATE_ANGLES[index] ?? gate.angle ?? 0;
+    gate.am = gate.angle;
+    gate.built = Boolean(built);
+    gate.hp = built ? gate.maxHp : 0;
+  }
+}
+
+export function getBuiltOuterGateCount(state) {
+  return (state?.outerGates || []).filter(
+    (gate) => gate.built === true && Number(gate.hp) > 0
+  ).length;
+}
+
+export function getOuterGateIndexForAngle(
+  angle,
+  tolerance = OUTER_GATE_HALF_ANGLE
+) {
+  let bestIndex = -1;
+  let bestDistance = Infinity;
+  GATE_ANGLES.forEach((gateAngle, index) => {
+    const distance = angleDistance(angle, gateAngle);
+    if (distance <= tolerance && distance < bestDistance) {
+      bestIndex = index;
+      bestDistance = distance;
+    }
+  });
+  return bestIndex;
+}
+
+export function getOuterGateForPoint(state, x, y, { CX, CY }) {
+  const index = getOuterGateIndexForAngle(Math.atan2(y - CY, x - CX));
+  return index >= 0 ? state?.outerGates?.[index] || null : null;
+}
+
+export function hitTestOuterGate(
+  x,
+  y,
+  { CX, CY, radius, tolerance = 52 }
+) {
+  const dx = x - CX;
+  const dy = y - CY;
+  if (Math.abs(Math.hypot(dx, dy) - radius) > tolerance) return null;
+  const index = getOuterGateIndexForAngle(
+    Math.atan2(dy, dx),
+    OUTER_GATE_HALF_ANGLE * 1.7
+  );
+  if (index < 0) return null;
+  return {
+    type: "outer-gate",
+    index,
+    gateIndex: index,
+    label: `Äußeres ${GATE_NAMES[index]}`,
+  };
+}
+
+export function buildOuterGateAt(x, y, context) {
+  const {
+    state,
+    CX,
+    CY,
+    outerRadius,
+    showToast,
+    setBuildMode,
+    setSelected,
+  } = context;
+  const hit = hitTestOuterGate(x, y, { CX, CY, radius: outerRadius });
+  if (!hit) {
+    showToast("Holztor auf einem markierten Torplatz errichten");
+    return false;
+  }
+  if (state.inWave) {
+    showToast("Torbau ist nur während der Belagerungsphase möglich");
+    return false;
+  }
+  const gate = state?.outerGates?.[hit.gateIndex];
+  if (!gate) return false;
+  if (gate.built && gate.hp > 0) {
+    showToast(`${gate.name} steht bereits`);
+    return false;
+  }
+  if (state.wood < OUTER_GATE_BUILD_WOOD) {
+    showToast(`Benötigt ${OUTER_GATE_BUILD_WOOD} Holz`);
+    return false;
+  }
+  const rebuilding = gate.built && gate.hp <= 0;
+  state.wood -= OUTER_GATE_BUILD_WOOD;
+  gate.built = true;
+  gate.hp = gate.maxHp;
+  setSelected(gate);
+  if (
+    getBuiltMiddleGateCount(state) >= MIDDLE_GATE_COUNT &&
+    getBuiltOuterGateCount(state) >= OUTER_GATE_COUNT
+  ) setBuildMode(null);
+  showToast(`${rebuilding ? "Holztor neu errichtet" : "Holztor errichtet"}: ${gate.name} · ${OUTER_GATE_BUILD_WOOD} Holz`);
+  return true;
+}
+
+export function buildPalisadeAt(x, y, context) {
+  const middleHit = hitTestMiddleWallSegment(x, y, {
+    CX: context.CX,
+    CY: context.CY,
+    WALL_R: context.WALL_R,
+    segmentCount: context.state?.walls?.length,
+    tolerance: 48,
+  });
+  if (middleHit) return buildMiddleWallSegmentAt(x, y, context);
+  const outerHit = hitTestOuterWallSegment(x, y, {
+    CX: context.CX,
+    CY: context.CY,
+    radius: context.outerRadius,
+    segmentCount: context.state?.outerWalls?.length,
+    tolerance: 48,
+  });
+  if (outerHit) return buildOuterWallSegmentAt(x, y, context);
+  context.showToast("Holzpalisade auf einem markierten Segment des mittleren oder äußeren Rings errichten");
+  return false;
+}
+
+export function buildGateAt(x, y, context) {
+  const middleHit = hitTestMiddleGate(x, y, {
+    CX: context.CX,
+    CY: context.CY,
+    WALL_R: context.WALL_R,
+    tolerance: 48,
+  });
+  if (middleHit) return buildMiddleGateAt(x, y, context);
+  const outerHit = hitTestOuterGate(x, y, {
+    CX: context.CX,
+    CY: context.CY,
+    radius: context.outerRadius,
+    tolerance: 52,
+  });
+  if (outerHit) return buildOuterGateAt(x, y, context);
+  context.showToast("Holztor auf einem markierten Torplatz des mittleren oder äußeren Rings errichten");
+  return false;
 }

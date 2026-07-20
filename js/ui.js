@@ -14,9 +14,11 @@ export function renderGameUI({
   MIDDLE_WALL_SEGMENT_COUNT,
   MIDDLE_GATE_COUNT,
   OUTER_WALL_SEGMENT_COUNT,
+  OUTER_GATE_COUNT,
   builtMiddleWallSegments,
   builtMiddleGates,
   builtOuterWallSegments,
+  builtOuterGates,
   selected,
   buildMode,
   paused,
@@ -81,8 +83,11 @@ export function renderGameUI({
   const builtOuterSegments = typeof builtOuterWallSegments === "function"
     ? builtOuterWallSegments()
     : 0;
-  ui.wallInfo.textContent = `Außen ${builtOuterSegments}/${OUTER_WALL_SEGMENT_COUNT} · Mitte ${builtWallSegments}/${MIDDLE_WALL_SEGMENT_COUNT} · 🚪 ${builtGates}/${MIDDLE_GATE_COUNT}`;
-  ui.wallInfo.title = "Intakte Segmente des äußeren und mittleren Verteidigungsrings sowie mittlere Tore";
+  const builtOuterGateCount = typeof builtOuterGates === "function"
+    ? builtOuterGates()
+    : 0;
+  ui.wallInfo.textContent = `Außen ${builtOuterSegments}/${OUTER_WALL_SEGMENT_COUNT} 🚪 ${builtOuterGateCount}/${OUTER_GATE_COUNT} · Mitte ${builtWallSegments}/${MIDDLE_WALL_SEGMENT_COUNT} 🚪 ${builtGates}/${MIDDLE_GATE_COUNT}`;
+  ui.wallInfo.title = "Intakte Segmente und Tore des äußeren und mittleren Verteidigungsrings";
 
   const siege = state.siege;
   const siegeReady = !state.inWave && siege?.active ? Math.max(0, Number(siege.arrived) || 0) : 0;
@@ -125,14 +130,14 @@ export function renderGameUI({
     button.classList.toggle("active", buildMode === key);
     const requirement = buildRequirement(key);
     const fortificationLocked =
-      (config.kind === "fortification" ||
-        config.kind === "fortification-gate" ||
-        config.kind === "outer-fortification") &&
-      state.inWave;
+      (config.kind === "fortification" || config.kind === "fortification-gate") && state.inWave;
     const fortificationComplete =
-      (config.kind === "fortification" && builtWallSegments >= MIDDLE_WALL_SEGMENT_COUNT) ||
-      (config.kind === "fortification-gate" && builtGates >= MIDDLE_GATE_COUNT) ||
-      (config.kind === "outer-fortification" && builtOuterSegments >= OUTER_WALL_SEGMENT_COUNT);
+      (config.kind === "fortification" &&
+        builtWallSegments >= MIDDLE_WALL_SEGMENT_COUNT &&
+        builtOuterSegments >= OUTER_WALL_SEGMENT_COUNT) ||
+      (config.kind === "fortification-gate" &&
+        builtGates >= MIDDLE_GATE_COUNT &&
+        builtOuterGateCount >= OUTER_GATE_COUNT);
     button.disabled =
       gameOver ||
       fortificationLocked ||
@@ -163,7 +168,8 @@ export function renderGameUI({
 
   if (selected.kind === "gate") {
     const destroyed = Number(selected.hp) <= 0;
-    ui.selected.innerHTML = `<b>${selected.name}</b><br>Lebenspunkte: ${Math.ceil(selected.hp)} / ${selected.maxHp}<br>Status: ${destroyed ? "zerstört" : "errichtet"}<br>Mittlerer Verteidigungsring · Holztor`;
+    const ringLabel = selected.ring === "outer" ? "Äußerer Verteidigungsring" : "Mittlerer Verteidigungsring";
+    ui.selected.innerHTML = `<b>${selected.name}</b><br>Lebenspunkte: ${Math.ceil(selected.hp)} / ${selected.maxHp}<br>Status: ${destroyed ? "zerstört" : "errichtet"}<br>${ringLabel} · Holztor`;
     return;
   }
 
