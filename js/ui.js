@@ -194,7 +194,7 @@ export function renderGameUI({
     const title = inner
       ? "Innerer Mauerring"
       : selected.ring === "outer"
-        ? "Äußere Holzpalisade"
+        ? (upgrade.upgraded ? "Äußere Steinmauer" : "Äußere Holzpalisade")
         : upgrade.upgraded
           ? "Mittlere Steinmauer"
           : "Mittlere Holzpalisade";

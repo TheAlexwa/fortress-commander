@@ -132,7 +132,7 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.2";
+const GAME_VERSION="1.15.3";
 const GAME_RELEASE_NAME="Steinbefestigungen am mittleren Ring";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
@@ -1303,13 +1303,11 @@ function wallStatsHtml(w){
  const fallback=w.kind==="gate"?"Tor":w.ring==="outer"?"Äußere Palisade":w.ring==="inner"?"Innerer Mauerring":"Mittlere Palisade";
  const upgrade=getMiddleFortificationUpgrade(w);
  const material=upgrade.eligible?(upgrade.upgraded?"Stein":"Holz"):(w.ring==="inner"?"Stein":"Holz");
- const hint=w.ring==="outer"
-  ?"Der äußere Ring bleibt in dieser Version aus Holz. Sein Steinausbau folgt separat."
-  :w.ring==="inner"
-   ?"Der feste innere Mauerring schützt die Holzfestung als letzte Verteidigungslinie. Beschädigte Segmente werden von Handwerkern repariert."
-   :upgrade.upgraded
-    ?"Diese Befestigung wurde mit Stein verstärkt. Wird sie vollständig zerstört, erfolgt ein späterer Wiederaufbau zunächst wieder aus Holz."
-    :`Während der Belagerungsphase kann diese Befestigung für ${upgrade.cost} Stein ausgebaut werden. Der aktuelle Schadensanteil bleibt dabei erhalten.`;
+ const hint=w.ring==="inner"
+  ?"Der feste innere Mauerring schützt die Holzfestung als letzte Verteidigungslinie. Beschädigte Segmente werden von Handwerkern repariert."
+  :upgrade.upgraded
+   ?"Diese Befestigung wurde mit Stein verstärkt. Wird sie vollständig zerstört, erfolgt ein späterer Wiederaufbau zunächst wieder aus Holz."
+   :`Während der Belagerungsphase kann diese Befestigung für ${upgrade.cost} Stein ausgebaut werden. Der aktuelle Schadensanteil bleibt dabei erhalten.`;
  return `<div class="statsSummary"><div class="statTile"><span>${w.kind==="gate"?"Tor":"Segment"}</span><b>${w.name||fallback}</b></div><div class="statTile"><span>Material</span><b>${material}</b></div><div class="statTile"><span>Zustand</span><b>${percent}%</b></div><div class="statTile"><span>Leben</span><b>${Math.ceil(w.hp)} / ${Math.ceil(w.maxHp)}</b></div></div><div class="statsHint">${hint}</div>`;
 }
 function overviewStatsHtml(){

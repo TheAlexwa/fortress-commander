@@ -36,11 +36,19 @@ export const OUTER_WALL_SEGMENTS_PER_SECTION = 7;
 export const OUTER_WALL_SEGMENT_COUNT =
   OUTER_WALL_SECTION_COUNT * OUTER_WALL_SEGMENTS_PER_SECTION;
 export const OUTER_WALL_BUILD_WOOD = 5;
-export const OUTER_WALL_MAX_HP = 420;
+export const OUTER_WALL_WOOD_MAX_HP = 420;
+export const OUTER_WALL_STONE_MAX_HP = 950;
+export const OUTER_WALL_STONE_COST = 10;
+// Alias für bestehende Aufrufer aus älteren Patches.
+export const OUTER_WALL_MAX_HP = OUTER_WALL_WOOD_MAX_HP;
 
 export const OUTER_GATE_COUNT = 4;
 export const OUTER_GATE_BUILD_WOOD = 20;
-export const OUTER_GATE_MAX_HP = 760;
+export const OUTER_GATE_WOOD_MAX_HP = 760;
+export const OUTER_GATE_STONE_MAX_HP = 1450;
+export const OUTER_GATE_STONE_COST = 22;
+// Alias für bestehende Aufrufer aus älteren Patches.
+export const OUTER_GATE_MAX_HP = OUTER_GATE_WOOD_MAX_HP;
 export const OUTER_GATE_HALF_ANGLE = 0.082;
 
 const SECTION_NAMES = [
@@ -558,15 +566,23 @@ export const buildMiddleWallSectionAt = buildMiddleWallSegmentAt;
 
 
 export function getMiddleFortificationUpgrade(entity) {
-  const middle = entity?.ring === "middle";
+  const ring = entity?.ring;
+  const supportedRing = ring === "middle" || ring === "outer";
   const isWall = entity?.kind === "wall";
   const isGate = entity?.kind === "gate";
-  const eligible = middle && (isWall || isGate);
-  const cost = isGate ? MIDDLE_GATE_STONE_COST : MIDDLE_WALL_STONE_COST;
-  const maxHp = isGate ? MIDDLE_GATE_STONE_MAX_HP : MIDDLE_WALL_STONE_MAX_HP;
+  const eligible = supportedRing && (isWall || isGate);
+  const outer = ring === "outer";
+  const cost = isGate
+    ? (outer ? OUTER_GATE_STONE_COST : MIDDLE_GATE_STONE_COST)
+    : (outer ? OUTER_WALL_STONE_COST : MIDDLE_WALL_STONE_COST);
+  const maxHp = isGate
+    ? (outer ? OUTER_GATE_STONE_MAX_HP : MIDDLE_GATE_STONE_MAX_HP)
+    : (outer ? OUTER_WALL_STONE_MAX_HP : MIDDLE_WALL_STONE_MAX_HP);
   const material = entity?.material === "stone" ? "stone" : "wood";
   return {
     eligible,
+    ring,
+    outer,
     isWall,
     isGate,
     material,
@@ -607,7 +623,7 @@ export function upgradeMiddleFortification(
   entity.maxHp = upgrade.maxHp;
   entity.hp = upgrade.maxHp * healthRatio;
   setSelected(entity);
-  showToast(`${upgrade.label} fertiggestellt · ${upgrade.cost} Stein`);
+  showToast(`${upgrade.outer ? "Äußeres " : ""}${upgrade.label} fertiggestellt · ${upgrade.cost} Stein`);
   return true;
 }
 
@@ -643,7 +659,7 @@ export function getOuterWallSegmentName(
   return `${getMiddleWallSectionName(sectionIndex)} · Außensegment ${segmentInSection + 1}`;
 }
 
-export function createOuterWallSegments({ maxHp = OUTER_WALL_MAX_HP } = {}) {
+export function createOuterWallSegments({ maxHp = OUTER_WALL_WOOD_MAX_HP } = {}) {
   const walls = [];
   for (let index = 0; index < OUTER_WALL_SEGMENT_COUNT; index++) {
     const angles = getOuterWallSegmentAngles(index, OUTER_WALL_SEGMENT_COUNT);
@@ -661,6 +677,7 @@ export function createOuterWallSegments({ maxHp = OUTER_WALL_MAX_HP } = {}) {
       ),
       name: getOuterWallSegmentName(index, OUTER_WALL_SEGMENT_COUNT),
       ...angles,
+      material: "wood",
       built: false,
       hp: 0,
       maxHp,
@@ -677,6 +694,8 @@ export function initializeOuterWallSegments(walls, { built = false } = {}) {
     wall.name = getOuterWallSegmentName(wall.i, count);
     wall.quarterIndex = getMiddleWallSectionIndexForSegment(wall.i, count);
     wall.segmentInQuarter = getMiddleWallSegmentInSection(wall.i, count);
+    wall.material = "wood";
+    wall.maxHp = OUTER_WALL_WOOD_MAX_HP;
     wall.built = Boolean(built);
     wall.hp = built ? wall.maxHp : 0;
   }
@@ -769,6 +788,8 @@ export function buildOuterWallSegmentAt(x, y, context) {
 
   const rebuilding = wall.built && wall.hp <= 0;
   state.wood -= OUTER_WALL_BUILD_WOOD;
+  wall.material = "wood";
+  wall.maxHp = OUTER_WALL_WOOD_MAX_HP;
   wall.built = true;
   wall.hp = wall.maxHp;
   setSelected(wall);
@@ -783,7 +804,7 @@ export function buildOuterWallSegmentAt(x, y, context) {
 }
 
 
-export function createOuterGates({ maxHp = OUTER_GATE_MAX_HP } = {}) {
+export function createOuterGates({ maxHp = OUTER_GATE_WOOD_MAX_HP } = {}) {
   return GATE_ANGLES.map((angle, index) => ({
     kind: "gate",
     ring: "outer",
@@ -791,6 +812,7 @@ export function createOuterGates({ maxHp = OUTER_GATE_MAX_HP } = {}) {
     name: `Äußeres ${GATE_NAMES[index]}`,
     angle,
     am: angle,
+    material: "wood",
     built: false,
     hp: 0,
     maxHp,
@@ -805,6 +827,8 @@ export function initializeOuterGates(gates, { built = false } = {}) {
     gate.name = `Äußeres ${GATE_NAMES[index] || `Tor ${index + 1}`}`;
     gate.angle = GATE_ANGLES[index] ?? gate.angle ?? 0;
     gate.am = gate.angle;
+    gate.material = "wood";
+    gate.maxHp = OUTER_GATE_WOOD_MAX_HP;
     gate.built = Boolean(built);
     gate.hp = built ? gate.maxHp : 0;
   }
@@ -889,6 +913,8 @@ export function buildOuterGateAt(x, y, context) {
   }
   const rebuilding = gate.built && gate.hp <= 0;
   state.wood -= OUTER_GATE_BUILD_WOOD;
+  gate.material = "wood";
+  gate.maxHp = OUTER_GATE_WOOD_MAX_HP;
   gate.built = true;
   gate.hp = gate.maxHp;
   setSelected(gate);

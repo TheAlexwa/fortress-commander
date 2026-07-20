@@ -4,6 +4,10 @@ import {
   MIDDLE_GATE_WOOD_MAX_HP,
   MIDDLE_WALL_STONE_MAX_HP,
   MIDDLE_WALL_WOOD_MAX_HP,
+  OUTER_GATE_STONE_MAX_HP,
+  OUTER_GATE_WOOD_MAX_HP,
+  OUTER_WALL_STONE_MAX_HP,
+  OUTER_WALL_WOOD_MAX_HP,
 } from "./fortifications.js";
 
 /**
@@ -194,11 +198,13 @@ function createSnapshot({
         maxHp: gate.maxHp,
       })),
       outerWalls: (state.outerWalls || []).map((wall) => ({
+        material: wall.material === "stone" ? "stone" : "wood",
         built: wall.built === true,
         hp: wall.hp,
         maxHp: wall.maxHp,
       })),
       outerGates: (state.outerGates || []).map((gate) => ({
+        material: gate.material === "stone" ? "stone" : "wood",
         built: gate.built === true,
         hp: gate.hp,
         maxHp: gate.maxHp,
@@ -428,7 +434,11 @@ export function loadGameState({
     ? savedState.outerWalls
     : null;
   if (savedOuterWalls?.length) {
-    restoreMiddleWallState(savedOuterWalls, state.outerWalls || []);
+    restoreMiddleWallState(savedOuterWalls, state.outerWalls || [], {
+      allowStone: true,
+      woodMaxHp: OUTER_WALL_WOOD_MAX_HP,
+      stoneMaxHp: OUTER_WALL_STONE_MAX_HP,
+    });
   } else {
     for (const wall of state.outerWalls || []) {
       wall.built = false;
@@ -442,11 +452,18 @@ export function loadGameState({
     : null;
   (state.outerGates || []).forEach((gate, index) => {
     const savedGate = savedOuterGates?.[index];
-    gate.built = savedGate?.built === true;
-    gate.maxHp = Math.max(1, Number(savedGate?.maxHp) || gate.maxHp);
-    gate.hp = gate.built
-      ? Math.max(0, Math.min(gate.maxHp, Number(savedGate?.hp) || 0))
+    const material = savedGate?.material === "stone" ? "stone" : "wood";
+    const targetMax = material === "stone"
+      ? OUTER_GATE_STONE_MAX_HP
+      : OUTER_GATE_WOOD_MAX_HP;
+    const savedMax = Math.max(1, Number(savedGate?.maxHp) || targetMax);
+    const ratio = savedGate?.built === true
+      ? Math.max(0, Math.min(1, (Number(savedGate?.hp) || 0) / savedMax))
       : 0;
+    gate.material = material;
+    gate.built = savedGate?.built === true;
+    gate.maxHp = targetMax;
+    gate.hp = gate.built ? targetMax * ratio : 0;
   });
 
   for (const building of buildings) {
