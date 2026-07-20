@@ -1,5 +1,11 @@
 # Fortress Commander – Changelog
 
+## v1.15.32 – Schotterwege
+
+- Neue comicartige Schotterweg-Grafik für die vier Hauptstraßen integriert.
+- Die Straßen enden jetzt knapp außerhalb des äußeren Mauerrings und führen nicht mehr bis in den Wald.
+- Kreisförmige Innenwege bleiben erhalten; Versionsangaben wurden auf v1.15.32 aktualisiert.
+
 ## v1.15.31 – Turm- und Statuengrafiken
 
 - Neue Comic-Grafiken für Bogenturm, Armbrustturm, Katapult und Kriegerstatue integriert.

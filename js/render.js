@@ -93,6 +93,8 @@ const FORTRESS_YARD_SPRITE_DEF = { src: "assets/environment/fortress-yard.webp",
 const fortressYardSprite = { image: loadUnitSprite(FORTRESS_YARD_SPRITE_DEF.src), def: FORTRESS_YARD_SPRITE_DEF };
 const OUTER_LANDSCAPE_SPRITE_DEF = { src: "assets/environment/outer-landscape.webp", width: 3000, height: 2200, offsetY: 0 };
 const outerLandscapeSprite = { image: loadUnitSprite(OUTER_LANDSCAPE_SPRITE_DEF.src), def: OUTER_LANDSCAPE_SPRITE_DEF };
+const ROAD_SPRITE_DEF = { src: "assets/environment/road.webp", width: 88, height: 2200, offsetY: 0 };
+const roadSprite = { image: loadUnitSprite(ROAD_SPRITE_DEF.src), def: ROAD_SPRITE_DEF };
 
 export function renderGameFrame(environment) {
   ({
@@ -130,20 +132,37 @@ function drawGround(){
 }
 function drawPaths(){
  ctx.save();ctx.lineCap="round";
- const routes=[
-  {start:[CX,0],c1:[CX-55,CY-610],c2:[CX+55,CY-300]},
-  {start:[WORLD_W,CY],c1:[CX+720,CY-60],c2:[CX+320,CY+52]},
-  {start:[CX,WORLD_H],c1:[CX+70,CY+610],c2:[CX-45,CY+305]},
-  {start:[0,CY],c1:[CX-720,CY+70],c2:[CX-320,CY-48]},
- ];
- for(const route of routes){
-  const [sx,sy]=route.start,[c1x,c1y]=route.c1,[c2x,c2y]=route.c2;
-  ctx.strokeStyle="#2b241a88";ctx.lineWidth=82;ctx.beginPath();ctx.moveTo(sx,sy);ctx.bezierCurveTo(c1x,c1y,c2x,c2y,CX,CY);ctx.stroke();
-  const pg=ctx.createLinearGradient(sx,sy,CX,CY);pg.addColorStop(0,"#806e4e");pg.addColorStop(.5,"#b19a68");pg.addColorStop(1,"#8c7651");
-  ctx.strokeStyle=pg;ctx.lineWidth=66;ctx.beginPath();ctx.moveTo(sx,sy);ctx.bezierCurveTo(c1x,c1y,c2x,c2y,CX,CY);ctx.stroke();
-  ctx.strokeStyle="#d7c79a44";ctx.lineWidth=48;ctx.setLineDash([8,16]);ctx.beginPath();ctx.moveTo(sx,sy);ctx.bezierCurveTo(c1x,c1y,c2x,c2y,CX,CY);ctx.stroke();ctx.setLineDash([]);
+ const { outerRadius }=getFutureLayoutGeometry({CX,CY,WALL_R});
+ const roadReach=outerRadius+72;
+ const roadLoaded=roadSprite.image.complete&&roadSprite.image.naturalWidth;
+ if(roadLoaded){
+  const {width,height}=roadSprite.def;
+  const roadWidth=88;
+  const verticalHeight=roadReach*2;
+  ctx.globalAlpha=.98;
+  ctx.drawImage(roadSprite.image,CX-roadWidth/2,CY-roadReach,roadWidth,verticalHeight);
+  ctx.save();
+  ctx.translate(CX,CY);
+  ctx.rotate(Math.PI/2);
+  ctx.drawImage(roadSprite.image,-roadWidth/2,-roadReach,roadWidth,verticalHeight);
+  ctx.restore();
+  ctx.globalAlpha=1;
+ }else{
+  const routes=[
+   {start:[CX,CY-roadReach],c1:[CX,CY-roadReach],c2:[CX,CY-240]},
+   {start:[CX+roadReach,CY],c1:[CX+roadReach,CY],c2:[CX+240,CY]},
+   {start:[CX,CY+roadReach],c1:[CX,CY+roadReach],c2:[CX,CY+240]},
+   {start:[CX-roadReach,CY],c1:[CX-roadReach,CY],c2:[CX-240,CY]},
+  ];
+  for(const route of routes){
+   const [sx,sy]=route.start,[c1x,c1y]=route.c1,[c2x,c2y]=route.c2;
+   ctx.strokeStyle="#2b241a88";ctx.lineWidth=82;ctx.beginPath();ctx.moveTo(sx,sy);ctx.bezierCurveTo(c1x,c1y,c2x,c2y,CX,CY);ctx.stroke();
+   const pg=ctx.createLinearGradient(sx,sy,CX,CY);pg.addColorStop(0,"#806e4e");pg.addColorStop(.5,"#b19a68");pg.addColorStop(1,"#8c7651");
+   ctx.strokeStyle=pg;ctx.lineWidth=66;ctx.beginPath();ctx.moveTo(sx,sy);ctx.bezierCurveTo(c1x,c1y,c2x,c2y,CX,CY);ctx.stroke();
+   ctx.strokeStyle="#d7c79a44";ctx.lineWidth=48;ctx.setLineDash([8,16]);ctx.beginPath();ctx.moveTo(sx,sy);ctx.bezierCurveTo(c1x,c1y,c2x,c2y,CX,CY);ctx.stroke();ctx.setLineDash([]);
+  }
  }
- // Dorfwege verbinden die organisch verteilten Bauplätze.
+ // Kreisförmige Innenwege bleiben für die Bauplätze erhalten.
  for(const radius of [184,292]){
   ctx.strokeStyle="#2b241a66";ctx.lineWidth=38;ctx.beginPath();ctx.arc(CX,CY,radius,0,TAU);ctx.stroke();
   ctx.strokeStyle="#a99061";ctx.lineWidth=27;ctx.beginPath();ctx.arc(CX,CY,radius,0,TAU);ctx.stroke();
