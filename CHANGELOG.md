@@ -1,5 +1,10 @@
 # Fortress Commander – Changelog
 
+## v1.15.23 – Festungshof-Grafik
+- der braune Festungshof verwendet jetzt ein neues comicartiges Bodendesign
+- Rendering lädt das neue Asset `assets/environment/fortress-yard.webp` direkt aus dem Asset-Ordner
+- der bisherige per Canvas gezeichnete Innenhof bleibt als Fallback erhalten, falls das Asset nicht geladen werden kann
+
 ## v1.15.22 – Holzburg-Grafik
 - die zentrale Holzburg verwendet jetzt eine neue comicartige Hauptgrafik
 - Rendering lädt das neue Asset `assets/buildings/wood-fortress-center.webp` direkt aus dem Asset-Ordner

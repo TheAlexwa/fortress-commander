@@ -85,6 +85,8 @@ const buildingSprites = Object.fromEntries(
 
 const FORTRESS_SPRITE_DEF = { src: "assets/buildings/wood-fortress-center.webp", width: 226, height: 250, offsetY: -4 };
 const fortressSprite = { image: loadUnitSprite(FORTRESS_SPRITE_DEF.src), def: FORTRESS_SPRITE_DEF };
+const FORTRESS_YARD_SPRITE_DEF = { src: "assets/environment/fortress-yard.webp", width: 664, height: 664, offsetY: 0 };
+const fortressYardSprite = { image: loadUnitSprite(FORTRESS_YARD_SPRITE_DEF.src), def: FORTRESS_YARD_SPRITE_DEF };
 
 export function renderGameFrame(environment) {
   ({
@@ -518,16 +520,19 @@ function drawCastle(){
  // Innenhof-Schatten
  ctx.fillStyle="#0d120d66";ctx.beginPath();ctx.arc(CX+13,CY+18,WALL_R+27,0,TAU);ctx.fill();
  // Innenhof
- const yard=ctx.createRadialGradient(CX-90,CY-110,25,CX,CY,WALL_R);
- yard.addColorStop(0,"#c7ad75");yard.addColorStop(.5,"#9c8255");yard.addColorStop(1,"#66563e");
- ctx.fillStyle=yard;ctx.beginPath();ctx.arc(CX,CY,WALL_R-24,0,TAU);ctx.fill();
- // unregelmäßige Pflasterstruktur
- ctx.globalAlpha=.18;
- for(let i=0;i<140;i++){
-  const a=(i*2.399963)%TAU,r=45+((i*73)%(WALL_R-84)),x=CX+Math.cos(a)*r,y=CY+Math.sin(a)*r;
-  ctx.fillStyle=i%3?"#d8c18e":"#4f4433";ctx.beginPath();ctx.ellipse(x,y,5+(i%4),3+(i%2),a,0,TAU);ctx.fill();
+ const usedFortressYardSprite=drawFortressYardSprite();
+ if(!usedFortressYardSprite){
+  const yard=ctx.createRadialGradient(CX-90,CY-110,25,CX,CY,WALL_R);
+  yard.addColorStop(0,"#c7ad75");yard.addColorStop(.5,"#9c8255");yard.addColorStop(1,"#66563e");
+  ctx.fillStyle=yard;ctx.beginPath();ctx.arc(CX,CY,WALL_R-24,0,TAU);ctx.fill();
+  // unregelmäßige Pflasterstruktur
+  ctx.globalAlpha=.18;
+  for(let i=0;i<140;i++){
+   const a=(i*2.399963)%TAU,r=45+((i*73)%(WALL_R-84)),x=CX+Math.cos(a)*r,y=CY+Math.sin(a)*r;
+   ctx.fillStyle=i%3?"#d8c18e":"#4f4433";ctx.beginPath();ctx.ellipse(x,y,5+(i%4),3+(i%2),a,0,TAU);ctx.fill();
+  }
+  ctx.globalAlpha=1;
  }
- ctx.globalAlpha=1;
  // Mittlerer Ring: Holzpalisaden können einzeln zu Steinmauern ausgebaut werden.
  for(const w of state.walls){
   if(!w.built)continue;
@@ -592,12 +597,14 @@ function drawCastle(){
  // Kisten, Fässer und kleine Versorgungsdetails am Festungshof.
  for(const [ox,oy] of [[-108,72],[-126,62],[112,-68]]){ctx.fillStyle="#744a29";ctx.fillRect(CX+ox-9,CY+oy-7,18,14);ctx.strokeStyle="#bd8748";ctx.lineWidth=2;ctx.strokeRect(CX+ox-9,CY+oy-7,18,14)}
  for(const [ox,oy] of [[-98,-78],[-114,94]]){ctx.fillStyle="#5a3824";ctx.beginPath();ctx.ellipse(CX+ox,CY+oy,8,12,0,0,TAU);ctx.fill();ctx.strokeStyle="#aa7944";ctx.stroke()}
- // Fackeln
- for(let i=0;i<10;i++){
-  const a=i/10*TAU+.2,r=WALL_R-68,x=CX+Math.cos(a)*r,y=CY+Math.sin(a)*r;
-  const flicker=.75+Math.sin(performance.now()*.012+i)*.25;
-  ctx.globalAlpha=.17*flicker;ctx.fillStyle="#ff9e32";ctx.beginPath();ctx.arc(x,y,17,0,TAU);ctx.fill();ctx.globalAlpha=1;
-  ctx.fillStyle="#f5a83c";ctx.beginPath();ctx.moveTo(x,y-10);ctx.quadraticCurveTo(x-4,y-3,x,y+2);ctx.quadraticCurveTo(x+5,y-4,x,y-10);ctx.fill();
+ // Fackeln nur im Fallback-Boden, da das neue Boden-Asset bereits Beleuchtung enthält.
+ if(!usedFortressYardSprite){
+  for(let i=0;i<10;i++){
+   const a=i/10*TAU+.2,r=WALL_R-68,x=CX+Math.cos(a)*r,y=CY+Math.sin(a)*r;
+   const flicker=.75+Math.sin(performance.now()*.012+i)*.25;
+   ctx.globalAlpha=.17*flicker;ctx.fillStyle="#ff9e32";ctx.beginPath();ctx.arc(x,y,17,0,TAU);ctx.fill();ctx.globalAlpha=1;
+   ctx.fillStyle="#f5a83c";ctx.beginPath();ctx.moveTo(x,y-10);ctx.quadraticCurveTo(x-4,y-3,x,y+2);ctx.quadraticCurveTo(x+5,y-4,x,y-10);ctx.fill();
+  }
  }
  ctx.restore();
 }
@@ -727,6 +734,14 @@ function drawFortressCenterSprite(){
  }
  const {width,height,offsetY=0}=sprite.def;
  ctx.fillStyle="#10100d77";ctx.beginPath();ctx.ellipse(CX+8,CY+50,102,42,0,0,TAU);ctx.fill();
+ ctx.drawImage(sprite.image,CX-width/2,CY-height/2+offsetY,width,height);
+ return true;
+}
+
+function drawFortressYardSprite(){
+ const sprite=fortressYardSprite;
+ if(!sprite||!sprite.image.complete||!sprite.image.naturalWidth)return false;
+ const {width,height,offsetY=0}=sprite.def;
  ctx.drawImage(sprite.image,CX-width/2,CY-height/2+offsetY,width,height);
  return true;
 }

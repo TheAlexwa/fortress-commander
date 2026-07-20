@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.22";
-const GAME_RELEASE_NAME="Holzburg-Grafik";
+const GAME_VERSION="1.15.23";
+const GAME_RELEASE_NAME="Festungshof-Grafik";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
