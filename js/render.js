@@ -71,7 +71,11 @@ const unitMotionStates=new WeakMap();
 
 const BUILDING_SPRITE_DEFS = {
   house_1: { src: "assets/buildings/tent-camp.webp", width: 70, height: 70, offsetY: -2 },
-  house_2: { src: "assets/buildings/wood-house.webp", width: 63, height: 72, offsetY: -2 }
+  house_2: { src: "assets/buildings/wood-house.webp", width: 63, height: 72, offsetY: -2 },
+  lumber: { src: "assets/buildings/lumber-camp.webp", width: 68, height: 70, offsetY: -2 },
+  quarry: { src: "assets/buildings/quarry-site.webp", width: 82, height: 76, offsetY: 0 },
+  workshop: { src: "assets/buildings/workshop-house.webp", width: 72, height: 74, offsetY: -1 },
+  market: { src: "assets/buildings/market-shop.webp", width: 72, height: 72, offsetY: -2 }
 };
 
 const buildingSprites = Object.fromEntries(
@@ -697,6 +701,22 @@ function drawHouseBuildingSprite(building, level){
  return true;
 }
 
+function drawUtilityBuildingSprite(building){
+ const sprite=buildingSprites[building.key];
+ if(!sprite||!sprite.image.complete||!sprite.image.naturalWidth)return false;
+ const {width,height,offsetY=0}=sprite.def;
+ const hpRatio=Math.max(0,Math.min(1,building.hp/Math.max(1,building.maxHp)));
+ ctx.fillStyle="#403529";ctx.globalAlpha=.28;ctx.beginPath();ctx.ellipse(2,22,30,10,0,0,TAU);ctx.fill();ctx.globalAlpha=1;
+ ctx.drawImage(sprite.image,-width/2,-height/2+offsetY,width,height);
+ if(hpRatio<.72){
+  ctx.strokeStyle="#2d1a14";ctx.lineWidth=2.2;ctx.lineCap="round";ctx.beginPath();
+  ctx.moveTo(-9,-4);ctx.lineTo(0,5);ctx.lineTo(-6,16);
+  if(building.key!=="market"){ctx.moveTo(10,-6);ctx.lineTo(5,5)}
+  ctx.stroke();
+ }
+ return true;
+}
+
 function drawBuildings(){
  for(const b of state.buildings){
   const x=b.slot.x,y=b.slot.y;ctx.save();ctx.translate(x,y);
@@ -758,6 +778,8 @@ function drawBuildings(){
   }else{
    if(b.key==="house"&&drawHouseBuildingSprite(b,lv)){
     if(lv>=2){ctx.fillStyle="#e3c36c";ctx.beginPath();ctx.arc(0,-42,3+Math.min(5,lv),0,TAU);ctx.fill()}
+   }else if(["lumber","quarry","workshop","market"].includes(b.key)&&drawUtilityBuildingSprite(b)){
+    if(lv>=2){ctx.fillStyle="#e3c36c";ctx.beginPath();ctx.arc(0,-46,3+Math.min(5,lv),0,TAU);ctx.fill()}
    }else{
     // masonry base
     ctx.fillStyle="#514435";ctx.beginPath();ctx.ellipse(0,22,33,11,0,0,TAU);ctx.fill();

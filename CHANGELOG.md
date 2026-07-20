@@ -1,5 +1,10 @@
 # Fortress Commander – Changelog
 
+## v1.15.20 – Wirtschaftsgebäude-Grafiken
+- Holzfäller, Steinbruch, Handwerkerhaus und Marktplatz verwenden neue comicartige Gebäudegrafiken
+- das Rendering lädt die neuen Wirtschaftsgebäude-Assets direkt aus dem Asset-Ordner
+- die bisherige Vektorzeichnung bleibt als Fallback erhalten, falls ein Asset nicht geladen werden kann
+
 ## v1.15.19 – Wohngebäude-Grafiken
 - Zeltlager und Holzhaus verwenden neue comicartige Gebäudegrafiken
 - das Rendering lädt die neuen Wohngebäude-Assets direkt aus dem Asset-Ordner
