@@ -1392,6 +1392,7 @@ const statsCloseBtn=document.getElementById("statsCloseBtn");
 const selectionMoveBtn=document.getElementById("selectionMoveBtn");
 const selectionAutoBtn=document.getElementById("selectionAutoBtn");
 const selectionModeBtn=document.getElementById("selectionModeBtn");
+const selectionOffenseBtn=document.getElementById("selectionOffenseBtn");
 const selectionUpgradeBtn=document.getElementById("selectionUpgradeBtn");
 const selectionDetailsBtn=document.getElementById("selectionDetailsBtn");
 const selectionRangeBtn=document.getElementById("selectionRangeBtn");
@@ -1675,8 +1676,10 @@ statsScreen.addEventListener("click",e=>{if(e.target===statsScreen)closeStats()}
 selectionMoveBtn.addEventListener("click",e=>{
  e.stopPropagation();
  if(!selected||selected.kind!=="unit")return;
- if(selected.key==="guard"){selected.retreating=true;selected.retreatTimer=1.1;selected.autoTarget=null;unitCommandMode=null;selected.stance="defend";showToast("Burgwache zieht sich zum Wachpunkt zurück");return}
- selected.controlMode="manual";selected.autoTarget=null;unitCommandMode="move";
+ selected.controlMode="manual";
+ selected.retreating=false;
+ selected.autoTarget=null;
+ unitCommandMode="move";
  selectionTalentBar.classList.add("hidden");
  showToast("Zielposition auf der Karte antippen");
 });
@@ -1684,10 +1687,14 @@ selectionAutoBtn.addEventListener("click",e=>{
  e.stopPropagation();
  if(!selected||selected.kind!=="unit")return;
  if(selected.key==="guard"){
-  const switchingToOffense=selected.stance!=="offense";
-  selected.stance=switchingToOffense?"offense":"defend";selected.retreating=false;selected.autoTarget=null;unitCommandMode=null;
-  showToast(switchingToOffense?"Ausfall: Burgwache greift auch außerhalb an":`Burg halten: ${unitZoneLabel(selected)}`);
-  return
+  selected.stance="defend";
+  selected.guardZone="middle";
+  selected.retreating=false;
+  selected.controlMode="auto";
+  selected.autoTarget=null;
+  unitCommandMode=null;
+  showToast("Burgwache hält bis zur mittleren Mauer");
+  return;
  }
  selected.controlMode=selected.controlMode==="auto"?"manual":"auto";
  selected.autoTarget=null;selected.retargetCd=0;unitCommandMode=null;
@@ -1697,8 +1704,28 @@ selectionAutoBtn.addEventListener("click",e=>{
 selectionModeBtn.addEventListener("click",e=>{
  e.stopPropagation();
  if(!selected||selected.kind!=="unit")return;
+ if(selected.key==="guard"){
+  selected.stance="defend";
+  selected.guardZone="outer";
+  selected.retreating=false;
+  selected.controlMode="auto";
+  selected.autoTarget=null;
+  unitCommandMode=null;
+  showToast("Burgwache hält bis zum äußeren Ring");
+  return;
+ }
  cycleUnitZone(selected);
  selectionTalentBar.classList.add("hidden");
+});
+selectionOffenseBtn.addEventListener("click",e=>{
+ e.stopPropagation();
+ if(!selected||selected.kind!=="unit"||selected.key!=="guard")return;
+ selected.stance="offense";
+ selected.retreating=false;
+ selected.controlMode="auto";
+ selected.autoTarget=null;
+ unitCommandMode=null;
+ showToast("Ausfall: Burgwache greift auch außerhalb an");
 });
 if(activeModeCancelBtn)activeModeCancelBtn.addEventListener("click",()=>cancelActiveAction("button"));
 selectionUpgradeBtn.addEventListener("click",e=>{
@@ -1800,6 +1827,7 @@ function updateSelectionHud(){
  selectionMoveBtn.classList.toggle("hidden",!isUnit);
  selectionAutoBtn.classList.toggle("hidden",!isUnit);
  selectionModeBtn.classList.toggle("hidden",!isUnit);
+ selectionOffenseBtn.classList.toggle("hidden",!(isUnit&&selected.key==="guard"));
  const canShowRange=isUnit||(selected.kind==="building"&&selected.base.kind==="tower");
  selectionRangeBtn.classList.toggle("hidden",!canShowRange);
  const isNormalBuilding=selected.kind==="building"&&selected.base.kind!=="tower"&&!selected.base.decorative&&hasBuildingUpgradeEffect(selected);
@@ -1826,14 +1854,35 @@ function updateSelectionHud(){
  selectionMoveBtn.classList.toggle("moveActive",isUnit&&unitCommandMode==="move");
  selectionMoveBtn.classList.toggle("cancelActive",isUnit&&unitCommandMode==="move");
  const isGuard=isUnit&&selected.key==="guard";
- selectionMoveBtn.querySelector("span").textContent=isGuard?"↩":"➜";
- selectionMoveBtn.querySelector("small").textContent=isGuard?"Rückzug":"Bewegen";
- selectionAutoBtn.classList.toggle("active",isGuard?selected.stance==="offense":isUnit&&selected.controlMode==="auto");
- selectionAutoBtn.querySelector("span").textContent=isGuard?(selected.stance==="offense"?"⚔️":"🛡️"):(isUnit&&selected.controlMode==="auto"?"🎯":"🛡️");
- selectionAutoBtn.querySelector("small").textContent=isGuard?(selected.stance==="offense"?"Ausfall":"Automatik"):(isUnit&&selected.controlMode==="auto"?"Automatik an":"Automatik aus");
- selectionModeBtn.classList.toggle("modeActive",isUnit);
- selectionModeBtn.querySelector("span").textContent=isGuard?((selected.guardZone||"middle")==="outer"?"🛡️":"🏰"):(selected.zoneMode==="inner"?"◉":selected.zoneMode==="outer"?"◎":"◌");
- selectionModeBtn.querySelector("small").textContent=isGuard?((selected.guardZone||"middle")==="outer"?"Äußerer Ring":"Burghalten"):unitZoneLabel(selected);
+ selectionMoveBtn.querySelector("span").textContent="➜";
+ selectionMoveBtn.querySelector("small").textContent="Bewegen";
+ if(isGuard){
+  const middleActive=selected.stance!=="offense"&&(selected.guardZone||"middle")==="middle";
+  const outerActive=selected.stance!=="offense"&&(selected.guardZone||"middle")==="outer";
+  const offenseActive=selected.stance==="offense";
+  selectionAutoBtn.classList.add("autoCommand");
+  selectionModeBtn.classList.add("autoCommand");
+  selectionOffenseBtn.classList.add("autoCommand");
+  selectionAutoBtn.classList.toggle("active",middleActive);
+  selectionModeBtn.classList.toggle("active",outerActive);
+  selectionOffenseBtn.classList.toggle("active",offenseActive);
+  selectionAutoBtn.querySelector("span").textContent="🏰";
+  selectionAutoBtn.querySelector("small").textContent="Burghalten";
+  selectionModeBtn.classList.add("modeActive");
+  selectionModeBtn.querySelector("span").textContent="🛡️";
+  selectionModeBtn.querySelector("small").textContent="Äußerer Ring";
+  selectionOffenseBtn.querySelector("span").textContent="⚔️";
+  selectionOffenseBtn.querySelector("small").textContent="Ausfall";
+ }else{
+  selectionAutoBtn.classList.remove("autoCommand");
+  selectionModeBtn.classList.remove("autoCommand");
+  selectionAutoBtn.classList.toggle("active",isUnit&&selected.controlMode==="auto");
+  selectionAutoBtn.querySelector("span").textContent=isUnit&&selected.controlMode==="auto"?"🎯":"🛡️";
+  selectionAutoBtn.querySelector("small").textContent=isUnit&&selected.controlMode==="auto"?"Automatik an":"Automatik aus";
+  selectionModeBtn.classList.toggle("modeActive",isUnit);
+  selectionModeBtn.querySelector("span").textContent=selected.zoneMode==="inner"?"◉":selected.zoneMode==="outer"?"◎":"◌";
+  selectionModeBtn.querySelector("small").textContent=unitZoneLabel(selected);
+ }
  const rangeLabels=["Aus","Auswahl","Alle"],rangeIcons=["◌","◎","◉"];
  selectionRangeBtn.querySelector("span").textContent=rangeIcons[rangeDisplayMode];
  selectionRangeBtn.querySelector("small").textContent=`Reichweite: ${rangeLabels[rangeDisplayMode]}`;
