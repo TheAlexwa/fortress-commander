@@ -1,5 +1,10 @@
 # Fortress Commander – Changelog
 
+## v1.15.21 – Handwerkerhaus-Grafik
+- das Handwerkerhaus (`repair`) verwendet jetzt eine eigene comicartige Gebäudegrafik
+- Rendering lädt das neue Asset `assets/buildings/repair-house.webp` direkt aus dem Asset-Ordner
+- die bisherige Canvas-Zeichnung bleibt als Fallback erhalten, falls das Asset nicht geladen werden kann
+
 ## v1.15.20 – Wirtschaftsgebäude-Grafiken
 - Holzfäller, Steinbruch, Handwerkerhaus und Marktplatz verwenden neue comicartige Gebäudegrafiken
 - das Rendering lädt die neuen Wirtschaftsgebäude-Assets direkt aus dem Asset-Ordner

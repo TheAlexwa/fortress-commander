@@ -75,6 +75,7 @@ const BUILDING_SPRITE_DEFS = {
   lumber: { src: "assets/buildings/lumber-camp.webp", width: 68, height: 70, offsetY: -2 },
   quarry: { src: "assets/buildings/quarry-site.webp", width: 82, height: 76, offsetY: 0 },
   workshop: { src: "assets/buildings/workshop-house.webp", width: 72, height: 74, offsetY: -1 },
+  repair: { src: "assets/buildings/repair-house.webp", width: 78, height: 80, offsetY: -2 },
   market: { src: "assets/buildings/market-shop.webp", width: 72, height: 72, offsetY: -2 }
 };
 
@@ -778,7 +779,7 @@ function drawBuildings(){
   }else{
    if(b.key==="house"&&drawHouseBuildingSprite(b,lv)){
     if(lv>=2){ctx.fillStyle="#e3c36c";ctx.beginPath();ctx.arc(0,-42,3+Math.min(5,lv),0,TAU);ctx.fill()}
-   }else if(["lumber","quarry","workshop","market"].includes(b.key)&&drawUtilityBuildingSprite(b)){
+   }else if(["lumber","quarry","workshop","repair","market"].includes(b.key)&&drawUtilityBuildingSprite(b)){
     if(lv>=2){ctx.fillStyle="#e3c36c";ctx.beginPath();ctx.arc(0,-46,3+Math.min(5,lv),0,TAU);ctx.fill()}
    }else{
     // masonry base
