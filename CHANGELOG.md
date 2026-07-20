@@ -1,5 +1,10 @@
 # Fortress Commander – Changelog
 
+## v1.15.26 – Festungshof-Skalierung
+- der Festungshof wurde vergrößert und auf den Innenbereich bis an den Mauerring angepasst
+- die saubere Freistellung bleibt erhalten; nur die Skalierung und Platzierung im Asset wurden optimiert
+- keine Renderlogik geändert; das aktualisierte Hof-Asset wird weiterhin direkt geladen
+
 ## v1.15.25 – Festungshof-Bereinigung
 - der Festungshof verwendet jetzt eine bereinigte Bodengrafik ohne weiße Ränder und ohne eingebrannte Bauplatz-Overlays
 - die Grafik ist sauber freigestellt und besser auf den nutzbaren Innenbereich abgestimmt
