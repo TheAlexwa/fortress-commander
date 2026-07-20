@@ -94,6 +94,12 @@ function createSnapshot({
       nextResidentId: state.nextResidentId,
       research: { ...(state.research || {}) },
       walls: state.walls.map((wall) => ({
+        built: wall.built === true,
+        hp: wall.hp,
+        maxHp: wall.maxHp,
+      })),
+      innerWalls: (state.innerWalls || []).map((wall) => ({
+        built: true,
         hp: wall.hp,
         maxHp: wall.maxHp,
       })),
@@ -209,6 +215,12 @@ export function loadGameState({
   if (savedState.walls.length !== state.walls.length) {
     throw new Error("Speicherstand passt nicht zur aktuellen Karte.");
   }
+  if (
+    Array.isArray(savedState.innerWalls) &&
+    savedState.innerWalls.length !== (state.innerWalls || []).length
+  ) {
+    throw new Error("Speicherstand passt nicht zum inneren Mauerring.");
+  }
 
   const slotContext = { BUILD, wallSlots, insideSlots, castleSlots };
   const buildings = savedState.buildings.map((building) =>
@@ -225,7 +237,10 @@ export function loadGameState({
     occupiedSlots.add(building.slot);
   }
 
-  for (const wall of savedState.walls) {
+  for (const wall of [
+    ...savedState.walls,
+    ...(Array.isArray(savedState.innerWalls) ? savedState.innerWalls : []),
+  ]) {
     if (!Number.isFinite(Number(wall?.hp)) || !Number.isFinite(Number(wall?.maxHp))) {
       throw new Error("Speicherstand enthält ungültige Mauerwerte.");
     }
@@ -266,8 +281,26 @@ export function loadGameState({
   });
 
   savedState.walls.forEach((savedWall, index) => {
-    state.walls[index].hp = Number(savedWall.hp);
-    state.walls[index].maxHp = Number(savedWall.maxHp);
+    // Spielstände vor v1.14.4 besaßen die mittlere Palisade bereits vollständig.
+    // Fehlt das neue Kennzeichen, bleibt dieser Fortschritt aus Kompatibilitäts-
+    // gründen erhalten. Neue Partien starten dagegen mit ungebauten Abschnitten.
+    const built = savedWall?.built === undefined ? true : savedWall.built === true;
+    state.walls[index].built = built;
+    state.walls[index].hp = built ? Math.max(0, Number(savedWall.hp) || 0) : 0;
+    state.walls[index].maxHp = Math.max(1, Number(savedWall.maxHp) || state.walls[index].maxHp);
+  });
+
+  const savedInnerWalls = Array.isArray(savedState.innerWalls)
+    ? savedState.innerWalls
+    : null;
+  (state.innerWalls || []).forEach((wall, index) => {
+    const savedWall = savedInnerWalls?.[index];
+    // Ältere Spielstände erhalten den neuen inneren Ring vollständig intakt.
+    wall.built = true;
+    wall.maxHp = Math.max(1, Number(savedWall?.maxHp) || wall.maxHp);
+    wall.hp = savedWall
+      ? Math.max(0, Number(savedWall.hp) || 0)
+      : wall.maxHp;
   });
   for (const building of buildings) {
     building.slot.building = building;

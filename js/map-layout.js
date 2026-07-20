@@ -1,9 +1,9 @@
 /**
  * Geometrie der sichtbaren Ausbauplanung für den Festungsumbau.
  *
- * v1.14.3 ordnet die drei Verteidigungsringe klar:
- * - innerer Mauerring: fest mit der Holzfestung verbunden,
- * - mittlerer Mauerring: aktuell noch die spielbare Palisade,
+ * v1.14.5 ordnet die drei Verteidigungsringe klar:
+ * - innerer Mauerring: acht feste, zerstörbare Steinsegmente,
+ * - mittlerer Mauerring: vier baubare Holzpalisaden-Abschnitte,
  * - äußerer Mauerring: spätere Ausbaustufe.
  */
 

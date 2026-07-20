@@ -11,6 +11,8 @@ export function renderGameUI({
   ui,
   BUILD,
   WALL_SEGMENTS,
+  MIDDLE_WALL_SECTION_COUNT,
+  builtMiddleWallSections,
   selected,
   buildMode,
   paused,
@@ -66,8 +68,11 @@ export function renderGameUI({
 
   ui.hp.textContent = `${Math.ceil(state.hp)}/${state.maxHp}`;
   ui.wave.textContent = state.wave;
-  const intactWalls = state.walls.filter((wall) => wall.hp > 0).length;
-  ui.wallInfo.textContent = `${intactWalls}/${WALL_SEGMENTS}`;
+  const builtWallSections = typeof builtMiddleWallSections === "function"
+    ? builtMiddleWallSections()
+    : 0;
+  ui.wallInfo.textContent = `${builtWallSections}/${MIDDLE_WALL_SECTION_COUNT}`;
+  ui.wallInfo.title = "Errichtete Abschnitte der mittleren Holzpalisade";
 
   const siege = state.siege;
   const siegeReady = !state.inWave && siege?.active ? Math.max(0, Number(siege.arrived) || 0) : 0;
@@ -111,6 +116,8 @@ export function renderGameUI({
     const requirement = buildRequirement(key);
     button.disabled =
       gameOver ||
+      (config.kind === "fortification" && state.inWave) ||
+      (config.kind === "fortification" && builtWallSections >= MIDDLE_WALL_SECTION_COUNT) ||
       !requirement.ok ||
       state.gold < config.gold ||
       state.wood < config.wood ||
@@ -135,8 +142,13 @@ export function renderGameUI({
     return;
   }
 
-  if (selected.kind === "wall") {
-    ui.selected.innerHTML = `<b>Mauerabschnitt ${selected.i + 1}</b><br>Lebenspunkte: ${Math.ceil(selected.hp)} / ${selected.maxHp}`;
+  if (selected.kind === "wall-section" || selected.kind === "wall") {
+    const inner = selected.ring === "inner";
+    const label = selected.name ? ` ${selected.name}` : "";
+    const destroyed = selected.destroyed || Number(selected.hp) <= 0;
+    const stateLabel = destroyed ? "zerstört" : "errichtet";
+    const title = inner ? "Innerer Mauerring" : "Holzpalisade";
+    ui.selected.innerHTML = `<b>${title}${label}</b><br>Lebenspunkte: ${Math.ceil(selected.hp)} / ${selected.maxHp}<br>Status: ${stateLabel}`;
     return;
   }
 

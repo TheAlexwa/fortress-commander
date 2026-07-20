@@ -96,7 +96,7 @@ export function chooseAutomaticTarget(
     const overload = Math.max(0, assigned - capacity + 1);
     const cover = getTowerCoverage(buildings, enemy);
     const towerPenalty = cover.coverage * 1050 + cover.strongCoverage * 620;
-    const dangerBonus = enemy.phase === "inside" ? -720 : 0;
+    const dangerBonus = enemy.phase !== "outside" ? -720 : 0;
     const nearCastleBonus = Math.max(
       0,
       520 - Math.hypot(enemy.x - centerX, enemy.y - centerY)
@@ -167,7 +167,7 @@ export function findNearestBlockingUnit(
 
     if (unit.key === "guard") {
       const enemyRadius = Math.hypot(enemy.x - centerX, enemy.y - centerY);
-      if (unit.stance === "defend" && enemy.phase !== "inside") continue;
+      if (unit.stance === "defend" && enemy.phase === "outside") continue;
       if (unit.stance === "offense" && enemyRadius > wallRadius + 330) continue;
     }
 

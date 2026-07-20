@@ -81,15 +81,27 @@ import {
   prepareSiegePhase,
   updateSiegePhase
 } from "./siege.js";
-import { hitTestFutureLayout } from "./map-layout.js";
+import { FIXED_INNER_WALL_RADIUS, hitTestFutureLayout } from "./map-layout.js";
+import {
+  MIDDLE_WALL_SECTION_COUNT,
+  createInnerWallSegments,
+  getBuiltMiddleWallSectionCount,
+  getInnerWallSegmentForPoint,
+  getMiddleWallSectionIndexForSegment,
+  getMiddleWallSectionStatus,
+  hitTestInnerWallSegment,
+  hitTestMiddleWallSection,
+  initializeInnerWallSegments,
+  initializeMiddleWallSegments
+} from "./fortifications.js";
 
 // Fortress Commander – zentrale Initialisierung und Spielschleife.
 // Fachlogik, Darstellung und Eingaben liegen in eigenständigen Modulen.
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.14.3";
-const GAME_RELEASE_NAME="Festungsstruktur neu geordnet";
+const GAME_VERSION="1.14.5";
+const GAME_RELEASE_NAME="Aktiver innerer Mauerring";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -207,6 +219,7 @@ let zoom=.48,minZoom=.15,maxZoom=1.45,camX=CX,camY=CY;
 let buildMode=null,selected=null,unitCommandMode=null,toastTimer=0;
 let autosaveSuppressed=false,gameSessionStarted=false;
 const BUILD={
+ palisade:{name:"Holzpalisade",kind:"fortification",gold:0,wood:45,color:"#81512d"},
  archer:{name:"Bogenturm",kind:"tower",gold:60,wood:20,hp:260,range:215,rate:.72,damage:17,speed:470,color:"#b98a4d"},
  crossbow:{name:"Armbrustturm",kind:"tower",gold:95,wood:30,hp:320,range:265,rate:1.45,damage:46,speed:560,color:"#73513b"},
  catapult:{name:"Katapult",kind:"tower",gold:140,wood:55,hp:390,range:315,rate:2.45,damage:58,speed:330,splash:62,color:"#5b554c"},
@@ -221,26 +234,27 @@ const BUILD={
  statue:{name:"Kriegerstatue",kind:"inside",gold:45,wood:0,stone:15,color:"#8f7958",slotRole:"statue",decorative:true}
 };
 const state={gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,
- enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],craftsmen:[],residents:[],siege:null,spawnQueue:[],repairActive:false,repairedHp:0,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
+ enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],craftsmen:[],residents:[],siege:null,spawnQueue:[],repairActive:false,repairedHp:0,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
 const wallSlots=[],insideSlots=[],castleSlots=[];
 
 function initMap(){
- state.walls.length=0;wallSlots.length=0;insideSlots.length=0;castleSlots.length=0;
+ state.walls.length=0;state.innerWalls.length=0;wallSlots.length=0;insideSlots.length=0;castleSlots.length=0;
  for(let i=0;i<WALL_SEGMENTS;i++){
   const a0=-Math.PI/2+i*TAU/WALL_SEGMENTS,a1=-Math.PI/2+(i+1)*TAU/WALL_SEGMENTS,am=(a0+a1)/2;
-  state.walls.push({i,a0,a1,am,hp:WALL_MAX_HP,maxHp:WALL_MAX_HP});
+  state.walls.push({kind:"wall",ring:"middle",i,a0,a1,am,built:false,hp:0,maxHp:WALL_MAX_HP});
   wallSlots.push({type:"wall",i,x:CX+Math.cos(am)*(WALL_R-48),y:CY+Math.sin(am)*(WALL_R-48),building:null});
  }
+ state.innerWalls.push(...createInnerWallSegments());
  const villageSlots=[
-  [-184,-72],[184,-78],[-184,88],[184,94],
-  [-286,-82],[-250,186],[-82,286],[160,274],[286,88],[246,-194]
+  [-190,-115],[150,-165],[-228,20],[225,55],
+  [-190,155],[-75,245],[85,245],[245,-95],[-245,-85],[15,-235]
  ];
  for(const [ox,oy] of villageSlots){
   insideSlots.push({type:"inside",role:"support",x:CX+ox,y:CY+oy,building:null});
  }
  // Ein eigener Ehrenplatz für die Kriegerstatue. Normale Versorgungsgebäude
  // können diesen Platz nicht belegen.
- insideSlots.push({type:"inside",role:"statue",x:CX+92,y:CY+218,building:null});
+ insideSlots.push({type:"inside",role:"statue",x:CX+205,y:CY+180,building:null});
  const castleCorners=[[-92,-92],[92,-92],[-92,92],[92,92]];
  castleCorners.forEach(([ox,oy],i)=>castleSlots.push({type:"castle",i,x:CX+ox,y:CY+oy,building:null}));
 }
@@ -459,7 +473,8 @@ function deleteSave(){
 
 function updateUI(){
  return renderGameUI({
-  state,ui,BUILD,WALL_SEGMENTS,selected,buildMode,paused,gameOver,
+  state,ui,BUILD,WALL_SEGMENTS,MIDDLE_WALL_SECTION_COUNT,selected,buildMode,paused,gameOver,
+  builtMiddleWallSections:()=>getBuiltMiddleWallSectionCount(state),
   navResearch,navResearchBadge,closeAllBlockingPanels,totalGoldPerSecond,
   totalWoodPerSecond,totalStonePerSecond,syncResidents,assignedResidents,totalResidents,freeResidents,
   waveCount,buildRequirement,residentCapacityForHouse,buildingHasWorker,
@@ -580,7 +595,8 @@ function repairTargetInfo(target){
  if(target.kind==="castle")return {x:CX,y:CY-12,need:()=>state.maxHp-state.hp,apply:v=>state.hp=Math.min(state.maxHp,state.hp+v)};
  // Mauersegmente besitzen historisch kein kind-Feld. Deshalb zusätzlich an Winkel/HP erkennen.
  if(target.kind==="wall"||(Number.isFinite(target.am)&&Number.isFinite(target.hp)&&Number.isFinite(target.maxHp))){
-  return {x:CX+Math.cos(target.am)*WALL_R,y:CY+Math.sin(target.am)*WALL_R,need:()=>target.maxHp-target.hp,apply:v=>target.hp=Math.min(target.maxHp,target.hp+v)};
+  const radius=target.ring==="inner"?FIXED_INNER_WALL_RADIUS:WALL_R;
+  return {x:CX+Math.cos(target.am)*radius,y:CY+Math.sin(target.am)*radius,need:()=>target.maxHp-target.hp,apply:v=>target.hp=Math.min(target.maxHp,target.hp+v)};
  }
  if(target.slot)return {x:target.slot.x,y:target.slot.y,need:()=>target.maxHp-target.hp,apply:v=>target.hp=Math.min(target.maxHp,target.hp+v)};
  throw new Error("Reparaturziel ohne Position");
@@ -588,7 +604,7 @@ function repairTargetInfo(target){
 function damagedRepairTargets(){
  const list=[];
  if(state.hp<state.maxHp)list.push({kind:"castle"});
- list.push(...state.walls.filter(w=>w.hp<w.maxHp).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp));
+ list.push(...[...state.walls,...state.innerWalls].filter(w=>w.built&&w.hp<w.maxHp).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp));
  list.push(...state.buildings.filter(b=>b.base.kind==="tower"&&b.hp>0&&b.hp<b.maxHp).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp));
  return list;
 }
@@ -678,28 +694,39 @@ function update(dt){
  if(state.inWave){state.spawnTimer-=dt;if(state.toSpawn>0&&state.spawnTimer<=0){const forcedType=state.spawnQueue.shift()||null;spawnEnemy(forcedType);state.toSpawn=Math.max(0,state.spawnQueue.length);state.spawnTimer=Math.max(.18,.88-state.wave*.024)}}
  const bonus=1;
  for(const b of state.buildings){
-  if(b.base.kind!=="tower"||b.slot.type==="wall"&&state.walls[b.slot.i].hp<=0)continue;
+  if(b.base.kind!=="tower"||b.slot.type==="wall"&&(!state.walls[b.slot.i].built||state.walls[b.slot.i].hp<=0))continue;
   b.cooldown-=dt;const e=nearestEnemy(b.slot.x,b.slot.y,b.range);if(e&&b.cooldown<=0){b.cooldown=b.rate;shoot(b,e,b.damage*bonus,b.speed,b.splash,b.key==="catapult"?"#493d30":"#f0d176")}
  }
  for(const u of state.units){
   if(u.hp<=0)continue;
   u.attackCd-=dt;u.retargetCd=(u.retargetCd||0)-dt;
   if(u.key==="guard"){
-   const hpRatio=u.hp/Math.max(1,u.maxHp);
-   if(hpRatio<.30)u.retreating=true;
-   if(u.retreating&&hpRatio>.72)u.retreating=false;
-   let target=null;
-   if(!u.retreating){
-    let best=Infinity;
-    for(const e of state.enemies){
-     if(e.hp<=0)continue;
-     const er=Math.hypot(e.x-CX,e.y-CY);
-     if(u.stance==="defend"&&e.phase!=="inside")continue;
-     if(u.stance==="offense"&&er>WALL_R+330)continue;
-     const d=Math.hypot(e.x-u.x,e.y-u.y);
-     if(d<best){best=d;target=e}
+   // Rückzug ist jetzt ein kurzer, abgeschlossener Befehl. Zuvor blieb eine
+   // angeschlagene Burgwache dauerhaft im Rückzugszustand und suchte später
+   // kein neues Ziel mehr.
+   if(u.retreating){
+    const dx=u.homeX-u.x,dy=u.homeY-u.y,d=Math.hypot(dx,dy);
+    if(d>4){const step=Math.min(d,u.speed*dt);u.x+=dx/d*step;u.y+=dy/d*step}
+    else{
+     u.x=u.homeX;u.y=u.homeY;
+     u.retreatTimer=Math.max(0,(u.retreatTimer||0)-dt);
+     if(u.retreatTimer<=0){u.retreating=false;u.retargetCd=0}
     }
+    continue;
    }
+
+   let target=null,best=Infinity;
+   for(const e of state.enemies){
+    if(e.hp<=0)continue;
+    const er=Math.hypot(e.x-CX,e.y-CY);
+    // Im Verteidigungsmodus reagiert die Wache auf jede Einheit, die den
+    // mittleren Ring überwunden hat – sowohl vor als auch hinter dem inneren Ring.
+    if(u.stance==="defend"&&e.phase==="outside")continue;
+    if(u.stance==="offense"&&er>WALL_R+330)continue;
+    const d=Math.hypot(e.x-u.x,e.y-u.y);
+    if(d<best){best=d;target=e}
+   }
+
    if(target){
     const dx=target.x-u.x,dy=target.y-u.y,d=Math.max(1,Math.hypot(dx,dy));
     if(d<=u.range+(target.radius||12)+5){
@@ -716,7 +743,7 @@ function update(dt){
      u.x=nx;u.y=ny;
     }
    }else{
-    const tx=u.retreating?u.homeX:(u.stance==="defend"?u.homeX:u.targetX),ty=u.retreating?u.homeY:(u.stance==="defend"?u.homeY:u.targetY);
+    const tx=u.stance==="defend"?u.homeX:u.targetX,ty=u.stance==="defend"?u.homeY:u.targetY;
     const dx=tx-u.x,dy=ty-u.y,d=Math.hypot(dx,dy);if(d>4){const step=Math.min(d,u.speed*dt);u.x+=dx/d*step;u.y+=dy/d*step}
    }
    continue;
@@ -783,40 +810,56 @@ function update(dt){
  state.projectiles=state.projectiles.filter(p=>!p.dead);
 
  for(const e of state.enemies){
-  e.attackCd-=dt;const dx=CX-e.x,dy=CY-e.y,dCenter=Math.hypot(dx,dy);
+  e.attackCd-=dt;const dx=CX-e.x,dy=CY-e.y,dCenter=Math.max(1,Math.hypot(dx,dy));
   if(e.phase==="outside"){
    const wi=angleIndex(e.x,e.y),wall=state.walls[wi];e.wallIndex=wi;
    const targetR=WALL_R+e.radius+4,tx=CX+(e.x-CX)/dCenter*targetR,ty=CY+(e.y-CY)/dCenter*targetR;
    const d=Math.hypot(tx-e.x,ty-e.y);
-   if(wall.hp<=0){e.phase="inside"}
+   if(!wall.built||wall.hp<=0){e.phase="inside"}
    else if(d<5){if(e.attackCd<=0){e.attackCd=e.attackRate;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
-    wall.hp=Math.max(0,wall.hp-wallDamage);burst(tx,ty,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in Mauerabschnitt ${wi+1}!`)}}
-   else{e.x+=(tx-e.x)/d*e.speed*dt;e.y+=(ty-e.y)/d*e.speed*dt}
-  }else{
+    wall.hp=Math.max(0,wall.hp-wallDamage);burst(tx,ty,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in Palisade ${getMiddleWallSectionStatus(state,getMiddleWallSectionIndexForSegment(wi,state.walls.length)).name}!`)}}
+   else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+  }else if(e.phase==="inside"){
    const tower=towerBehindWall(e.wallIndex);
+   const blockingUnit=nearestBlockingUnit(e,62);
+   const innerWall=getInnerWallSegmentForPoint(state,e.x,e.y,{CX,CY});
+   e.innerWallIndex=innerWall?.i??null;
+   if(blockingUnit){
+    if(e.attackCd<=0){e.attackCd=e.attackRate;blockingUnit.hp-=e.damage*.6*(1-(blockingUnit.armor||0));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
+   }else if(tower){
+    const tdx=tower.slot.x-e.x,tdy=tower.slot.y-e.y,td=Math.max(1,Math.hypot(tdx,tdy));
+    if(td<38+e.radius){
+     if(e.attackCd<=0){e.attackCd=e.attackRate;tower.hp-=e.damage;burst(tower.slot.x,tower.slot.y,"#b67a45",6)}
+    }else{e.x+=tdx/td*e.speed*dt;e.y+=tdy/td*e.speed*dt}
+   }else if(!innerWall||innerWall.hp<=0){
+    e.phase="core";
+   }else{
+    const targetR=FIXED_INNER_WALL_RADIUS+e.radius+5;
+    const tx=CX+Math.cos(innerWall.am)*targetR,ty=CY+Math.sin(innerWall.am)*targetR;
+    const d=Math.hypot(tx-e.x,ty-e.y);
+    if(d<5){
+     if(e.attackCd<=0){
+      e.attackCd=e.attackRate;
+      const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.3);
+      innerWall.hp=Math.max(0,innerWall.hp-wallDamage);
+      burst(tx,ty,"#9b8b70",5);
+      if(innerWall.hp<=0)showToast(`Bresche im inneren Mauerring: ${innerWall.name}!`);
+     }
+    }else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+   }
+  }else{
    const castleTower=nearestCastleTower(e);
    const blockingUnit=nearestBlockingUnit(e,62);
    if(blockingUnit){
     if(e.attackCd<=0){e.attackCd=e.attackRate;blockingUnit.hp-=e.damage*.6*(1-(blockingUnit.armor||0));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
-   }else if(tower){
-    const tdx=tower.slot.x-e.x,tdy=tower.slot.y-e.y,td=Math.hypot(tdx,tdy);
-    if(td<38+e.radius){
-     if(e.attackCd<=0){e.attackCd=e.attackRate;tower.hp-=e.damage;burst(tower.slot.x,tower.slot.y,"#b67a45",6)}
-    }else{
-     e.x+=tdx/td*e.speed*dt;e.y+=tdy/td*e.speed*dt;
-    }
    }else if(castleTower){
-    const cdx=castleTower.slot.x-e.x,cdy=castleTower.slot.y-e.y,cd=Math.hypot(cdx,cdy);
+    const cdx=castleTower.slot.x-e.x,cdy=castleTower.slot.y-e.y,cd=Math.max(1,Math.hypot(cdx,cdy));
     if(cd<38+e.radius){
      if(e.attackCd<=0){e.attackCd=e.attackRate;castleTower.hp-=e.damage;burst(castleTower.slot.x,castleTower.slot.y,"#b67a45",6)}
-    }else{
-     e.x+=cdx/cd*e.speed*dt;e.y+=cdy/cd*e.speed*dt;
-    }
+    }else{e.x+=cdx/cd*e.speed*dt;e.y+=cdy/cd*e.speed*dt}
    }else if(dCenter<46){
     if(e.attackCd<=0){e.attackCd=e.attackRate;state.hp-=e.damage;burst(CX,CY,e.color,8)}
-   }else{
-    e.x+=dx/dCenter*e.speed*dt;e.y+=dy/dCenter*e.speed*dt;
-   }
+   }else{e.x+=dx/dCenter*e.speed*dt;e.y+=dy/dCenter*e.speed*dt}
   }
  }
  for(const e of state.enemies)if(e.hp<=0&&!e.dead){e.dead=true;state.gold+=e.reward;state.kills++;if(e.lastHitEntity)grantCombatXp(e.lastHitEntity,e.type==="boss"?55:e.type==="shield"?22:e.type==="runner"?13:16);burst(e.x,e.y,e.color,8)}
@@ -897,12 +940,22 @@ function pickAt(x,y){
  for(const e of state.enemies){if(e.dead)continue;const d=Math.hypot(x-e.x,y-e.y),visualRadius=e.radius*(Number.isFinite(e.visualScale)?e.visualScale:1);if(d<Math.max(bd,visualRadius+12)){bd=d;best=e}}
  for(const u of state.units){const d=Math.hypot(x-u.x,y-u.y);if(d<bd){bd=d;best=u}}
  for(const b of state.buildings){const d=Math.hypot(x-b.slot.x,y-b.slot.y);if(d<bd){bd=d;best=b}}
- for(const w of state.walls){const px=CX+Math.cos(w.am)*WALL_R,py=CY+Math.sin(w.am)*WALL_R,d=Math.hypot(x-px,y-py);if(d<bd){bd=d;best=w;best.kind="wall"}}
+ const innerHit=hitTestInnerWallSegment(x,y,{CX,CY,radius:FIXED_INNER_WALL_RADIUS,tolerance:24});
+ if(!best&&innerHit){
+  const wall=state.innerWalls[innerHit.index];
+  if(wall)best=wall;
+ }
+ const middleHit=hitTestMiddleWallSection(x,y,{CX,CY,WALL_R,tolerance:30});
+ if(!best&&middleHit){
+  const section=getMiddleWallSectionStatus(state,middleHit.sectionIndex);
+  if(section.built){best=section}
+ }
  return best;
 }
 function showFutureLayoutHint(hit){
  if(!hit)return false;
  const messages={
+  "middle-wall":"Mittlere Holzpalisade: im Baumenü auswählen und diesen Abschnitt errichten.",
   "outer-wall":"Äußerer Mauerring: wird in einer späteren Ausbaustufe mit Stein errichtet."
  };
  const text=hit.type==="outer-gate"
@@ -914,7 +967,7 @@ function showFutureLayoutHint(hit){
 }
 function worldTap(x,y){
  if(gameOver)return;
- const futureHit=hitTestFutureLayout(x,y,{CX,CY,WALL_R});
+ const futureHit=hitTestMiddleWallSection(x,y,{CX,CY,WALL_R})||hitTestFutureLayout(x,y,{CX,CY,WALL_R});
  if(buildMode){
   const created=createAt(x,y,buildMode);
   if(!created)showFutureLayoutHint(futureHit);
@@ -960,8 +1013,8 @@ function showEndScreen(){
 }
 function hideEndScreen(){const screen=document.getElementById("endScreen");if(screen){screen.classList.add("hidden");screen.style.pointerEvents="none"}}
 function reset(){
- state.gold=210;state.wood=105;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;
- state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;for(const w of state.walls)w.hp=w.maxHp;
+ state.gold=210;state.wood=105;state.stone=0;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;
+ state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
  selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.48);ensureCurrentSiege();showToast("Neue Belagerung beginnt");
 }
 
@@ -1073,7 +1126,7 @@ function buildingProductionInfo(b){
 }
 function buildingStatsHtml(b){
  const base=b.base,isTower=base.kind==="tower",level=b.level||1;
- if(base.decorative)return `<div class="buildingOverview"><div class="statTile"><span>Bauwerk</span><b>${buildingDisplayName(b)}</b></div><div class="statTile"><span>Funktion</span><b>Noch ohne Aufgabe</b></div><div class="statTile"><span>Standort</span><b>Eigener Ehrenplatz</b></div></div><div class="statsHint">Die Kriegerstatue ist in v1.14.3 ein reines Zierbauwerk. Eine spätere Ausbauphase gibt ihr eine eigene spielerische Funktion.</div>`;
+ if(base.decorative)return `<div class="buildingOverview"><div class="statTile"><span>Bauwerk</span><b>${buildingDisplayName(b)}</b></div><div class="statTile"><span>Funktion</span><b>Noch ohne Aufgabe</b></div><div class="statTile"><span>Standort</span><b>Eigener Ehrenplatz</b></div></div><div class="statsHint">Die Kriegerstatue ist in v1.14.5 ein reines Zierbauwerk. Eine spätere Ausbauphase gibt ihr eine eigene spielerische Funktion.</div>`;
  let rows=isTower?
  `${statRow("Schaden",fmt(base.damage),fmt(b.damage),pctDelta(base.damage,b.damage))}
  ${statRow("Reichweite",fmt(base.range),fmt(b.range),pctDelta(base.range,b.range))}
@@ -1107,7 +1160,8 @@ function buildingStatsHtml(b){
  </div>`;
 }
 function wallStatsHtml(w){
- return `<div class="statsSummary"><div class="statTile"><span>Zustand</span><b>${Math.ceil(w.hp/w.maxHp*100)}%</b></div><div class="statTile"><span>Leben</span><b>${Math.ceil(w.hp)}</b></div><div class="statTile"><span>Maximum</span><b>${Math.ceil(w.maxHp)}</b></div></div><div class="statsHint">Dieser Palisadenabschnitt schützt den dahinterliegenden Turm. Nach einem Durchbruch greifen Feinde zuerst den Turm, dann blockierende Einheiten und schließlich die Burg an.</div>`;
+ const percent=w.maxHp?Math.ceil(w.hp/w.maxHp*100):0;
+ return `<div class="statsSummary"><div class="statTile"><span>Abschnitt</span><b>${w.name||"Mittlere Palisade"}</b></div><div class="statTile"><span>Zustand</span><b>${percent}%</b></div><div class="statTile"><span>Leben</span><b>${Math.ceil(w.hp)} / ${Math.ceil(w.maxHp)}</b></div></div><div class="statsHint">Dieser Viertelkreis besteht aus sechs einzelnen Palisadensegmenten. Fehlt oder fällt der Abschnitt, können Gegner auf dieser Seite direkt zur festen Kernburg vordringen. Turmplätze auf der mittleren Mauer folgen in einem späteren Schritt.</div>`;
 }
 function overviewStatsHtml(){
  const units=state.units.filter(u=>u.hp>0),towers=state.buildings.filter(b=>b.base.kind==="tower"&&b.hp>0),open=units.reduce((s,u)=>s+(u.pendingUpgrades||0),0)+towers.reduce((s,b)=>s+(b.pendingUpgrades||0),0);
@@ -1255,7 +1309,7 @@ function openStats(target=selected){
  prepareStatsScreen();
  if(target&&target.kind==="unit"){statsTitle.textContent="Einheitenwerte";statsContent.innerHTML=unitStatsHtml(target)}
  else if(target&&target.kind==="building"){statsTitle.textContent=buildingDisplayName(target);statsContent.innerHTML=buildingStatsHtml(target)}
- else if(target&&typeof target.index==="number"&&target.maxHp){statsTitle.textContent="Palisadenwerte";statsContent.innerHTML=wallStatsHtml(target)}
+ else if(target&&(target.kind==="wall-section"||target.kind==="wall")&&target.maxHp){statsTitle.textContent=target.ring==="inner"?"Innerer Mauerring":"Palisadenwerte";statsContent.innerHTML=wallStatsHtml(target)}
  else{statsTitle.textContent="Festungsstatistiken";statsContent.innerHTML=overviewStatsHtml()}
 }
 function closeStats(){statsScreen.classList.add("hidden");statsScreen.style.pointerEvents="none";statsScreen.style.visibility="hidden";statsScreen.style.display="none";last=performance.now();updateUI()}
@@ -1300,7 +1354,7 @@ statsScreen.addEventListener("click",e=>{if(e.target===statsScreen)closeStats()}
 selectionMoveBtn.addEventListener("click",e=>{
  e.stopPropagation();
  if(!selected||selected.kind!=="unit")return;
- if(selected.key==="guard"){selected.retreating=true;selected.autoTarget=null;unitCommandMode=null;showToast("Burgwache zieht sich zum Wachpunkt zurück");return}
+ if(selected.key==="guard"){selected.retreating=true;selected.retreatTimer=1.1;selected.autoTarget=null;unitCommandMode=null;showToast("Burgwache zieht sich zum Wachpunkt zurück");return}
  selected.controlMode="manual";selected.autoTarget=null;unitCommandMode="move";
  selectionTalentBar.classList.add("hidden");
  showToast("Zielposition auf der Karte antippen");
@@ -1386,8 +1440,9 @@ function updateSelectionHud(){
    :selected.key==="repair"?`👤 ${buildingHasWorker(selected)?"besetzt":"frei"} · 👷 ${selected.repairEnabled===false?"gestoppt":"aktiv"}`
    :selected.key==="workshop"?`⚒️ Forschung · 🔬 ${Math.floor(state.researchPoints||0)} · ${workshopLevels()} Stufen`
    :"Versorgungsgebäude";
- }else if(selected.kind==="wall"||typeof selected.index==="number"){
-  icon="🧱";name="Palisadenabschnitt";details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)}`;
+ }else if(selected.kind==="wall-section"||selected.kind==="wall"){
+  const inner=selected.ring==="inner";
+  icon="🧱";name=inner?`Innerer Mauerring · ${selected.name||`Segment ${(selected.i||0)+1}`}`:`Palisade ${selected.name||""}`.trim();details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${selected.hp<=0||selected.destroyed?"zerstört":"errichtet"}`;
  }
  ui.selectionPortrait.textContent=icon;
  ui.selectionText.innerHTML=`<b>${name}</b><br>${details}`;

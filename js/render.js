@@ -4,6 +4,10 @@ import {
   OUTER_GATE_GAP,
   getFutureLayoutGeometry
 } from "./map-layout.js";
+import {
+  MIDDLE_WALL_SECTION_COUNT,
+  getMiddleWallSectionStatus
+} from "./fortifications.js";
 
 // Zentrale Canvas-Darstellung von Fortress Commander.
 // Die Spielzustände bleiben in main.js; dieses Modul erhält nur die zum Zeichnen benötigten Referenzen.
@@ -213,28 +217,55 @@ function drawWarriorStatue(statue){
  ctx.restore();
 }
 function drawFixedInnerWall(radius=FIXED_INNER_WALL_RADIUS){
- ctx.save();ctx.lineCap="butt";
- for(let quadrant=0;quadrant<4;quadrant++){
-  const center=-Math.PI/2+quadrant*Math.PI/2;
-  const a0=center+.18;
-  const a1=center+Math.PI/2-.18;
-  ctx.strokeStyle="#20170f99";ctx.lineWidth=27;ctx.beginPath();ctx.arc(CX+3,CY+5,radius,a0,a1);ctx.stroke();
-  ctx.strokeStyle="#6f5132";ctx.lineWidth=23;ctx.beginPath();ctx.arc(CX,CY,radius,a0,a1);ctx.stroke();
-  ctx.strokeStyle="#bd9861";ctx.lineWidth=4;ctx.beginPath();ctx.arc(CX,CY,radius,a0,a1);ctx.stroke();
-  const stones=8;
-  for(let k=0;k<stones;k++){
-   const a=a0+(a1-a0)*(k+.5)/stones,x=CX+Math.cos(a)*radius,y=CY+Math.sin(a)*radius;
-   ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);ctx.fillStyle=k%2?"#8e704a":"#765a3b";ctx.fillRect(-8,-12,16,24);ctx.strokeStyle="#3d2d20";ctx.lineWidth=1.2;ctx.strokeRect(-8,-12,16,24);ctx.restore();
+ ctx.save();ctx.lineCap="round";
+ const walls=Array.isArray(state.innerWalls)?state.innerWalls:[];
+ for(const wall of walls){
+  const ratio=Math.max(0,Math.min(1,wall.hp/Math.max(1,wall.maxHp)));
+  const alive=wall.hp>0;
+  const isSelected=selected===wall;
+  ctx.strokeStyle="#17130f99";ctx.lineWidth=31;ctx.beginPath();ctx.arc(CX+3,CY+5,radius,wall.a0,wall.a1);ctx.stroke();
+  ctx.strokeStyle=alive?(ratio>.55?"#766348":ratio>.25?"#735243":"#6b3935"):"#29231e";
+  ctx.lineWidth=27;ctx.beginPath();ctx.arc(CX,CY,radius,wall.a0,wall.a1);ctx.stroke();
+  if(alive){
+   const stones=5;
+   for(let k=0;k<stones;k++){
+    const a=wall.a0+(wall.a1-wall.a0)*(k+.5)/stones,x=CX+Math.cos(a)*radius,y=CY+Math.sin(a)*radius;
+    ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);
+    ctx.fillStyle=k%2?(ratio>.4?"#9b8564":"#825b51"):(ratio>.4?"#806b50":"#70463f");
+    ctx.fillRect(-9,-13,18,26);ctx.strokeStyle="#3e3429";ctx.lineWidth=1.3;ctx.strokeRect(-9,-13,18,26);
+    ctx.fillStyle="#d0b98a66";ctx.fillRect(-7,-10,14,3);ctx.restore();
+   }
+   if(ratio<.65){
+    const x=CX+Math.cos(wall.am)*radius,y=CY+Math.sin(wall.am)*radius;
+    ctx.strokeStyle="#33201e";ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(x-7,y-11);ctx.lineTo(x+2,y-1);ctx.lineTo(x-5,y+11);ctx.stroke();
+   }
+  }else{
+   for(let k=-2;k<=2;k++){
+    const a=wall.am+k*.045,r=radius+(k%2)*7;
+    ctx.save();ctx.translate(CX+Math.cos(a)*r,CY+Math.sin(a)*r);ctx.rotate(a);
+    ctx.fillStyle=k%2?"#665847":"#88745a";ctx.fillRect(-8,-5,16,10);ctx.restore();
+   }
+  }
+  if(isSelected){
+   ctx.strokeStyle="#ffe68a";ctx.shadowBlur=14;ctx.shadowColor="#ffe68a";ctx.lineWidth=4;
+   ctx.beginPath();ctx.arc(CX,CY,radius,wall.a0,wall.a1);ctx.stroke();ctx.shadowBlur=0;
+  }
+  if(ratio<.999){
+   const bx=CX+Math.cos(wall.am)*(radius+31),by=CY+Math.sin(wall.am)*(radius+31),bw=38;
+   ctx.fillStyle="#0e0908dd";ctx.fillRect(bx-bw/2,by-4,bw,7);
+   ctx.fillStyle=ratio>.5?"#64bd60":ratio>.25?"#d2a13e":"#d14a43";ctx.fillRect(bx-bw/2+1,by-3,(bw-2)*ratio,5);
   }
  }
- // Vier kleine, feste Toröffnungen verbinden Kernburg und Dorfbereich.
+ // Vier feste Torhäuser schließen die Straßen zwischen den acht Segmenten.
  for(const a of [-Math.PI/2,0,Math.PI/2,Math.PI]){
   const x=CX+Math.cos(a)*radius,y=CY+Math.sin(a)*radius;
   ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);
-  ctx.fillStyle="#4a321f";ctx.fillRect(-18,-13,36,27);ctx.strokeStyle="#d1aa68";ctx.lineWidth=2;ctx.strokeRect(-18,-13,36,27);
-  ctx.fillStyle="#17130f";ctx.beginPath();ctx.roundRect(-8,-2,16,18,6);ctx.fill();ctx.restore();
+  ctx.fillStyle="#2e241b";ctx.fillRect(-18,-14,36,29);ctx.strokeStyle="#b99a68";ctx.lineWidth=2;ctx.strokeRect(-18,-14,36,29);
+  ctx.fillStyle="#17130f";ctx.beginPath();ctx.roundRect(-9,-3,18,19,6);ctx.fill();
+  ctx.strokeStyle="#7c5a35";ctx.lineWidth=2;for(let k=-5;k<=5;k+=5){ctx.beginPath();ctx.moveTo(k,-2);ctx.lineTo(k,14);ctx.stroke()}
+  ctx.restore();
  }
- ctx.fillStyle="#e9d69dbb";ctx.font="bold 10px system-ui";ctx.textAlign="center";ctx.fillText("FESTER INNERER MAUERRING",CX,CY-radius-28);
+ ctx.fillStyle="#e9d69dcc";ctx.font="bold 10px system-ui";ctx.textAlign="center";ctx.fillText("INNERER MAUERRING · 8 SEGMENTE",CX,CY-radius-28);
  ctx.restore();
 }
 function drawFutureFortressLayout(){
@@ -253,9 +284,16 @@ function drawFutureFortressLayout(){
   ctx.fillText(statueSlot?"EHRENPLATZ":"BAUPLATZ",slot.x,slot.y+4);
  }
  drawFixedInnerWall(layout.fixedInnerRadius);
- // Der aktive Palisadenring ist der mittlere Verteidigungsring dieser Übergangsversion.
- ctx.fillStyle="#e8d19daa";ctx.font="bold 10px system-ui";ctx.textAlign="center";
- ctx.fillText("MITTLERER MAUERRING · AKTUELLE PALISADE",CX,CY-WALL_R-30);
+ // Vier unabhängig baubare Viertel der mittleren Holzpalisade.
+ for(let sectionIndex=0;sectionIndex<MIDDLE_WALL_SECTION_COUNT;sectionIndex++){
+  const section=getMiddleWallSectionStatus(state,sectionIndex);
+  if(section.built)continue;
+  const a0=-Math.PI/2+sectionIndex*Math.PI/2+.025;
+  const a1=-Math.PI/2+(sectionIndex+1)*Math.PI/2-.025;
+  drawBlueprintArc(WALL_R,a0,a1,29);
+ }
+ ctx.fillStyle="#e8d19dcc";ctx.font="bold 10px system-ui";ctx.textAlign="center";
+ ctx.fillText("MITTLERE HOLZPALISADE · 4 ABSCHNITTE BAUBAR",CX,CY-WALL_R-30);
  // Geplanter äußerer Mauerring mit vier anklickbaren Toröffnungen.
  for(let quadrant=0;quadrant<4;quadrant++){
   const a0=-Math.PI/2+quadrant*Math.PI/2+OUTER_GATE_GAP;
@@ -303,6 +341,7 @@ function drawCastle(){
  ctx.globalAlpha=1;
  // Palisade
  for(const w of state.walls){
+  if(!w.built)continue;
   const ratio=w.hp/w.maxHp,alive=w.hp>0;
   ctx.lineCap="round";
   ctx.strokeStyle="#17100baa";ctx.lineWidth=38;ctx.beginPath();ctx.arc(CX+5,CY+7,WALL_R,w.a0+.012,w.a1-.012);ctx.stroke();
@@ -327,17 +366,6 @@ function drawCastle(){
    ctx.fillStyle="#0e0908dd";ctx.fillRect(bx-bw/2,by-4,bw,7);
    ctx.fillStyle=ratio>.5?"#64bd60":ratio>.25?"#d2a13e":"#d14a43";ctx.fillRect(bx-bw/2+1,by-3,(bw-2)*Math.max(0,ratio),5);
   }
- }
- // vier Torhäuser
- for(const a of [-Math.PI/2,0,Math.PI/2,Math.PI])drawGatehouse(a);
- // acht Wachtürme an der Palisade
- for(let i=0;i<8;i++){
-  const a=i/8*TAU+TAU/16,x=CX+Math.cos(a)*(WALL_R-3),y=CY+Math.sin(a)*(WALL_R-3);
-  ctx.save();ctx.translate(x,y);ctx.fillStyle="#15100d77";ctx.beginPath();ctx.ellipse(6,8,24,12,0,0,TAU);ctx.fill();
-  ctx.fillStyle="#654024";ctx.fillRect(-15,-10,30,28);ctx.fillStyle="#8b5a30";
-  for(let k=-1;k<=1;k++)ctx.fillRect(k*10-4,-17,8,10);
-  ctx.fillStyle="#183e68";ctx.beginPath();ctx.moveTo(-20,-10);ctx.lineTo(0,-27);ctx.lineTo(20,-10);ctx.closePath();ctx.fill();
-  ctx.strokeStyle="#d4b269";ctx.lineWidth=2;ctx.stroke();ctx.restore();
  }
  // Kleine Holzfestung als Zentrum des neuen Aufbausystems.
  ctx.fillStyle="#10100d77";ctx.beginPath();ctx.ellipse(CX+8,CY+43,92,40,0,0,TAU);ctx.fill();
@@ -399,7 +427,7 @@ function drawSlots(){
  if(!buildMode)return;
  for(const s of [...wallSlots,...insideSlots,...castleSlots]){
   if(s.building)continue;
-  const c=BUILD[buildMode],valid=c&&((c.kind==="tower"&&(s.type==="wall"||s.type==="castle"))||(c.kind==="inside"&&s.type==="inside"&&(c.slotRole==="statue"?s.role==="statue":s.role!=="statue")));
+  const c=BUILD[buildMode],valid=c&&((c.kind==="tower"&&s.type==="castle")||(c.kind==="inside"&&s.type==="inside"&&(c.slotRole==="statue"?s.role==="statue":s.role!=="statue")));
   if(!valid)continue;
   ctx.save();
   const pulse=.72+Math.sin(performance.now()*.006+s.x*.01)*.18;
@@ -409,6 +437,18 @@ function drawSlots(){
   ctx.beginPath();ctx.arc(s.x,s.y,slotRadius,0,TAU);ctx.fill();ctx.stroke();
   ctx.strokeStyle="#fff3c277";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(s.x,s.y,Math.max(12,slotRadius-9),0,TAU);ctx.stroke();
   ctx.restore();
+ }
+ if(buildMode==="palisade"){
+  for(let sectionIndex=0;sectionIndex<MIDDLE_WALL_SECTION_COUNT;sectionIndex++){
+   const section=getMiddleWallSectionStatus(state,sectionIndex);
+   if(section.built&&!section.destroyed)continue;
+   const a0=-Math.PI/2+sectionIndex*Math.PI/2+.025;
+   const a1=-Math.PI/2+(sectionIndex+1)*Math.PI/2-.025;
+   ctx.save();ctx.globalAlpha=.72+Math.sin(performance.now()*.006+sectionIndex)*.16;
+   ctx.strokeStyle="#ffe69a";ctx.shadowBlur=22;ctx.shadowColor="#ffcf5a";ctx.lineWidth=42;
+   ctx.beginPath();ctx.arc(CX,CY,WALL_R,a0,a1);ctx.stroke();
+   ctx.strokeStyle="#fff7c9";ctx.lineWidth=3;ctx.setLineDash([14,9]);ctx.beginPath();ctx.arc(CX,CY,WALL_R,a0,a1);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+  }
  }
  if(buildMode==="soldier"){
   ctx.save();ctx.strokeStyle="#a9ddff";ctx.shadowBlur=14;ctx.shadowColor="#6ac8ff";ctx.lineWidth=3;ctx.setLineDash([12,8]);

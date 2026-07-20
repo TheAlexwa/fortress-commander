@@ -10,7 +10,15 @@ export function getWaveEnemyCount(wave) {
 }
 
 export function getWallHealthSum(state) {
-  return state.walls.reduce((sum, wall) => sum + wall.hp, 0);
+  const middle = state.walls.reduce(
+    (sum, wall) => sum + (wall.built ? wall.hp : 0),
+    0
+  );
+  const inner = (state.innerWalls || []).reduce(
+    (sum, wall) => sum + (wall.built ? wall.hp : 0),
+    0
+  );
+  return middle + inner;
 }
 
 export function beginWave(
@@ -182,7 +190,8 @@ export function applyWaveAutoRepair(state, percent) {
     repaired += castleGain;
   }
 
-  for (const wall of state.walls) {
+  for (const wall of [...state.walls, ...(state.innerWalls || [])]) {
+    if (!wall.built) continue;
     const gain = Math.min(wall.maxHp - wall.hp, wall.maxHp * percent);
     if (gain > 0) {
       wall.hp += gain;
@@ -197,8 +206,8 @@ export function applyWaveAutoRepair(state, percent) {
 export function getTotalRepairDamage(state) {
   let total = Math.max(0, state.maxHp - state.hp);
 
-  total += state.walls.reduce(
-    (sum, wall) => sum + Math.max(0, wall.maxHp - wall.hp),
+  total += [...state.walls, ...(state.innerWalls || [])].reduce(
+    (sum, wall) => sum + (wall.built ? Math.max(0, wall.maxHp - wall.hp) : 0),
     0
   );
 
