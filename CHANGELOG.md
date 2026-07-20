@@ -1,5 +1,11 @@
 # Fortress Commander – Changelog
 
+## v1.15.14 – Laufanimationen
+- zwei Geh-Frames für den Bogenschützen ergänzt
+- zwei Geh-Frames für die Burgwache ergänzt
+- Framewechsel erfolgt ausschließlich, während sich die jeweilige Einheit tatsächlich bewegt
+- im Stillstand wird weiterhin die statische Standgrafik verwendet
+
 ## v1.15.13 – Freistellungskorrektur
 - Freistellung von Bogenschütze und Burgwache bereinigt
 - helle Restflächen und sichtbare Hintergrundkästchen an den Einheiten entfernt

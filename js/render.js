@@ -41,18 +41,33 @@ let WALL_R;
 let TAU;
 
 const UNIT_SPRITE_DEFS = {
-  soldier: { src: "assets/units/archer-idle.webp", width: 40, height: 62, offsetY: -1 },
-  guard: { src: "assets/units/guard-idle.webp", width: 48, height: 62, offsetY: -1 }
+  soldier: {
+    idle: "assets/units/archer-idle.webp",
+    walk: ["assets/units/archer-walk-1.webp", "assets/units/archer-walk-2.webp"],
+    width: 40, height: 62, offsetY: -1
+  },
+  guard: {
+    idle: "assets/units/guard-idle.webp",
+    walk: ["assets/units/guard-walk-1.webp", "assets/units/guard-walk-2.webp"],
+    width: 48, height: 62, offsetY: -1
+  }
 };
 
+function loadUnitSprite(src){
+ const image=new Image();
+ image.decoding="async";
+ image.src=src;
+ return image;
+}
+
 const unitSprites = Object.fromEntries(
-  Object.entries(UNIT_SPRITE_DEFS).map(([key, def]) => {
-    const image = new Image();
-    image.decoding = "async";
-    image.src = def.src;
-    return [key, { image, def }];
-  })
+  Object.entries(UNIT_SPRITE_DEFS).map(([key, def]) => [key, {
+    idle: loadUnitSprite(def.idle),
+    walk: def.walk.map(loadUnitSprite),
+    def
+  }])
 );
+const unitMotionStates=new WeakMap();
 
 export function renderGameFrame(environment) {
   ({
@@ -787,11 +802,21 @@ function drawUnits(){
  }
 }
 
+function isUnitMoving(unit){
+ const previous=unitMotionStates.get(unit);
+ const moving=!!previous&&Math.hypot(unit.x-previous.x,unit.y-previous.y)>.01;
+ unitMotionStates.set(unit,{x:unit.x,y:unit.y});
+ return moving;
+}
+
 function drawUnitSprite(unit){
  const sprite=unitSprites[unit.key];
- if(!sprite||!sprite.image.complete||!sprite.image.naturalWidth)return false;
+ if(!sprite)return false;
+ const moving=isUnitMoving(unit);
+ const image=moving?sprite.walk[Math.floor(performance.now()/180)%sprite.walk.length]:sprite.idle;
+ if(!image||!image.complete||!image.naturalWidth)return false;
  const {width,height,offsetY=0}=sprite.def;
- ctx.drawImage(sprite.image,-width/2,-height/2+offsetY,width,height);
+ ctx.drawImage(image,-width/2,-height/2+offsetY,width,height);
  return true;
 }
 function drawCraftsmen(){
