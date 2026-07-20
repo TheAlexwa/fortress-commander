@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.8";
-const GAME_RELEASE_NAME="Turmstufen & EXP-Zähler";
+const GAME_VERSION="1.15.10";
+const GAME_RELEASE_NAME="Burgwachen-Befehle";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
