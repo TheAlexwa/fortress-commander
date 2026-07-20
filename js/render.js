@@ -1,13 +1,14 @@
 import { getSiegeCampCounts, getSiegeCampPositions } from "./siege.js";
 import {
   FIXED_INNER_WALL_RADIUS,
-  OUTER_GATE_GAP,
   getFutureLayoutGeometry
 } from "./map-layout.js";
 import {
   MIDDLE_GATE_BUILD_WOOD,
   MIDDLE_GATE_COUNT,
-  MIDDLE_WALL_SEGMENT_COUNT
+  MIDDLE_WALL_SEGMENT_COUNT,
+  OUTER_WALL_BUILD_WOOD,
+  OUTER_WALL_SEGMENT_COUNT
 } from "./fortifications.js";
 
 // Zentrale Canvas-Darstellung von Fortress Commander.
@@ -293,6 +294,30 @@ function drawMiddleGate(gate){
  ctx.restore();
 }
 
+function drawOuterWallSegment(wall,radius){
+ const ratio=Math.max(0,Math.min(1,wall.hp/Math.max(1,wall.maxHp)));
+ const alive=wall.hp>0;
+ ctx.save();ctx.lineCap="round";
+ ctx.strokeStyle="#17100baa";ctx.lineWidth=31;ctx.beginPath();ctx.arc(CX+4,CY+6,radius,wall.a0+.01,wall.a1-.01);ctx.stroke();
+ ctx.strokeStyle=alive?(ratio>.5?"#5f452d":ratio>.25?"#663627":"#5d2923"):"#241b16";ctx.lineWidth=27;ctx.beginPath();ctx.arc(CX,CY,radius,wall.a0+.012,wall.a1-.012);ctx.stroke();
+ if(alive){
+  for(let k=0;k<5;k++){
+   const a=wall.a0+(wall.a1-wall.a0)*(k+.5)/5,x=CX+Math.cos(a)*radius,y=CY+Math.sin(a)*radius;
+   ctx.save();ctx.translate(x,y);ctx.rotate(a+Math.PI/2);
+   ctx.fillStyle=ratio>.5?"#8b633b":"#7b4631";ctx.beginPath();ctx.moveTo(-3.5,11);ctx.lineTo(-4.5,-8);ctx.lineTo(0,-15);ctx.lineTo(4.5,-8);ctx.lineTo(3.5,11);ctx.closePath();ctx.fill();
+   ctx.strokeStyle="#39271c";ctx.lineWidth=1.2;ctx.stroke();ctx.fillStyle="#c58a4a88";ctx.fillRect(-1.5,-7,2,13);ctx.restore();
+  }
+ }else{
+  for(let k=-2;k<=2;k++){const a=wall.am+k*.032,r=radius+(k%2)*5;ctx.fillStyle="#493426";ctx.fillRect(CX+Math.cos(a)*r-5,CY+Math.sin(a)*r-3,10,7)}
+ }
+ if(selected===wall){ctx.strokeStyle="#ffe68a";ctx.shadowBlur=14;ctx.shadowColor="#ffe68a";ctx.lineWidth=4;ctx.beginPath();ctx.arc(CX,CY,radius,wall.a0,wall.a1);ctx.stroke();ctx.shadowBlur=0}
+ if(ratio<.999){
+  const bx=CX+Math.cos(wall.am)*(radius+27),by=CY+Math.sin(wall.am)*(radius+27),bw=34;
+  ctx.fillStyle="#0e0908dd";ctx.fillRect(bx-bw/2,by-4,bw,7);ctx.fillStyle=ratio>.5?"#64bd60":ratio>.25?"#d2a13e":"#d14a43";ctx.fillRect(bx-bw/2+1,by-3,(bw-2)*ratio,5);
+ }
+ ctx.restore();
+}
+
 function drawFutureFortressLayout(){
  const layout=getFutureLayoutGeometry({CX,CY,WALL_R});
  ctx.save();
@@ -317,22 +342,13 @@ function drawFutureFortressLayout(){
  ctx.fillStyle="#e8d19dcc";ctx.font="bold 10px system-ui";ctx.textAlign="center";
  ctx.fillText(`MITTLERER RING · ${MIDDLE_WALL_SEGMENT_COUNT} SEGMENTE · ${MIDDLE_GATE_COUNT} TORE`,CX,CY-WALL_R-30);
  for(const gate of state.middleGates||[])drawMiddleGate(gate);
- // Geplanter äußerer Mauerring mit vier anklickbaren Toröffnungen.
- for(let quadrant=0;quadrant<4;quadrant++){
-  const a0=-Math.PI/2+quadrant*Math.PI/2+OUTER_GATE_GAP;
-  const a1=-Math.PI/2+(quadrant+1)*Math.PI/2-OUTER_GATE_GAP;
-  const pieces=3;
-  for(let part=0;part<pieces;part++){
-   const span=(a1-a0)/pieces;
-   drawBlueprintArc(layout.outerRadius,a0+part*span+.018,a0+(part+1)*span-.018,25);
-  }
+ // Achtundzwanzig einzeln baubare Segmente der äußeren Holzpalisade.
+ for(const wall of state.outerWalls||[]){
+  if(wall.built)drawOuterWallSegment(wall,layout.outerRadius);
+  else drawBlueprintArc(layout.outerRadius,wall.a0+.014,wall.a1-.014,23);
  }
- drawBlueprintGate(layout.outerRadius,-Math.PI/2,"TOR NORD");
- drawBlueprintGate(layout.outerRadius,0,"TOR OST");
- drawBlueprintGate(layout.outerRadius,Math.PI/2,"TOR SÜD");
- drawBlueprintGate(layout.outerRadius,Math.PI,"TOR WEST");
  ctx.fillStyle="#f0dfb4cc";ctx.font="bold 12px system-ui";ctx.textAlign="center";
- ctx.fillText("ÄUSSERER MAUERRING · SPÄTER BAUBAR",CX,CY-layout.outerRadius-48);
+ ctx.fillText(`ÄUSSERE HOLZPALISADE · ${OUTER_WALL_SEGMENT_COUNT} SEGMENTE · JE ${OUTER_WALL_BUILD_WOOD} HOLZ`,CX,CY-layout.outerRadius-38);
  ctx.restore();
 }
 function drawGatehouse(a){

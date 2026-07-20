@@ -175,6 +175,11 @@ function createSnapshot({
         hp: gate.hp,
         maxHp: gate.maxHp,
       })),
+      outerWalls: (state.outerWalls || []).map((wall) => ({
+        built: wall.built === true,
+        hp: wall.hp,
+        maxHp: wall.maxHp,
+      })),
       buildings: state.buildings.map((building) =>
         serializeBuilding(building, {
           wallSlots,
@@ -315,6 +320,7 @@ export function loadGameState({
     ...savedState.walls,
     ...(Array.isArray(savedState.innerWalls) ? savedState.innerWalls : []),
     ...(Array.isArray(savedState.middleGates) ? savedState.middleGates : []),
+    ...(Array.isArray(savedState.outerWalls) ? savedState.outerWalls : []),
   ]) {
     if (!Number.isFinite(Number(wall?.hp)) || !Number.isFinite(Number(wall?.maxHp))) {
       throw new Error("Speicherstand enthält ungültige Mauerwerte.");
@@ -382,6 +388,18 @@ export function loadGameState({
       ? Math.max(0, Math.min(gate.maxHp, Number(savedGate?.hp) || 0))
       : 0;
   });
+
+  const savedOuterWalls = Array.isArray(savedState.outerWalls)
+    ? savedState.outerWalls
+    : null;
+  if (savedOuterWalls?.length) {
+    restoreMiddleWallState(savedOuterWalls, state.outerWalls || []);
+  } else {
+    for (const wall of state.outerWalls || []) {
+      wall.built = false;
+      wall.hp = 0;
+    }
+  }
 
   for (const building of buildings) {
     building.slot.building = building;

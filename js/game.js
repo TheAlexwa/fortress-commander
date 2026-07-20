@@ -10,6 +10,10 @@ export function getWaveEnemyCount(wave) {
 }
 
 export function getWallHealthSum(state) {
+  const outer = (state.outerWalls || []).reduce(
+    (sum, wall) => sum + (wall.built ? wall.hp : 0),
+    0
+  );
   const middle = state.walls.reduce(
     (sum, wall) => sum + (wall.built ? wall.hp : 0),
     0
@@ -22,7 +26,7 @@ export function getWallHealthSum(state) {
     (sum, gate) => sum + (gate.built ? gate.hp : 0),
     0
   );
-  return middle + inner + gates;
+  return outer + middle + inner + gates;
 }
 
 export function beginWave(
@@ -173,7 +177,7 @@ export function createWaveEnemy(
     attackCd: random(),
     armor: stats.armor || 0,
     color: stats.color,
-    phase: "outside",
+    phase: "outer",
     wallIndex: null,
     animSeed: random() * TAU,
   };
@@ -195,6 +199,7 @@ export function applyWaveAutoRepair(state, percent) {
   }
 
   for (const wall of [
+    ...(state.outerWalls || []),
     ...state.walls,
     ...(state.innerWalls || []),
     ...(state.middleGates || []),
@@ -215,6 +220,7 @@ export function getTotalRepairDamage(state) {
   let total = Math.max(0, state.maxHp - state.hp);
 
   total += [
+    ...(state.outerWalls || []),
     ...state.walls,
     ...(state.innerWalls || []),
     ...(state.middleGates || []),
