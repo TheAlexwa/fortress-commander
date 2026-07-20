@@ -380,10 +380,10 @@ function drawBuildings(){
    const rg=ctx.createLinearGradient(-38,-47,38,-12);rg.addColorStop(0,"#2f5d8b");rg.addColorStop(.52,"#153c69");rg.addColorStop(1,"#092746");ctx.fillStyle=rg;ctx.beginPath();ctx.moveTo(-38,-13);ctx.lineTo(0,-48);ctx.lineTo(38,-13);ctx.closePath();ctx.fill();ctx.strokeStyle="#d0aa5a";ctx.lineWidth=2.2;ctx.stroke();
    ctx.strokeStyle="#7291aa55";ctx.lineWidth=1;for(let i=-3;i<=3;i++){ctx.beginPath();ctx.moveTo(i*9,-17);ctx.lineTo(0,-46);ctx.stroke()}
    // chimney, windows, door
-   if(b.key!=="lumber"){ctx.fillStyle="#594234";ctx.fillRect(17,-40,10,24);ctx.fillStyle="#c7bba9";ctx.globalAlpha=.22;ctx.beginPath();ctx.arc(23,-47,6,0,TAU);ctx.arc(28,-55,5,0,TAU);ctx.fill();ctx.globalAlpha=1}
+   if(!["lumber","quarry"].includes(b.key)){ctx.fillStyle="#594234";ctx.fillRect(17,-40,10,24);ctx.fillStyle="#c7bba9";ctx.globalAlpha=.22;ctx.beginPath();ctx.arc(23,-47,6,0,TAU);ctx.arc(28,-55,5,0,TAU);ctx.fill();ctx.globalAlpha=1}
    ctx.fillStyle="#291c14";ctx.fillRect(-8,2,16,24);ctx.fillStyle="#e4b85c";ctx.beginPath();ctx.arc(3,14,2,0,TAU);ctx.fill();
    ctx.fillStyle="#efd17a";ctx.fillRect(-21,-5,9,10);ctx.fillRect(12,-5,9,10);ctx.strokeStyle="#554021";ctx.lineWidth=1;ctx.strokeRect(-21,-5,9,10);ctx.strokeRect(12,-5,9,10);
-   ctx.font="22px serif";ctx.textAlign="center";ctx.fillText(b.key==="house"?(lv>=2?"🏠":"⛺"):b.key==="lumber"?"🪵":b.key==="workshop"?"⚒":b.key==="market"?"🏪":"🛠",0,-1);
+   ctx.font="22px serif";ctx.textAlign="center";ctx.fillText(b.key==="house"?(lv>=2?"🏠":"⛺"):b.key==="lumber"?"🪵":b.key==="quarry"?"🪨":b.key==="workshop"?"⚒":b.key==="market"?"🏪":"🛠",0,-1);
    // functional outdoor props
    if(b.key==="house"){
     if(lv<2){ctx.fillStyle="#d9c39a";ctx.beginPath();ctx.moveTo(-34,22);ctx.lineTo(0,-28);ctx.lineTo(34,22);ctx.closePath();ctx.fill();ctx.strokeStyle="#68452c";ctx.lineWidth=3;ctx.stroke();ctx.fillStyle="#4a2d1d";ctx.fillRect(-5,4,10,18)}
@@ -391,6 +391,9 @@ function drawBuildings(){
    }else if(b.key==="lumber"){
     ctx.fillStyle="#6b4024";for(let i=0;i<4;i++){ctx.beginPath();ctx.arc(-35+i*7,18-(i%2)*3,5,0,TAU);ctx.fill();ctx.strokeStyle="#a66d39";ctx.stroke()}
     ctx.strokeStyle="#55351f";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(29,20);ctx.lineTo(39,8);ctx.stroke();ctx.fillStyle="#92999a";ctx.fillRect(35,5,9,6);
+   }else if(b.key==="quarry"){
+    ctx.fillStyle="#8a8c8d";for(let i=0;i<5;i++){ctx.beginPath();ctx.arc(-34+i*8,18-(i%2)*5,5+(i%2),0,TAU);ctx.fill();ctx.strokeStyle="#c7c9c8";ctx.lineWidth=1;ctx.stroke()}
+    ctx.strokeStyle="#5d4127";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(29,20);ctx.lineTo(41,4);ctx.stroke();ctx.strokeStyle="#b7bdc0";ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(35,7);ctx.lineTo(44,14);ctx.stroke();
    }else if(b.key==="workshop"){
     ctx.fillStyle="#5d4027";ctx.fillRect(28,10,16,13);ctx.strokeStyle="#d1a35b";ctx.strokeRect(28,10,16,13);
     ctx.strokeStyle="#704925";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(31,7);ctx.lineTo(42,-5);ctx.stroke();ctx.fillStyle="#929a9c";ctx.fillRect(38,-8,11,7);

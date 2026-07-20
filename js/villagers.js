@@ -6,7 +6,7 @@
  * damit das Modul nicht direkt auf main.js zugreifen muss.
  */
 
-const WORKER_BUILDINGS = new Set(["lumber", "repair", "market"]);
+const WORKER_BUILDINGS = new Set(["lumber", "quarry", "repair", "market"]);
 
 export function residentCapacityForHouse(house) {
   return (house.level || 1) >= 2 ? 4 : 2;
@@ -153,9 +153,11 @@ export function toggleBuildingResident(
   resident.job =
     building.key === "lumber"
       ? "lumberjack"
-      : building.key === "market"
-        ? "merchant"
-        : "craftsman";
+      : building.key === "quarry"
+        ? "stonecutter"
+        : building.key === "market"
+          ? "merchant"
+          : "craftsman";
   resident.workplaceId = building.bid;
   building.residentId = resident.id;
   building.residentAssigned = true;
@@ -166,7 +168,9 @@ export function toggleBuildingResident(
       ? "Handwerker zugewiesen – Einheit ist sichtbar"
       : building.key === "market"
         ? "Händler zugewiesen – Goldproduktion aktiv"
-        : "Bewohner zugewiesen"
+        : building.key === "quarry"
+          ? "Steinmetz zugewiesen – Steinproduktion aktiv"
+          : "Bewohner zugewiesen"
   );
 
   return true;

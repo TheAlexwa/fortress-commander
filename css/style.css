@@ -638,15 +638,15 @@ header>.stat,header>.grow{grid-row:1}
 }
 
 /* v1.8.5 Rohstoff-Dock – gemeinsame, ausklappbare Übersicht */
-#resourceOverviewBtn{position:absolute;left:6px;top:6px;z-index:8;height:34px;min-width:184px;padding:4px 8px;display:flex;align-items:center;gap:6px;border-radius:12px;background:linear-gradient(160deg,#17211dee,#0a100eee);border:1px solid #d9c48766;box-shadow:0 5px 16px #0009,inset 0 1px #fff2;backdrop-filter:blur(10px);font-variant-numeric:tabular-nums}
+#resourceOverviewBtn{position:absolute;left:6px;top:6px;z-index:8;height:34px;min-width:224px;padding:4px 8px;display:flex;align-items:center;gap:6px;border-radius:12px;background:linear-gradient(160deg,#17211dee,#0a100eee);border:1px solid #d9c48766;box-shadow:0 5px 16px #0009,inset 0 1px #fff2;backdrop-filter:blur(10px);font-variant-numeric:tabular-nums}
 #resourceOverviewBtn:active{transform:translateY(1px)}
-#populationOverviewBtn{position:absolute;left:198px;top:6px;z-index:8;height:34px;min-width:94px;padding:4px 8px;display:flex;align-items:center;justify-content:center;gap:5px;border-radius:12px;background:linear-gradient(160deg,#24362fee,#0b1411ee);border:1px solid #8fc5a766;box-shadow:0 5px 16px #0009,inset 0 1px #fff2;backdrop-filter:blur(10px);font-variant-numeric:tabular-nums;font-size:12px;font-weight:900}
+#populationOverviewBtn{position:absolute;left:238px;top:6px;z-index:8;height:34px;min-width:94px;padding:4px 8px;display:flex;align-items:center;justify-content:center;gap:5px;border-radius:12px;background:linear-gradient(160deg,#24362fee,#0b1411ee);border:1px solid #8fc5a766;box-shadow:0 5px 16px #0009,inset 0 1px #fff2;backdrop-filter:blur(10px);font-variant-numeric:tabular-nums;font-size:12px;font-weight:900}
 #populationOverviewBtn .popFree{color:#9fe3aa}#populationOverviewBtn .popBusy{color:#ffd97d}
 .populationActions{display:grid;gap:8px}.populationWorkplace{display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center;padding:9px;border:1px solid #ffffff18;border-radius:13px;background:#09110ed9}.populationWorkplace .workIcon{font-size:25px}.populationWorkplace small{display:block;color:#b9c5bd;margin-top:2px}.populationWorkplace button{min-width:92px;padding:7px 9px;font-size:11px}.residentState{display:inline-flex;gap:5px;align-items:center;padding:3px 7px;border-radius:999px;background:#ffffff10;font-size:10px}.residentState.free{color:#9fe3aa}.residentState.busy{color:#ffd97d}
 .resourceCompact{display:flex;align-items:center;gap:3px;font-size:14px;white-space:nowrap}.resourceCompact strong{font-size:12px;color:#fff8d2;text-shadow:0 1px 2px #000}.resourceDivider{width:1px;height:19px;background:#ffffff2d}.resourceChevron{font-size:13px;color:#d9c98b;margin-left:auto}
 #zoomControls{top:46px!important}
 header{grid-template-columns:minmax(0,1fr) auto!important}
-@media(max-width:520px){#resourceOverviewBtn{left:5px;top:5px;height:32px;min-width:158px;padding:3px 6px;gap:4px}.resourceCompact{font-size:12px}.resourceCompact strong{font-size:10px}#populationOverviewBtn{left:170px;top:5px;height:32px;min-width:86px;padding:3px 6px;font-size:10px}#zoomControls{top:43px!important}}
+@media(max-width:520px){#resourceOverviewBtn{left:5px;top:5px;height:32px;min-width:198px;padding:3px 6px;gap:4px}.resourceCompact{font-size:12px}.resourceCompact strong{font-size:10px}#populationOverviewBtn{left:210px;top:5px;height:32px;min-width:86px;padding:3px 6px;font-size:10px}#zoomControls{top:43px!important}}
 
 
 .buildBtn:disabled{filter:grayscale(.65);opacity:.36}.buildBtn.unlocked:not(:disabled){box-shadow:0 0 0 1px #f4d87944,inset 0 1px #ffffff18,0 4px 10px #0008}
@@ -665,6 +665,9 @@ body.orientationBlocked{overflow:hidden;touch-action:none}body.orientationBlocke
 
 /* v1.9.2 – Die Eisenclans */
 #gameVersionBadge{position:absolute;right:2.75%;top:1.95%;z-index:8;width:14.1%;height:4.15%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;padding:0 4px;border:1px solid #9a7444;border-radius:7px;background:linear-gradient(#302a23,#171411);color:#e8d6ad;font:700 clamp(8px,2vw,13px)/1 Georgia,serif;letter-spacing:.1px;text-align:center;box-shadow:0 2px 5px #000c,inset 0 0 0 1px #0008;pointer-events:none}
+#developmentNotice{position:absolute;left:7%;right:7%;bottom:2.2%;z-index:9;display:grid;gap:2px;padding:7px 10px;border:1px solid #c59a53;border-radius:10px;background:linear-gradient(180deg,#2c251ed9,#17130fef);color:#f4dfad;text-align:center;box-shadow:0 4px 14px #000b,inset 0 1px #fff2;pointer-events:none}
+#developmentNotice strong{font:800 clamp(9px,2.2vw,14px)/1.15 Georgia,serif}
+#developmentNotice span{font:650 clamp(7px,1.65vw,11px)/1.25 system-ui;color:#dfd0ac}
 .buildingOverview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}.buildingOverview .statTile{min-height:65px}.buildingActionBar{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}.buildingActionBar button{min-height:46px;border-radius:13px;font-weight:950}.buildingActionBar .wide{grid-column:1/-1}.productionLive{font-weight:950;color:#255c31}.productionStopped{font-weight:950;color:#8b3b2d}
 @media(max-width:430px){.buildingOverview{grid-template-columns:1fr 1fr}.buildingActionBar{grid-template-columns:1fr}}
 

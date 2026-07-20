@@ -15,6 +15,9 @@ export function getBuildRequirement(state, key) {
   if (key === "lumber" && !hasHouse) {
     return { ok: false, reason: "Zuerst ein Zeltlager bauen" };
   }
+  if (key === "quarry" && !hasLumber) {
+    return { ok: false, reason: "Zuerst einen Holzfäller bauen" };
+  }
   if (key === "repair" && !hasLumber) {
     return { ok: false, reason: "Zuerst einen Holzfäller bauen" };
   }
@@ -57,7 +60,12 @@ export function createEntityAt(x, y, key, context) {
     showToast(requirement.reason);
     return false;
   }
-  if (state.gold < blueprint.gold || state.wood < blueprint.wood) {
+  const stoneCost = blueprint.stone || 0;
+  if (
+    state.gold < blueprint.gold ||
+    state.wood < blueprint.wood ||
+    state.stone < stoneCost
+  ) {
     showToast("Nicht genug Ressourcen");
     return false;
   }
@@ -71,6 +79,7 @@ export function createEntityAt(x, y, key, context) {
 
     state.gold -= blueprint.gold;
     state.wood -= blueprint.wood;
+    state.stone -= stoneCost;
     const stats = researchedUnitStats(key);
 
     state.units.push({
@@ -105,6 +114,7 @@ export function createEntityAt(x, y, key, context) {
       autoTarget: null,
       investedGold: blueprint.gold,
       investedWood: blueprint.wood,
+      investedStone: stoneCost,
     });
 
     setBuildMode(null);
@@ -150,6 +160,7 @@ export function createEntityAt(x, y, key, context) {
 
   state.gold -= blueprint.gold;
   state.wood -= blueprint.wood;
+  state.stone -= stoneCost;
 
   const building = {
     kind: "building",
@@ -164,6 +175,7 @@ export function createEntityAt(x, y, key, context) {
     repairEnabled: true,
     investedGold: blueprint.gold,
     investedWood: blueprint.wood,
+    investedStone: stoneCost,
     expLevel: 1,
     xp: 0,
     xpMax: 90,
@@ -261,6 +273,7 @@ export function sellEntity(entity, context) {
   if (entity.kind === "unit") {
     state.gold += Math.floor(entity.investedGold * 0.6);
     state.wood += Math.floor(entity.investedWood * 0.6);
+    state.stone += Math.floor((entity.investedStone || 0) * 0.6);
     state.units = state.units.filter((unit) => unit !== entity);
   } else if (entity.kind === "building") {
     if (entity.residentId) {
@@ -275,6 +288,7 @@ export function sellEntity(entity, context) {
 
     state.gold += Math.floor(entity.investedGold * 0.6);
     state.wood += Math.floor(entity.investedWood * 0.6);
+    state.stone += Math.floor((entity.investedStone || 0) * 0.6);
     entity.slot.building = null;
     state.buildings = state.buildings.filter(
       (building) => building !== entity

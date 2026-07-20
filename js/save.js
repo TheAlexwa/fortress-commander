@@ -82,6 +82,7 @@ function createSnapshot({
     state: {
       gold: state.gold,
       wood: state.wood,
+      stone: state.stone,
       researchPoints: state.researchPoints,
       hp: state.hp,
       maxHp: state.maxHp,
@@ -234,6 +235,7 @@ export function loadGameState({
   Object.assign(state, {
     gold: Number(savedState.gold) || 0,
     wood: Number(savedState.wood) || 0,
+    stone: Number(savedState.stone) || 0,
     researchPoints: Number(savedState.researchPoints) || 0,
     hp: Number(savedState.hp) || 0,
     maxHp: Number(savedState.maxHp) || 1200,

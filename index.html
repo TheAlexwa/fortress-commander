@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.11.6.0 – Save Disabled</title>
+<title>Fortress Commander v1.14.0 – Stein & Steinbruch</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,7 +20,8 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Spiel starten">Spiel starten</button>
-  <div id="gameVersionBadge">v1.11.6.0</div>
+  <div id="gameVersionBadge">v1.14.0</div>
+  <div id="developmentNotice"><strong>🏗 Festungsumbau in Entwicklung</strong><span>Die aktuelle Version bleibt vollständig spielbar. Stein bereitet Mauern, Tore und den neuen Festungsausbau vor.</span></div>
  </div>
 </div>
 
@@ -75,10 +76,11 @@
    <summary>🛠️ Wirtschaft & Versorgung</summary>
    <div class="guideBody"><div class="guideGrid">
     <article class="guideCard"><h3>🪵 Holzfäller</h3><p>Produziert Holz ausschließlich während einer aktiven, nicht pausierten Welle. Benötigt einen Bewohner.</p><div class="guideMeta"><span>70 Gold</span><span>1 Bewohner</span><span>Holzproduktion</span></div></article>
+    <article class="guideCard"><h3>🪨 Steinbruch</h3><p>Produziert Stein während aktiver Wellen und benötigt einen Bewohner. Stein ist der vorbereitende Rohstoff für kommende Mauern, Tore und schwere Festungsbauten.</p><div class="guideMeta"><span>90 Gold</span><span>25 Holz</span><span>1 Bewohner</span></div></article>
     <article class="guideCard"><h3>👷 Handwerkerhaus</h3><p>Stellt einen Handwerker bereit. Nach einer Welle repariert er beschädigte Mauern, Türme und die Burg automatisch und verbraucht dabei Holz.</p><div class="guideMeta"><span>90 Gold</span><span>35 Holz</span><span>1 Bewohner</span></div></article>
     <article class="guideCard"><h3>⚒️ Werkstatt</h3><p>Öffnet das Forschungszentrum. Jede gekaufte Forschungsstufe erhöht die Kosten aller anderen Technologien global. Der Aufschlag sinkt durch Werkstatt-Ausbau: Stufe 1 = 30 %, Stufe 2 = 25 %, Stufe 3 = 20 %, Stufe 4 = 15 %, Stufe 5 = 10 % je fremder Forschungsstufe.</p><div class="guideMeta"><span>110 Gold</span><span>40 Holz</span><span>Globale Forschung</span></div></article>
     <article class="guideCard"><h3>🏪 Marktplatz</h3><p>Spätes Wirtschaftsgebäude für zusätzliche Goldeinnahmen und Ressourcentausch. Benötigt einen Bewohner.</p><div class="guideMeta"><span>150 Gold</span><span>60 Holz</span><span>Ressourcentausch</span></div></article>
-   </div><div class="guideTip"><b>Freischaltfolge:</b> Zeltlager → Holzfäller → Handwerkerhaus → Werkstatt → Marktplatz.</div></div>
+   </div><div class="guideTip"><b>Freischaltfolge:</b> Zeltlager → Holzfäller → Steinbruch oder Handwerkerhaus → Werkstatt → Marktplatz.</div><div class="guideTip"><b>🏗 Umbauhinweis:</b> Fortress Commander erhält schrittweise eine neue Festungsstruktur mit kleiner Holzfestung, baubaren Mauerabschnitten, Toren und späteren Turmplätzen. Diese Version bleibt vollständig spielbar; der neue Rohstoff Stein wird zunächst gesammelt und gespeichert.</div></div>
   </details>
 
   <details class="guideSection">
@@ -132,9 +134,11 @@
   <span class="resourceDivider"></span>
   <span class="resourceCompact"><span>🪵</span><strong id="wood">0</strong></span>
   <span class="resourceDivider"></span>
+  <span class="resourceCompact"><span>🪨</span><strong id="stone">0</strong></span>
+  <span class="resourceDivider"></span>
   <span class="resourceCompact researchCompact"><span>🔬</span><strong id="researchPoints">0</strong></span>
   <span class="resourceChevron">⌄</span>
-  <span id="goldRate" hidden>+0/Sek.</span><span id="woodRate" hidden>+0/Sek.</span>
+  <span id="goldRate" hidden>+0/Sek.</span><span id="woodRate" hidden>+0/Sek.</span><span id="stoneRate" hidden>+0/Sek.</span>
  </button>
  <button id="populationOverviewBtn" type="button" aria-label="Bewohnerübersicht öffnen"><span>👥</span><span class="popBusy" id="populationBusy">0</span>/<span id="populationTotal">0</span><span class="popFree" id="populationFree">0 frei</span></button>
  <div id="levelUpDock" aria-label="Einheiten mit Aufwertung"></div>
@@ -172,6 +176,7 @@
   <button class="buildBtn" data-build="guard" data-group="units" data-icon="🛡️"><div class="name">Burgwache</div><div class="cost">🪙 120 · 🪵 10</div><div class="desc">Nahkampf · Burg halten / Ausfall</div></button>
   <button class="buildBtn" data-build="house" data-group="support" data-icon="⛺"><div class="name">Zeltlager</div><div class="cost">🪙 65 · 🪵 20</div><div class="desc">2 Bewohner · Gold im Kampf</div></button>
   <button class="buildBtn" data-build="lumber" data-group="support" data-icon="🪵"><div class="name">Holzfäller</div><div class="cost">🪙 70</div><div class="desc">Benötigt 1 Bewohner</div></button>
+  <button class="buildBtn" data-build="quarry" data-group="support" data-icon="🪨"><div class="name">Steinbruch</div><div class="cost">🪙 90 · 🪵 25</div><div class="desc">Steinproduktion · 1 Bewohner</div></button>
   <button class="buildBtn" data-build="workshop" data-group="support" data-icon="⚒️"><div class="name">Werkstatt</div><div class="cost">🪙 110 · 🪵 40</div><div class="desc">Forschung & Technologien</div></button>
   <button class="buildBtn" data-build="repair" data-group="support" data-icon="👷"><div class="name">Handwerkerhaus</div><div class="cost">🪙 90 · 🪵 35</div><div class="desc">Stellt Handwerker bereit</div></button>
   <button class="buildBtn" data-build="market" data-group="support" data-icon="🏪"><div class="name">Marktplatz</div><div class="cost">🪙 150 · 🪵 60</div><div class="desc">Goldproduktion · Ressourcentausch</div></button>
@@ -207,7 +212,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.13.5 · EXP-Level-up-Meldungen öffnen die Aufwertungsauswahl für Einheiten und Türme jetzt direkt.</div>
+  <div class="workshopFoot">v1.14.0 · Stein und Steinbruch bereiten den kommenden Festungsumbau mit Mauern und Toren vor.</div>
  </section>
 </div>
 

@@ -20,6 +20,7 @@ export function renderGameUI({
   closeAllBlockingPanels,
   totalGoldPerSecond,
   totalWoodPerSecond,
+  totalStonePerSecond,
   syncResidents,
   assignedResidents,
   totalResidents,
@@ -38,6 +39,7 @@ export function renderGameUI({
 
   ui.gold.textContent = Math.floor(state.gold);
   ui.wood.textContent = Math.floor(state.wood);
+  if (ui.stone) ui.stone.textContent = Math.floor(state.stone || 0);
 
   const rpHud = document.getElementById("researchPoints");
   if (rpHud) rpHud.textContent = Math.floor(state.researchPoints || 0);
@@ -55,6 +57,7 @@ export function renderGameUI({
 
   ui.goldRate.textContent = `+${totalGoldPerSecond().toFixed(2)}/Sek.`;
   ui.woodRate.textContent = `+${totalWoodPerSecond().toFixed(2)}/Sek.`;
+  if (ui.stoneRate) ui.stoneRate.textContent = `+${totalStonePerSecond().toFixed(2)}/Sek.`;
 
   syncResidents();
   ui.populationBusy.textContent = assignedResidents();
@@ -110,7 +113,8 @@ export function renderGameUI({
       gameOver ||
       !requirement.ok ||
       state.gold < config.gold ||
-      state.wood < config.wood;
+      state.wood < config.wood ||
+      state.stone < (config.stone || 0);
     button.classList.toggle("unlocked", requirement.ok);
     button.title = requirement.ok ? "" : requirement.reason;
   });
@@ -174,6 +178,9 @@ export function renderGameUI({
   if (building.key === "lumber") {
     supportInfo = `<br>Bewohner: ${buildingHasWorker(building) ? "zugewiesen" : "nicht zugewiesen"} · Produktion: ${supportProductionPerSecond(building).toFixed(2)} Holz/Sek.`;
   }
+  if (building.key === "quarry") {
+    supportInfo = `<br>Bewohner: ${buildingHasWorker(building) ? "zugewiesen" : "nicht zugewiesen"} · Produktion: ${supportProductionPerSecond(building).toFixed(2)} Stein/Sek.`;
+  }
   if (building.key === "repair") {
     supportInfo = `<br>Bewohner: ${buildingHasWorker(building) ? "zugewiesen" : "nicht zugewiesen"} · Reparatur: ${repairHpPerTick().toFixed(1).replace(".", ",")} HP je Takt · ${building.repairEnabled === false ? "gestoppt" : "aktiv"}`;
   }
@@ -185,7 +192,7 @@ export function renderGameUI({
     supportInfo = `<br>Bewohner: ${buildingHasWorker(building) ? "zugewiesen" : "nicht zugewiesen"} · Gold: +${supportProductionPerSecond(building).toFixed(2)}/Sek. · Handelsverlust: ${marketLossPercent(building)}%`;
   }
 
-  if (["lumber", "repair", "market"].includes(building.key)) {
+  if (["lumber", "quarry", "repair", "market"].includes(building.key)) {
     ui.repairWall.disabled = false;
     ui.repairWall.textContent = buildingHasWorker(building) ? "Abziehen" : "Zuweisen";
   }

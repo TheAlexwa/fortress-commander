@@ -87,8 +87,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.13.5";
-const GAME_RELEASE_NAME="Direkte EXP-Aufwertung";
+const GAME_VERSION="1.14.0";
+const GAME_RELEASE_NAME="Stein & Steinbruch";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -188,7 +188,7 @@ instructionsScreen.addEventListener("click",e=>{if(e.target===instructionsScreen
 
 const canvas=document.getElementById("game"),ctx=canvas.getContext("2d"),wrap=document.getElementById("gameWrap");
 const ui={
- gold:document.getElementById("gold"),wood:document.getElementById("wood"),goldRate:document.getElementById("goldRate"),woodRate:document.getElementById("woodRate"),
+ gold:document.getElementById("gold"),wood:document.getElementById("wood"),stone:document.getElementById("stone"),goldRate:document.getElementById("goldRate"),woodRate:document.getElementById("woodRate"),stoneRate:document.getElementById("stoneRate"),
  resourceOverviewBtn:document.getElementById("resourceOverviewBtn"),populationOverviewBtn:document.getElementById("populationOverviewBtn"),populationBusy:document.getElementById("populationBusy"),populationTotal:document.getElementById("populationTotal"),populationFree:document.getElementById("populationFree"),hp:document.getElementById("hp"),
  wallInfo:document.getElementById("wallInfo"),wave:document.getElementById("wave"),status:document.getElementById("waveStatus"),
  start:document.getElementById("startWaveBtn"),pause:document.getElementById("pauseBtn"),toast:document.getElementById("toast"),
@@ -213,11 +213,12 @@ const BUILD={
  guard:{name:"Burgwache",kind:"unit",gold:120,wood:10,hp:180,damage:24,range:30,rate:.78,speed:68,armor:.25,color:"#72583b"},
  house:{name:"Zeltlager",kind:"inside",gold:65,wood:20,color:"#9b7651"},
  lumber:{name:"Holzfäller",kind:"inside",gold:70,wood:0,color:"#8c6c45"},
+ quarry:{name:"Steinbruch",kind:"inside",gold:90,wood:25,color:"#77736b"},
  workshop:{name:"Werkstatt",kind:"inside",gold:110,wood:40,color:"#6b6b70"},
  repair:{name:"Handwerkerhaus",kind:"inside",gold:90,wood:35,color:"#8b7063"},
  market:{name:"Marktplatz",kind:"inside",gold:150,wood:60,color:"#8a6b3d"}
 };
-const state={gold:210,wood:105,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,
+const state={gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,
  enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],craftsmen:[],residents:[],siege:null,spawnQueue:[],repairActive:false,repairedHp:0,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
 const wallSlots=[],insideSlots=[],castleSlots=[];
 
@@ -450,7 +451,7 @@ function updateUI(){
  return renderGameUI({
   state,ui,BUILD,WALL_SEGMENTS,selected,buildMode,paused,gameOver,
   navResearch,navResearchBadge,closeAllBlockingPanels,totalGoldPerSecond,
-  totalWoodPerSecond,syncResidents,assignedResidents,totalResidents,freeResidents,
+  totalWoodPerSecond,totalStonePerSecond,syncResidents,assignedResidents,totalResidents,freeResidents,
   waveCount,buildRequirement,residentCapacityForHouse,buildingHasWorker,
   supportProductionPerSecond,repairHpPerTick,workshopLevels,
   globalResearchIncreaseRate,marketLossPercent
@@ -1035,6 +1036,7 @@ function buildingProductionInfo(b){
  const active=state.inWave&&!paused&&!gameOver;
  if(b.key==="house")return {label:"Goldproduktion",value:`+${(residentCapacityForHouse(b)*.18).toFixed(2)} Gold/Sek.`,state:active?"läuft":"nur in aktiver Welle"};
  if(b.key==="lumber")return {label:"Holzproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Holz/Sek.`,state:buildingHasWorker(b)?(active?"läuft":"wartet auf Welle"):"kein Bewohner"};
+ if(b.key==="quarry")return {label:"Steinproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Stein/Sek.`,state:buildingHasWorker(b)?(active?"läuft":"wartet auf Welle"):"kein Bewohner"};
  if(b.key==="repair")return {label:"Reparaturleistung",value:`+${repairHpPerTick().toFixed(1).replace(".",",")} HP/Takt · −${repairWoodPerTick().toFixed(2).replace(".",",")} Holz`,state:!buildingHasWorker(b)?"kein Bewohner":b.repairEnabled===false?"gestoppt":active?"läuft bei Schaden":"wartet"};
  if(b.key==="market")return {label:"Goldproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Gold/Sek.`,state:buildingHasWorker(b)?(active?"läuft":"wartet auf Welle"):"kein Bewohner"};
  if(b.key==="workshop")return {label:"Forschung",value:`${workshopLevels()} Stufen`,state:`🔬 ${Math.floor(state.researchPoints||0)} verfügbar`};
@@ -1055,7 +1057,7 @@ function buildingStatsHtml(b){
  <div class="statTile"><span>Offene Punkte</span><b>${b.pendingUpgrades||0}</b></div></div>
  <div class="statsSection"><h3>Kampfwerte</h3><div class="statRow header"><div>Wert</div><div>Grundwert</div><div>Aktuell</div><div>Änderung</div></div>${rows}</div>
  <div class="statsHint">Türme werden nicht direkt mit Gold oder Holz verbessert. Individuelle Aufwertungen erfolgen über Kampf-EXP; globale Turmforschung folgt in einem eigenen Schritt.</div>`;
- const prod=buildingProductionInfo(b),workerNeeded=["lumber","repair","market"].includes(b.key),workerText=workerNeeded?(buildingHasWorker(b)?"1 / 1 zugewiesen":"0 / 1 zugewiesen"):b.key==="house"?`${residentCapacityForHouse(b)} Bewohnerplätze`:"Kein Arbeitsplatz";
+ const prod=buildingProductionInfo(b),workerNeeded=["lumber","quarry","repair","market"].includes(b.key),workerText=workerNeeded?(buildingHasWorker(b)?"1 / 1 zugewiesen":"0 / 1 zugewiesen"):b.key==="house"?`${residentCapacityForHouse(b)} Bewohnerplätze`:"Kein Arbeitsplatz";
  const g=Math.floor(b.base.gold*(.65+b.level*.45)),w=Math.floor(b.base.wood*(.45+b.level*.3));
  const maxLevel=b.key==="house"?2:b.key==="market"?3:5,canUpgrade=b.level<maxLevel&&state.gold>=g&&state.wood>=w;
  return `<div class="buildingOverview">
@@ -1093,24 +1095,35 @@ function overviewStatsHtml(){
 function totalWoodPerSecond(){
  return state.buildings.filter(b=>b.key==="lumber").reduce((sum,b)=>sum+supportProductionPerSecond(b),0);
 }
+function totalStonePerSecond(){
+ return state.buildings.filter(b=>b.key==="quarry").reduce((sum,b)=>sum+supportProductionPerSecond(b),0);
+}
 function resourceDetailsHtml(){
  syncResidents();
  const lumberjacks=state.buildings.filter(b=>b.key==="lumber");
+ const quarries=state.buildings.filter(b=>b.key==="quarry");
  const houses=state.buildings.filter(b=>b.key==="house");
  const rate=totalWoodPerSecond();
+ const stoneRate=totalStonePerSecond();
  const goldRate=totalGoldPerSecond();
  const nextWaveReward=30+state.wave*5;
  const woodRows=lumberjacks.length?lumberjacks.map((b,i)=>`
   <div class="rosterItem"><div class="rosterIcon">🪵</div><div><b>Holzfäller ${i+1} · Stufe ${b.level||1}</b>
   <small>${buildingHasWorker(b)?`${supportProductionPerSecond(b).toFixed(2)} Holz pro Sekunde im Kampf`:`Kein Bewohner zugewiesen`}</small></div><div class="rosterBadge">${buildingHasWorker(b)?`+${supportProductionPerSecond(b).toFixed(2)}/s`:"frei"}</div></div>`).join("")
   :`<div class="statsHint">Noch kein Holzfäller gebaut. Ohne Holzfäller gibt es keine laufende Holzproduktion.</div>`;
+ const stoneRows=quarries.length?quarries.map((b,i)=>`
+  <div class="rosterItem"><div class="rosterIcon">🪨</div><div><b>Steinbruch ${i+1} · Stufe ${b.level||1}</b>
+  <small>${buildingHasWorker(b)?`${supportProductionPerSecond(b).toFixed(2)} Stein pro Sekunde im Kampf`:`Kein Bewohner zugewiesen`}</small></div><div class="rosterBadge">${buildingHasWorker(b)?`+${supportProductionPerSecond(b).toFixed(2)}/s`:"frei"}</div></div>`).join("")
+  :`<div class="statsHint">Noch kein Steinbruch gebaut. Stein wird später für Mauern, Tore und schwere Festungsbauten benötigt.</div>`;
  return `<div class="statsSummary">
   <div class="statTile"><span>🪙 Gold</span><b>${Math.floor(state.gold)}</b></div>
   <div class="statTile"><span>🪵 Holz</span><b>${state.wood.toFixed(1)}</b></div>
+  <div class="statTile"><span>🪨 Stein</span><b>${state.stone.toFixed(1)}</b></div>
   <div class="statTile researchSummaryTile"><span>🔬 Forschung</span><b>${Math.floor(state.researchPoints||0)}</b></div>
   <div class="statTile"><span>👥 Bewohner</span><b>${assignedResidents()}/${totalResidents()}</b></div>
   <div class="statTile"><span>Gold im Kampf</span><b>+${goldRate.toFixed(2)}/s</b></div>
   <div class="statTile"><span>Holz im Kampf</span><b>+${rate.toFixed(2)}/s</b></div>
+  <div class="statTile"><span>Stein im Kampf</span><b>+${stoneRate.toFixed(2)}/s</b></div>
  </div>
  <div class="statsSection"><h3>🪙 Goldwirtschaft</h3>
   <div class="rosterItem"><div class="rosterIcon">⚔</div><div><b>Besiegte Gegner</b><small>Gegner geben beim Besiegen Gold.</small></div><div class="rosterBadge">${state.kills}</div></div>
@@ -1120,16 +1133,17 @@ function resourceDetailsHtml(){
  <div class="statsSection"><h3>👥 Bevölkerung</h3>${houses.length?houses.map((h,i)=>`<div class="rosterItem"><div class="rosterIcon">${h.level>=2?"🏠":"⛺"}</div><div><b>${h.level>=2?"Holzhaus":"Zeltlager"} ${i+1}</b><small>${residentCapacityForHouse(h)} Bewohner · +${(residentCapacityForHouse(h)*.18).toFixed(2)} Gold/Sek. im Kampf</small></div><div class="rosterBadge">${residentCapacityForHouse(h)} 👥</div></div>`).join(""):'<div class="statsHint">Noch kein Wohnhaus gebaut.</div>'}</div>
  <div class="statsSection"><h3>🔬 Forschung</h3><div class="rosterItem"><div class="rosterIcon">⚒️</div><div><b>${state.buildings.some(b=>b.key==="workshop")?"Werkstatt betriebsbereit":"Werkstatt fehlt"}</b><small>Forschungspunkte erhältst du nach erfolgreich abgeschlossenen Wellen.</small></div><div class="rosterBadge">${workshopLevels()} Stufen</div></div>${state.buildings.some(b=>b.key==="workshop")?`<button type="button" class="workshopOpenAction" data-open-workshop>Werkstatt & Forschung öffnen</button>`:`<div class="statsHint">Baue eine Werkstatt, um Technologien freizuschalten.</div>`}</div>
  <div class="statsSection"><h3>🪵 Holzversorgung</h3>${woodRows}</div>
- <div class="statsHint">Holzproduktion läuft ausschließlich während einer aktiven, nicht pausierten Kampfwelle. Reparaturen verbrauchen Holz pro Reparatur-Takt.</div>`;
+ <div class="statsSection"><h3>🪨 Steinversorgung</h3>${stoneRows}</div>
+ <div class="statsHint">Holz- und Steinproduktion laufen ausschließlich während einer aktiven, nicht pausierten Kampfwelle. Reparaturen verbrauchen Holz pro Reparatur-Takt. Stein wird in dieser Übergangsversion bereits gesammelt und später für Mauern, Tore und Festungsausbau verwendet.</div>`;
 }
-function residentJobLabel(r){return r.job==="lumberjack"?"Holzfäller":r.job==="craftsman"?"Handwerker":r.job==="merchant"?"Händler":r.job?"Arbeiter":"Frei"}
-function workplaceLabel(b){return b.key==="lumber"?"Holzfäller":b.key==="repair"?"Handwerkerhaus":b.key==="market"?"Marktplatz":"Werkstatt"}
-function workplaceIcon(b){return b.key==="lumber"?"🪵":b.key==="repair"?"👷":b.key==="market"?"🏪":"⚒️"}
+function residentJobLabel(r){return r.job==="lumberjack"?"Holzfäller":r.job==="stonecutter"?"Steinmetz":r.job==="craftsman"?"Handwerker":r.job==="merchant"?"Händler":r.job?"Arbeiter":"Frei"}
+function workplaceLabel(b){return b.key==="lumber"?"Holzfäller":b.key==="quarry"?"Steinbruch":b.key==="repair"?"Handwerkerhaus":b.key==="market"?"Marktplatz":"Werkstatt"}
+function workplaceIcon(b){return b.key==="lumber"?"🪵":b.key==="quarry"?"🪨":b.key==="repair"?"👷":b.key==="market"?"🏪":"⚒️"}
 function populationDetailsHtml(){
  syncResidents();
  const residents=[...state.residents];
- const workplaces=state.buildings.filter(b=>["lumber","repair","market"].includes(b.key));
- const residentRows=residents.length?residents.map((r,i)=>{const home=state.buildings.find(h=>h.bid===r.homeId);return `<div class="rosterItem"><div class="rosterIcon">${r.job==="craftsman"?"👷":r.job==="lumberjack"?"🧑‍🌾":r.job==="merchant"?"🧑‍💼":r.job?"🧑‍🔧":"🙂"}</div><div><b>Bewohner ${i+1}</b><small>${home?(home.level>=2?"Holzhaus":"Zeltlager"):"Ohne Unterkunft"} · ${residentJobLabel(r)}</small></div><div class="residentState ${r.workplaceId?"busy":"free"}">${r.workplaceId?"arbeitet":"frei"}</div></div>`}).join(""):'<div class="statsHint">Baue zuerst ein Zeltlager, um Bewohner zu erhalten.</div>';
+ const workplaces=state.buildings.filter(b=>["lumber","quarry","repair","market"].includes(b.key));
+ const residentRows=residents.length?residents.map((r,i)=>{const home=state.buildings.find(h=>h.bid===r.homeId);return `<div class="rosterItem"><div class="rosterIcon">${r.job==="craftsman"?"👷":r.job==="lumberjack"?"🧑‍🌾":r.job==="stonecutter"?"⛏️":r.job==="merchant"?"🧑‍💼":r.job?"🧑‍🔧":"🙂"}</div><div><b>Bewohner ${i+1}</b><small>${home?(home.level>=2?"Holzhaus":"Zeltlager"):"Ohne Unterkunft"} · ${residentJobLabel(r)}</small></div><div class="residentState ${r.workplaceId?"busy":"free"}">${r.workplaceId?"arbeitet":"frei"}</div></div>`}).join(""):'<div class="statsHint">Baue zuerst ein Zeltlager, um Bewohner zu erhalten.</div>';
  const workRows=workplaces.length?workplaces.map(b=>`<div class="populationWorkplace"><div class="workIcon">${workplaceIcon(b)}</div><div><b>${workplaceLabel(b)} · Stufe ${b.level||1}</b><small>${b.residentId?"Ein Bewohner arbeitet hier.":"Arbeitsplatz ist frei."}</small></div><button type="button" data-pop-workplace="${b.bid}" class="${b.residentId?"danger":"primary"}">${b.residentId?"Abziehen":"Zuweisen"}</button></div>`).join(""):'<div class="statsHint">Noch keine Versorgungsgebäude mit Arbeitsplätzen gebaut.</div>';
  return `<div class="statsSummary"><div class="statTile"><span>Bewohner gesamt</span><b>${totalResidents()}</b></div><div class="statTile"><span>Arbeiten</span><b>${assignedResidents()}</b></div><div class="statTile"><span>Frei</span><b>${freeResidents()}</b></div></div><div class="statsSection"><h3>👥 Bewohner</h3>${residentRows}</div><div class="statsSection"><h3>🏭 Arbeitsplätze zuweisen</h3><div class="populationActions">${workRows}</div></div><div class="statsHint">Ein Bewohner im Handwerkerhaus erscheint als sichtbarer Handwerker. Während einer aktiven Angriffswelle läuft er zu beschädigten Mauern, Türmen und zur Burg und repariert pro Sekunde 16 HP für 0,5 Holz.</div>`;
 }

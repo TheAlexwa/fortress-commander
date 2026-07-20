@@ -12,6 +12,10 @@ export function getSupportProductionPerSecond(building, buildingHasWorker) {
     return buildingHasWorker(building) ? 0.55 + (level - 1) * 0.30 : 0;
   }
 
+  if (building.key === "quarry") {
+    return buildingHasWorker(building) ? 0.35 + (level - 1) * 0.20 : 0;
+  }
+
   if (building.key === "market") {
     return buildingHasWorker(building) ? level : 0;
   }
@@ -66,6 +70,7 @@ export function runEconomySupportTick(
   if (!state.inWave || paused || gameOver) return;
 
   let woodGain = 0;
+  let stoneGain = 0;
 
   for (const building of state.buildings) {
     if (building.key === "lumber") {
@@ -74,9 +79,16 @@ export function runEconomySupportTick(
         buildingHasWorker
       );
     }
+    if (building.key === "quarry") {
+      stoneGain += getSupportProductionPerSecond(
+        building,
+        buildingHasWorker
+      );
+    }
   }
 
   state.wood += woodGain;
+  state.stone += stoneGain;
   state.gold += getTotalGoldPerSecond(state, {
     syncResidents,
     residentCapacityForHouse,
