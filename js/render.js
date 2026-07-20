@@ -5,8 +5,7 @@ import {
   getFutureLayoutGeometry
 } from "./map-layout.js";
 import {
-  MIDDLE_WALL_SECTION_COUNT,
-  getMiddleWallSectionStatus
+  MIDDLE_WALL_SEGMENT_COUNT
 } from "./fortifications.js";
 
 // Zentrale Canvas-Darstellung von Fortress Commander.
@@ -284,16 +283,13 @@ function drawFutureFortressLayout(){
   ctx.fillText(statueSlot?"EHRENPLATZ":"BAUPLATZ",slot.x,slot.y+4);
  }
  drawFixedInnerWall(layout.fixedInnerRadius);
- // Vier unabhängig baubare Viertel der mittleren Holzpalisade.
- for(let sectionIndex=0;sectionIndex<MIDDLE_WALL_SECTION_COUNT;sectionIndex++){
-  const section=getMiddleWallSectionStatus(state,sectionIndex);
-  if(section.built)continue;
-  const a0=-Math.PI/2+sectionIndex*Math.PI/2+.025;
-  const a1=-Math.PI/2+(sectionIndex+1)*Math.PI/2-.025;
-  drawBlueprintArc(WALL_R,a0,a1,29);
+ // Zwanzig einzeln baubare Segmente der mittleren Holzpalisade.
+ for(const wall of state.walls){
+  if(wall.built&&wall.hp>0)continue;
+  drawBlueprintArc(WALL_R,wall.a0+.018,wall.a1-.018,29);
  }
  ctx.fillStyle="#e8d19dcc";ctx.font="bold 10px system-ui";ctx.textAlign="center";
- ctx.fillText("MITTLERE HOLZPALISADE · 4 ABSCHNITTE BAUBAR",CX,CY-WALL_R-30);
+ ctx.fillText(`MITTLERE HOLZPALISADE · ${MIDDLE_WALL_SEGMENT_COUNT} SEGMENTE · JE 5 HOLZ`,CX,CY-WALL_R-30);
  // Geplanter äußerer Mauerring mit vier anklickbaren Toröffnungen.
  for(let quadrant=0;quadrant<4;quadrant++){
   const a0=-Math.PI/2+quadrant*Math.PI/2+OUTER_GATE_GAP;
@@ -439,15 +435,12 @@ function drawSlots(){
   ctx.restore();
  }
  if(buildMode==="palisade"){
-  for(let sectionIndex=0;sectionIndex<MIDDLE_WALL_SECTION_COUNT;sectionIndex++){
-   const section=getMiddleWallSectionStatus(state,sectionIndex);
-   if(section.built&&!section.destroyed)continue;
-   const a0=-Math.PI/2+sectionIndex*Math.PI/2+.025;
-   const a1=-Math.PI/2+(sectionIndex+1)*Math.PI/2-.025;
-   ctx.save();ctx.globalAlpha=.72+Math.sin(performance.now()*.006+sectionIndex)*.16;
+  for(const wall of state.walls){
+   if(wall.built&&wall.hp>0)continue;
+   ctx.save();ctx.globalAlpha=.72+Math.sin(performance.now()*.006+wall.i)*.16;
    ctx.strokeStyle="#ffe69a";ctx.shadowBlur=22;ctx.shadowColor="#ffcf5a";ctx.lineWidth=42;
-   ctx.beginPath();ctx.arc(CX,CY,WALL_R,a0,a1);ctx.stroke();
-   ctx.strokeStyle="#fff7c9";ctx.lineWidth=3;ctx.setLineDash([14,9]);ctx.beginPath();ctx.arc(CX,CY,WALL_R,a0,a1);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+   ctx.beginPath();ctx.arc(CX,CY,WALL_R,wall.a0+.012,wall.a1-.012);ctx.stroke();
+   ctx.strokeStyle="#fff7c9";ctx.lineWidth=3;ctx.setLineDash([9,6]);ctx.beginPath();ctx.arc(CX,CY,WALL_R,wall.a0+.012,wall.a1-.012);ctx.stroke();ctx.setLineDash([]);ctx.restore();
   }
  }
  if(buildMode==="soldier"){

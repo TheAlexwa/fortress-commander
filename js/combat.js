@@ -154,6 +154,48 @@ export function findNearestCastleTower(buildings, enemy) {
   return best;
 }
 
+
+export function isGuardTargetAllowed(
+  unit,
+  enemy,
+  { centerX, centerY, wallRadius }
+) {
+  if (!unit || unit.key !== "guard" || !enemy || enemy.hp <= 0) return false;
+
+  const enemyRadius = Math.hypot(enemy.x - centerX, enemy.y - centerY);
+  if (unit.stance === "defend" && enemy.phase === "outside") return false;
+  if (unit.stance === "offense" && enemyRadius > wallRadius + 330) return false;
+  return true;
+}
+
+export function findNearestGuardTarget(
+  unit,
+  enemies,
+  { centerX, centerY, wallRadius }
+) {
+  let best = null;
+  let bestDistanceSquared = Infinity;
+
+  for (const enemy of enemies || []) {
+    if (!isGuardTargetAllowed(unit, enemy, { centerX, centerY, wallRadius })) {
+      continue;
+    }
+    const distanceSquared = (enemy.x - unit.x) ** 2 + (enemy.y - unit.y) ** 2;
+    if (distanceSquared < bestDistanceSquared) {
+      bestDistanceSquared = distanceSquared;
+      best = enemy;
+    }
+  }
+
+  return best;
+}
+
+export function getGuardMeleeReach(unit, enemy) {
+  const unitRange = Math.max(0, Number(unit?.range) || 0);
+  const enemyRadius = Math.max(8, Number(enemy?.radius) || 12);
+  return Math.max(48, unitRange + enemyRadius + 10);
+}
+
 export function findNearestBlockingUnit(
   units,
   enemy,
@@ -165,10 +207,12 @@ export function findNearestBlockingUnit(
   for (const unit of units) {
     if (unit.hp <= 0) continue;
 
-    if (unit.key === "guard") {
-      const enemyRadius = Math.hypot(enemy.x - centerX, enemy.y - centerY);
-      if (unit.stance === "defend" && enemy.phase === "outside") continue;
-      if (unit.stance === "offense" && enemyRadius > wallRadius + 330) continue;
+    if (unit.key === "guard" && !isGuardTargetAllowed(unit, enemy, {
+      centerX,
+      centerY,
+      wallRadius,
+    })) {
+      continue;
     }
 
     const distanceSquared = (unit.x - enemy.x) ** 2 + (unit.y - enemy.y) ** 2;

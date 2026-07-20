@@ -11,8 +11,8 @@ export function renderGameUI({
   ui,
   BUILD,
   WALL_SEGMENTS,
-  MIDDLE_WALL_SECTION_COUNT,
-  builtMiddleWallSections,
+  MIDDLE_WALL_SEGMENT_COUNT,
+  builtMiddleWallSegments,
   selected,
   buildMode,
   paused,
@@ -68,11 +68,11 @@ export function renderGameUI({
 
   ui.hp.textContent = `${Math.ceil(state.hp)}/${state.maxHp}`;
   ui.wave.textContent = state.wave;
-  const builtWallSections = typeof builtMiddleWallSections === "function"
-    ? builtMiddleWallSections()
+  const builtWallSegments = typeof builtMiddleWallSegments === "function"
+    ? builtMiddleWallSegments()
     : 0;
-  ui.wallInfo.textContent = `${builtWallSections}/${MIDDLE_WALL_SECTION_COUNT}`;
-  ui.wallInfo.title = "Errichtete Abschnitte der mittleren Holzpalisade";
+  ui.wallInfo.textContent = `${builtWallSegments}/${MIDDLE_WALL_SEGMENT_COUNT}`;
+  ui.wallInfo.title = "Intakte Segmente der mittleren Holzpalisade";
 
   const siege = state.siege;
   const siegeReady = !state.inWave && siege?.active ? Math.max(0, Number(siege.arrived) || 0) : 0;
@@ -117,7 +117,7 @@ export function renderGameUI({
     button.disabled =
       gameOver ||
       (config.kind === "fortification" && state.inWave) ||
-      (config.kind === "fortification" && builtWallSections >= MIDDLE_WALL_SECTION_COUNT) ||
+      (config.kind === "fortification" && builtWallSegments >= MIDDLE_WALL_SEGMENT_COUNT) ||
       !requirement.ok ||
       state.gold < config.gold ||
       state.wood < config.wood ||

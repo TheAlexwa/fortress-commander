@@ -1,3 +1,5 @@
+import { buildMiddleWallSegmentAt } from "./fortifications.js";
+
 /**
  * Bau- und Aufwertungssystem von Fortress Commander.
  *
@@ -54,6 +56,18 @@ export function createEntityAt(x, y, key, context) {
 
   const blueprint = BUILD[key];
   if (!blueprint) return false;
+
+  if (blueprint.kind === "fortification") {
+    return buildMiddleWallSegmentAt(x, y, {
+      state,
+      CX,
+      CY,
+      WALL_R,
+      showToast,
+      setBuildMode,
+      setSelected,
+    });
+  }
 
   const requirement = getBuildRequirement(state, key);
   if (!requirement.ok) {
@@ -124,7 +138,7 @@ export function createEntityAt(x, y, key, context) {
 
   const slots =
     blueprint.kind === "tower"
-      ? [...wallSlots, ...castleSlots]
+      ? [...castleSlots]
       : insideSlots.filter((slot) =>
           blueprint.slotRole === "statue"
             ? slot.role === "statue"

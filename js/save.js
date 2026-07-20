@@ -38,6 +38,73 @@ function getSlotByReference(reference, { wallSlots, insideSlots, castleSlots }) 
   return slots[index];
 }
 
+
+function remapCircularIndex(index, oldCount, newCount) {
+  const sourceCount = Math.max(1, Number(oldCount) || 1);
+  const targetCount = Math.max(1, Number(newCount) || 1);
+  const sourceIndex = Math.max(0, Math.min(sourceCount - 1, Number(index) || 0));
+  return Math.min(
+    targetCount - 1,
+    Math.floor(((sourceIndex + 0.5) * targetCount) / sourceCount)
+  );
+}
+
+function remapSavedBuildingWallSlots(savedBuildings, oldWallCount, newWallCount) {
+  if (oldWallCount === newWallCount) return savedBuildings;
+
+  const usedWallSlots = new Set();
+  return savedBuildings.map((building) => {
+    if (building?.slot?.type !== "wall") return building;
+
+    const preferred = remapCircularIndex(
+      building.slot.index,
+      oldWallCount,
+      newWallCount
+    );
+    let mapped = preferred;
+    for (let offset = 0; offset < newWallCount; offset++) {
+      const clockwise = (preferred + offset) % newWallCount;
+      const counterClockwise = (preferred - offset + newWallCount) % newWallCount;
+      if (!usedWallSlots.has(clockwise)) {
+        mapped = clockwise;
+        break;
+      }
+      if (!usedWallSlots.has(counterClockwise)) {
+        mapped = counterClockwise;
+        break;
+      }
+    }
+    usedWallSlots.add(mapped);
+    return {
+      ...building,
+      slot: { ...building.slot, index: mapped },
+    };
+  });
+}
+
+function restoreMiddleWallState(savedWalls, currentWalls) {
+  const oldCount = savedWalls.length;
+  const newCount = currentWalls.length;
+
+  currentWalls.forEach((wall, index) => {
+    const sourceIndex = oldCount === newCount
+      ? index
+      : Math.min(
+          oldCount - 1,
+          Math.floor(((index + 0.5) * oldCount) / newCount)
+        );
+    const savedWall = savedWalls[sourceIndex];
+    const built = savedWall?.built === undefined ? true : savedWall.built === true;
+    const savedMax = Math.max(1, Number(savedWall?.maxHp) || wall.maxHp);
+    const healthRatio = built
+      ? Math.max(0, Math.min(1, (Number(savedWall?.hp) || 0) / savedMax))
+      : 0;
+
+    wall.built = built;
+    wall.hp = built ? wall.maxHp * healthRatio : 0;
+  });
+}
+
 function serializeBuilding(building, slots) {
   const { base, slot, ...plainBuilding } = building;
 
@@ -212,9 +279,6 @@ export function loadGameState({
   }
 
   const savedState = snapshot.state;
-  if (savedState.walls.length !== state.walls.length) {
-    throw new Error("Speicherstand passt nicht zur aktuellen Karte.");
-  }
   if (
     Array.isArray(savedState.innerWalls) &&
     savedState.innerWalls.length !== (state.innerWalls || []).length
@@ -223,7 +287,12 @@ export function loadGameState({
   }
 
   const slotContext = { BUILD, wallSlots, insideSlots, castleSlots };
-  const buildings = savedState.buildings.map((building) =>
+  const normalizedBuildings = remapSavedBuildingWallSlots(
+    savedState.buildings,
+    savedState.walls.length,
+    state.walls.length
+  );
+  const buildings = normalizedBuildings.map((building) =>
     restoreBuilding(building, slotContext)
   );
   const units = savedState.units.map((unit) => restoreUnit(unit, BUILD));
@@ -280,15 +349,9 @@ export function loadGameState({
     repairActive: false,
   });
 
-  savedState.walls.forEach((savedWall, index) => {
-    // Spielstände vor v1.14.4 besaßen die mittlere Palisade bereits vollständig.
-    // Fehlt das neue Kennzeichen, bleibt dieser Fortschritt aus Kompatibilitäts-
-    // gründen erhalten. Neue Partien starten dagegen mit ungebauten Abschnitten.
-    const built = savedWall?.built === undefined ? true : savedWall.built === true;
-    state.walls[index].built = built;
-    state.walls[index].hp = built ? Math.max(0, Number(savedWall.hp) || 0) : 0;
-    state.walls[index].maxHp = Math.max(1, Number(savedWall.maxHp) || state.walls[index].maxHp);
-  });
+  // v1.14.6 reduziert den mittleren Ring von 24 auf 20 Segmente.
+  // Ältere Spielstände werden proportional auf die neue Geometrie übertragen.
+  restoreMiddleWallState(savedState.walls, state.walls);
 
   const savedInnerWalls = Array.isArray(savedState.innerWalls)
     ? savedState.innerWalls

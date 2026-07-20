@@ -55,6 +55,9 @@ import {
  getTowerBehindWall,
  findNearestCastleTower,
  findNearestBlockingUnit,
+ findNearestGuardTarget,
+ getGuardMeleeReach,
+ isGuardTargetAllowed,
  createProjectile,
  grantCombatExperience,
  applyTowerTalent,
@@ -84,13 +87,15 @@ import {
 import { FIXED_INNER_WALL_RADIUS, hitTestFutureLayout } from "./map-layout.js";
 import {
   MIDDLE_WALL_SECTION_COUNT,
+  MIDDLE_WALL_SEGMENT_COUNT,
   createInnerWallSegments,
-  getBuiltMiddleWallSectionCount,
+  getBuiltMiddleWallSegmentCount,
   getInnerWallSegmentForPoint,
   getMiddleWallSectionIndexForSegment,
-  getMiddleWallSectionStatus,
+  getMiddleWallSegmentName,
+  getMiddleWallSegmentStatus,
   hitTestInnerWallSegment,
-  hitTestMiddleWallSection,
+  hitTestMiddleWallSegment,
   initializeInnerWallSegments,
   initializeMiddleWallSegments
 } from "./fortifications.js";
@@ -100,8 +105,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.14.5";
-const GAME_RELEASE_NAME="Aktiver innerer Mauerring";
+const GAME_VERSION="1.14.6";
+const GAME_RELEASE_NAME="Segmentweiser Palisadenbau";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -213,13 +218,13 @@ const ui={
 const TAU=Math.PI*2;
 const WORLD_W=2400,WORLD_H=1700,CX=WORLD_W/2,CY=WORLD_H/2;
 const SIEGE_CAMPS=getSiegeCampPositions({WORLD_W,WORLD_H});
-const WALL_R=355,WALL_SEGMENTS=24,WALL_MAX_HP=420;
+const WALL_R=355,WALL_SEGMENTS=MIDDLE_WALL_SEGMENT_COUNT,WALL_MAX_HP=420;
 let vw=1000,vh=700,dpr=1,last=performance.now(),paused=true,gameOver=false;
 let zoom=.48,minZoom=.15,maxZoom=1.45,camX=CX,camY=CY;
 let buildMode=null,selected=null,unitCommandMode=null,toastTimer=0;
 let autosaveSuppressed=false,gameSessionStarted=false;
 const BUILD={
- palisade:{name:"Holzpalisade",kind:"fortification",gold:0,wood:45,color:"#81512d"},
+ palisade:{name:"Holzpalisade",kind:"fortification",gold:0,wood:5,color:"#81512d"},
  archer:{name:"Bogenturm",kind:"tower",gold:60,wood:20,hp:260,range:215,rate:.72,damage:17,speed:470,color:"#b98a4d"},
  crossbow:{name:"Armbrustturm",kind:"tower",gold:95,wood:30,hp:320,range:265,rate:1.45,damage:46,speed:560,color:"#73513b"},
  catapult:{name:"Katapult",kind:"tower",gold:140,wood:55,hp:390,range:315,rate:2.45,damage:58,speed:330,splash:62,color:"#5b554c"},
@@ -241,7 +246,9 @@ function initMap(){
  state.walls.length=0;state.innerWalls.length=0;wallSlots.length=0;insideSlots.length=0;castleSlots.length=0;
  for(let i=0;i<WALL_SEGMENTS;i++){
   const a0=-Math.PI/2+i*TAU/WALL_SEGMENTS,a1=-Math.PI/2+(i+1)*TAU/WALL_SEGMENTS,am=(a0+a1)/2;
-  state.walls.push({kind:"wall",ring:"middle",i,a0,a1,am,built:false,hp:0,maxHp:WALL_MAX_HP});
+  const quarterIndex=getMiddleWallSectionIndexForSegment(i,WALL_SEGMENTS);
+  const segmentInQuarter=i%Math.max(1,WALL_SEGMENTS/MIDDLE_WALL_SECTION_COUNT);
+  state.walls.push({kind:"wall",ring:"middle",i,quarterIndex,segmentInQuarter,name:getMiddleWallSegmentName(i,WALL_SEGMENTS),a0,a1,am,built:false,hp:0,maxHp:WALL_MAX_HP});
   wallSlots.push({type:"wall",i,x:CX+Math.cos(am)*(WALL_R-48),y:CY+Math.sin(am)*(WALL_R-48),building:null});
  }
  state.innerWalls.push(...createInnerWallSegments());
@@ -473,8 +480,8 @@ function deleteSave(){
 
 function updateUI(){
  return renderGameUI({
-  state,ui,BUILD,WALL_SEGMENTS,MIDDLE_WALL_SECTION_COUNT,selected,buildMode,paused,gameOver,
-  builtMiddleWallSections:()=>getBuiltMiddleWallSectionCount(state),
+  state,ui,BUILD,WALL_SEGMENTS,MIDDLE_WALL_SEGMENT_COUNT,selected,buildMode,paused,gameOver,
+  builtMiddleWallSegments:()=>getBuiltMiddleWallSegmentCount(state),
   navResearch,navResearchBadge,closeAllBlockingPanels,totalGoldPerSecond,
   totalWoodPerSecond,totalStonePerSecond,syncResidents,assignedResidents,totalResidents,freeResidents,
   waveCount,buildRequirement,residentCapacityForHouse,buildingHasWorker,
@@ -701,10 +708,10 @@ function update(dt){
   if(u.hp<=0)continue;
   u.attackCd-=dt;u.retargetCd=(u.retargetCd||0)-dt;
   if(u.key==="guard"){
-   // Rückzug ist jetzt ein kurzer, abgeschlossener Befehl. Zuvor blieb eine
-   // angeschlagene Burgwache dauerhaft im Rückzugszustand und suchte später
-   // kein neues Ziel mehr.
+   // Burgwachen halten ein gültiges Nahkampfziel fest, rücken bis zur
+   // Kontaktreichweite vor und suchen nach einem besiegten Ziel sofort neu.
    if(u.retreating){
+    u.autoTarget=null;
     const dx=u.homeX-u.x,dy=u.homeY-u.y,d=Math.hypot(dx,dy);
     if(d>4){const step=Math.min(d,u.speed*dt);u.x+=dx/d*step;u.y+=dy/d*step}
     else{
@@ -715,30 +722,28 @@ function update(dt){
     continue;
    }
 
-   let target=null,best=Infinity;
-   for(const e of state.enemies){
-    if(e.hp<=0)continue;
-    const er=Math.hypot(e.x-CX,e.y-CY);
-    // Im Verteidigungsmodus reagiert die Wache auf jede Einheit, die den
-    // mittleren Ring überwunden hat – sowohl vor als auch hinter dem inneren Ring.
-    if(u.stance==="defend"&&e.phase==="outside")continue;
-    if(u.stance==="offense"&&er>WALL_R+330)continue;
-    const d=Math.hypot(e.x-u.x,e.y-u.y);
-    if(d<best){best=d;target=e}
+   const targetInvalid=!u.autoTarget||u.autoTarget.hp<=0||!state.enemies.includes(u.autoTarget)||!isGuardTargetAllowed(u,u.autoTarget,{centerX:CX,centerY:CY,wallRadius:WALL_R});
+   if(targetInvalid||u.retargetCd<=0){
+    u.autoTarget=findNearestGuardTarget(u,state.enemies,{centerX:CX,centerY:CY,wallRadius:WALL_R});
+    u.retargetCd=.18;
    }
+   const target=u.autoTarget;
 
    if(target){
     const dx=target.x-u.x,dy=target.y-u.y,d=Math.max(1,Math.hypot(dx,dy));
-    if(d<=u.range+(target.radius||12)+5){
+    const meleeReach=getGuardMeleeReach(u,target);
+    if(d<=meleeReach){
      if(u.attackCd<=0){
       u.attackCd=u.rate;
       const dealt=u.damage*(1-(target.armor||0));target.hp-=dealt;target.lastHitEntity=u;
-      grantCombatXp(u,Math.min(7,dealt*.075));burst(target.x,target.y,"#f2cf82",6);
+      grantCombatXp(u,Math.min(7,dealt*.075));burst(target.x,target.y,"#f2cf82",7);
      }
     }else{
-     const step=Math.min(d,u.speed*dt);let nx=u.x+dx/d*step,ny=u.y+dy/d*step;
+     const stopDistance=Math.max(10,meleeReach-4);
+     const travel=Math.max(0,d-stopDistance);
+     const step=Math.min(travel,u.speed*dt);let nx=u.x+dx/d*step,ny=u.y+dy/d*step;
      const nr=Math.hypot(nx-CX,ny-CY);
-     if(u.stance==="defend"&&nr>WALL_R-18){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(WALL_R-20);ny=CY+Math.sin(a)*(WALL_R-20)}
+     if(u.stance==="defend"&&nr>WALL_R-12){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(WALL_R-14);ny=CY+Math.sin(a)*(WALL_R-14)}
      if(u.stance==="offense"&&nr>WALL_R+330){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(WALL_R+328);ny=CY+Math.sin(a)*(WALL_R+328)}
      u.x=nx;u.y=ny;
     }
@@ -817,7 +822,7 @@ function update(dt){
    const d=Math.hypot(tx-e.x,ty-e.y);
    if(!wall.built||wall.hp<=0){e.phase="inside"}
    else if(d<5){if(e.attackCd<=0){e.attackCd=e.attackRate;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
-    wall.hp=Math.max(0,wall.hp-wallDamage);burst(tx,ty,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in Palisade ${getMiddleWallSectionStatus(state,getMiddleWallSectionIndexForSegment(wi,state.walls.length)).name}!`)}}
+    wall.hp=Math.max(0,wall.hp-wallDamage);burst(tx,ty,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in mittlerer Palisade: ${wall.name||getMiddleWallSegmentName(wi,state.walls.length)}!`)}}
    else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
   }else if(e.phase==="inside"){
    const tower=towerBehindWall(e.wallIndex);
@@ -945,17 +950,17 @@ function pickAt(x,y){
   const wall=state.innerWalls[innerHit.index];
   if(wall)best=wall;
  }
- const middleHit=hitTestMiddleWallSection(x,y,{CX,CY,WALL_R,tolerance:30});
+ const middleHit=hitTestMiddleWallSegment(x,y,{CX,CY,WALL_R,segmentCount:state.walls.length,tolerance:30});
  if(!best&&middleHit){
-  const section=getMiddleWallSectionStatus(state,middleHit.sectionIndex);
-  if(section.built){best=section}
+  const wall=getMiddleWallSegmentStatus(state,middleHit.segmentIndex);
+  if(wall?.built){best=wall}
  }
  return best;
 }
 function showFutureLayoutHint(hit){
  if(!hit)return false;
  const messages={
-  "middle-wall":"Mittlere Holzpalisade: im Baumenü auswählen und diesen Abschnitt errichten.",
+  "middle-wall":"Mittlere Holzpalisade: im Baumenü auswählen und dieses Segment für 5 Holz errichten.",
   "outer-wall":"Äußerer Mauerring: wird in einer späteren Ausbaustufe mit Stein errichtet."
  };
  const text=hit.type==="outer-gate"
@@ -967,7 +972,7 @@ function showFutureLayoutHint(hit){
 }
 function worldTap(x,y){
  if(gameOver)return;
- const futureHit=hitTestMiddleWallSection(x,y,{CX,CY,WALL_R})||hitTestFutureLayout(x,y,{CX,CY,WALL_R});
+ const futureHit=hitTestMiddleWallSegment(x,y,{CX,CY,WALL_R,segmentCount:state.walls.length})||hitTestFutureLayout(x,y,{CX,CY,WALL_R});
  if(buildMode){
   const created=createAt(x,y,buildMode);
   if(!created)showFutureLayoutHint(futureHit);
@@ -1126,7 +1131,7 @@ function buildingProductionInfo(b){
 }
 function buildingStatsHtml(b){
  const base=b.base,isTower=base.kind==="tower",level=b.level||1;
- if(base.decorative)return `<div class="buildingOverview"><div class="statTile"><span>Bauwerk</span><b>${buildingDisplayName(b)}</b></div><div class="statTile"><span>Funktion</span><b>Noch ohne Aufgabe</b></div><div class="statTile"><span>Standort</span><b>Eigener Ehrenplatz</b></div></div><div class="statsHint">Die Kriegerstatue ist in v1.14.5 ein reines Zierbauwerk. Eine spätere Ausbauphase gibt ihr eine eigene spielerische Funktion.</div>`;
+ if(base.decorative)return `<div class="buildingOverview"><div class="statTile"><span>Bauwerk</span><b>${buildingDisplayName(b)}</b></div><div class="statTile"><span>Funktion</span><b>Noch ohne Aufgabe</b></div><div class="statTile"><span>Standort</span><b>Eigener Ehrenplatz</b></div></div><div class="statsHint">Die Kriegerstatue ist in v1.14.6 ein reines Zierbauwerk. Eine spätere Ausbauphase gibt ihr eine eigene spielerische Funktion.</div>`;
  let rows=isTower?
  `${statRow("Schaden",fmt(base.damage),fmt(b.damage),pctDelta(base.damage,b.damage))}
  ${statRow("Reichweite",fmt(base.range),fmt(b.range),pctDelta(base.range,b.range))}
@@ -1161,7 +1166,7 @@ function buildingStatsHtml(b){
 }
 function wallStatsHtml(w){
  const percent=w.maxHp?Math.ceil(w.hp/w.maxHp*100):0;
- return `<div class="statsSummary"><div class="statTile"><span>Abschnitt</span><b>${w.name||"Mittlere Palisade"}</b></div><div class="statTile"><span>Zustand</span><b>${percent}%</b></div><div class="statTile"><span>Leben</span><b>${Math.ceil(w.hp)} / ${Math.ceil(w.maxHp)}</b></div></div><div class="statsHint">Dieser Viertelkreis besteht aus sechs einzelnen Palisadensegmenten. Fehlt oder fällt der Abschnitt, können Gegner auf dieser Seite direkt zur festen Kernburg vordringen. Turmplätze auf der mittleren Mauer folgen in einem späteren Schritt.</div>`;
+ return `<div class="statsSummary"><div class="statTile"><span>Segment</span><b>${w.name||"Mittlere Palisade"}</b></div><div class="statTile"><span>Zustand</span><b>${percent}%</b></div><div class="statTile"><span>Leben</span><b>${Math.ceil(w.hp)} / ${Math.ceil(w.maxHp)}</b></div></div><div class="statsHint">Jeder Viertelkreis besteht aus fünf einzeln baubaren Palisadensegmenten. Dieses Segment kann bei einer Bresche separat für 5 Holz neu errichtet werden. Tore und Turmplätze des mittleren Rings folgen in späteren Schritten.</div>`;
 }
 function overviewStatsHtml(){
  const units=state.units.filter(u=>u.hp>0),towers=state.buildings.filter(b=>b.base.kind==="tower"&&b.hp>0),open=units.reduce((s,u)=>s+(u.pendingUpgrades||0),0)+towers.reduce((s,b)=>s+(b.pendingUpgrades||0),0);
