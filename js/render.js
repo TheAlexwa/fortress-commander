@@ -76,7 +76,11 @@ const BUILDING_SPRITE_DEFS = {
   quarry: { src: "assets/buildings/quarry-site.webp", width: 82, height: 76, offsetY: 0 },
   workshop: { src: "assets/buildings/workshop-house.webp", width: 72, height: 74, offsetY: -1 },
   repair: { src: "assets/buildings/repair-house.webp", width: 78, height: 80, offsetY: -2 },
-  market: { src: "assets/buildings/market-shop.webp", width: 72, height: 72, offsetY: -2 }
+  market: { src: "assets/buildings/market-shop.webp", width: 72, height: 72, offsetY: -2 },
+  archer: { src: "assets/buildings/archer-tower.webp", width: 86, height: 128, offsetY: -10 },
+  crossbow: { src: "assets/buildings/crossbow-tower.webp", width: 88, height: 120, offsetY: -8 },
+  catapult: { src: "assets/buildings/catapult-tower.webp", width: 96, height: 144, offsetY: -16 },
+  statue: { src: "assets/buildings/warrior-statue.webp", width: 92, height: 146, offsetY: -18 }
 };
 
 const buildingSprites = Object.fromEntries(
@@ -724,6 +728,30 @@ function drawUtilityBuildingSprite(building){
  return true;
 }
 
+function drawTowerBuildingSprite(building){
+ const sprite=buildingSprites[building.key];
+ if(!sprite||!sprite.image.complete||!sprite.image.naturalWidth)return false;
+ const {width,height,offsetY=0}=sprite.def;
+ ctx.fillStyle="#09080666";ctx.globalAlpha=.28;ctx.beginPath();ctx.ellipse(4,22,30,11,0,0,TAU);ctx.fill();ctx.globalAlpha=1;
+ ctx.drawImage(sprite.image,-width/2,-height/2+offsetY,width,height);
+ if(building.hp/building.maxHp<.72){
+  ctx.strokeStyle="#2d1a14";ctx.lineWidth=2.2;ctx.lineCap="round";ctx.beginPath();
+  ctx.moveTo(-9,-6);ctx.lineTo(1,5);ctx.lineTo(-6,18);
+  ctx.moveTo(10,-8);ctx.lineTo(4,6);
+  ctx.stroke();
+ }
+ return true;
+}
+
+function drawStatueBuildingSprite(building){
+ const sprite=buildingSprites[building.key];
+ if(!sprite||!sprite.image.complete||!sprite.image.naturalWidth)return false;
+ const {width,height,offsetY=0}=sprite.def;
+ ctx.fillStyle="#09080666";ctx.globalAlpha=.28;ctx.beginPath();ctx.ellipse(4,24,32,12,0,0,TAU);ctx.fill();ctx.globalAlpha=1;
+ ctx.drawImage(sprite.image,-width/2,-height/2+offsetY,width,height);
+ return true;
+}
+
 function drawFortressCenterFallback(){
  ctx.fillStyle="#10100d77";ctx.beginPath();ctx.ellipse(CX+8,CY+43,92,40,0,0,TAU);ctx.fill();
  for(let i=0;i<18;i++){
@@ -783,40 +811,38 @@ function drawBuildings(){
   ctx.fillStyle="#07090788";ctx.beginPath();ctx.ellipse(8,20,35,15,0,0,TAU);ctx.fill();
   if(selected===b){ctx.strokeStyle="#ffe184";ctx.shadowBlur=22;ctx.shadowColor="#ffd665";ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,43,0,TAU);ctx.stroke();ctx.shadowBlur=0}
   if(b.key==="statue"){
+   if(drawStatueBuildingSprite(b)){ctx.restore();continue;}
    ctx.restore();drawWarriorStatue({x,y});continue;
   }
   if(isTower){
-   // stone circular base and timber frame
-   ctx.fillStyle="#42413a";ctx.beginPath();ctx.ellipse(0,14,25,14,0,0,TAU);ctx.fill();ctx.strokeStyle="#89877b";ctx.lineWidth=3;ctx.stroke();
-   ctx.fillStyle="#3c2b20";ctx.fillRect(-21,-8,42,38);
-   ctx.strokeStyle="#b1783f";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-20,28);ctx.lineTo(19,-7);ctx.moveTo(20,28);ctx.lineTo(-19,-7);ctx.stroke();
-   ctx.strokeStyle="#251711";ctx.lineWidth=2;for(let k=-1;k<=1;k++){ctx.beginPath();ctx.moveTo(k*13,-7);ctx.lineTo(k*13,29);ctx.stroke()}
-   // battlement platform
-   ctx.fillStyle="#75502f";ctx.fillRect(-26,-11,52,9);
-   for(let k=-2;k<=2;k++)ctx.fillRect(k*11-4,-21,8,13);
-   // roof
-   const roof=ctx.createLinearGradient(-28,-36,28,-6);roof.addColorStop(0,"#315f8e");roof.addColorStop(.5,"#163d69");roof.addColorStop(1,"#0a2544");
-   ctx.fillStyle=roof;ctx.beginPath();ctx.moveTo(-29,-10);ctx.lineTo(0,-38);ctx.lineTo(29,-10);ctx.closePath();ctx.fill();ctx.strokeStyle="#d5ae5d";ctx.lineWidth=2.3;ctx.stroke();
-   // detailed weapon
-   if(b.key==="archer"){
-    ctx.strokeStyle="#c09055";ctx.lineWidth=2.8;ctx.beginPath();ctx.arc(0,-10,14,-1.28,1.28);ctx.stroke();
-    ctx.strokeStyle="#ead9b6";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(4,-24);ctx.lineTo(4,4);ctx.stroke();
-    ctx.strokeStyle="#d8bf88";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-6,-9);ctx.lineTo(17,-10);ctx.stroke();
-   }else if(b.key==="crossbow"){
-    ctx.strokeStyle="#a87742";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-16,-11);ctx.lineTo(16,-11);ctx.moveTo(0,-21);ctx.lineTo(0,1);ctx.stroke();
-    ctx.strokeStyle="#e1d3b3";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-16,-11);ctx.quadraticCurveTo(0,-24,16,-11);ctx.stroke();
-    ctx.fillStyle="#cdd5d7";ctx.beginPath();ctx.moveTo(0,-25);ctx.lineTo(-5,-17);ctx.lineTo(5,-17);ctx.closePath();ctx.fill();
-   }else{
-    ctx.fillStyle="#30241d";ctx.fillRect(-17,-10,34,10);
-    ctx.fillStyle="#747d80";ctx.beginPath();ctx.arc(0,-13,10,0,TAU);ctx.fill();ctx.strokeStyle="#d2d8d9";ctx.lineWidth=2;ctx.stroke();
-    ctx.strokeStyle="#6b4325";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-14,-3);ctx.lineTo(-21,14);ctx.moveTo(14,-3);ctx.lineTo(21,14);ctx.stroke();
+   if(!drawTowerBuildingSprite(b)){
+    // fallback if sprite is unavailable
+    ctx.fillStyle="#42413a";ctx.beginPath();ctx.ellipse(0,14,25,14,0,0,TAU);ctx.fill();ctx.strokeStyle="#89877b";ctx.lineWidth=3;ctx.stroke();
+    ctx.fillStyle="#3c2b20";ctx.fillRect(-21,-8,42,38);
+    ctx.strokeStyle="#b1783f";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-20,28);ctx.lineTo(19,-7);ctx.moveTo(20,28);ctx.lineTo(-19,-7);ctx.stroke();
+    ctx.strokeStyle="#251711";ctx.lineWidth=2;for(let k=-1;k<=1;k++){ctx.beginPath();ctx.moveTo(k*13,-7);ctx.lineTo(k*13,29);ctx.stroke()}
+    ctx.fillStyle="#75502f";ctx.fillRect(-26,-11,52,9);
+    for(let k=-2;k<=2;k++)ctx.fillRect(k*11-4,-21,8,13);
+    const roof=ctx.createLinearGradient(-28,-36,28,-6);roof.addColorStop(0,"#315f8e");roof.addColorStop(.5,"#163d69");roof.addColorStop(1,"#0a2544");
+    ctx.fillStyle=roof;ctx.beginPath();ctx.moveTo(-29,-10);ctx.lineTo(0,-38);ctx.lineTo(29,-10);ctx.closePath();ctx.fill();ctx.strokeStyle="#d5ae5d";ctx.lineWidth=2.3;ctx.stroke();
+    if(b.key==="archer"){
+     ctx.strokeStyle="#c09055";ctx.lineWidth=2.8;ctx.beginPath();ctx.arc(0,-10,14,-1.28,1.28);ctx.stroke();
+     ctx.strokeStyle="#ead9b6";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(4,-24);ctx.lineTo(4,4);ctx.stroke();
+     ctx.strokeStyle="#d8bf88";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-6,-9);ctx.lineTo(17,-10);ctx.stroke();
+    }else if(b.key==="crossbow"){
+     ctx.strokeStyle="#a87742";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-16,-11);ctx.lineTo(16,-11);ctx.moveTo(0,-21);ctx.lineTo(0,1);ctx.stroke();
+     ctx.strokeStyle="#e1d3b3";ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(-16,-11);ctx.quadraticCurveTo(0,-24,16,-11);ctx.stroke();
+     ctx.fillStyle="#cdd5d7";ctx.beginPath();ctx.moveTo(0,-25);ctx.lineTo(-5,-17);ctx.lineTo(5,-17);ctx.closePath();ctx.fill();
+    }else{
+     ctx.fillStyle="#30241d";ctx.fillRect(-17,-10,34,10);
+     ctx.fillStyle="#747d80";ctx.beginPath();ctx.arc(0,-13,10,0,TAU);ctx.fill();ctx.strokeStyle="#d2d8d9";ctx.lineWidth=2;ctx.stroke();
+     ctx.strokeStyle="#6b4325";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-14,-3);ctx.lineTo(-21,14);ctx.moveTo(14,-3);ctx.lineTo(21,14);ctx.stroke();
+    }
+    ctx.fillStyle="#164b80";ctx.fillRect(-29,-3,8,19);ctx.fillRect(21,-3,8,19);
+    ctx.fillStyle="#e1c269";ctx.font="bold 7px serif";ctx.textAlign="center";ctx.fillText("♜",-25,9);ctx.fillText("♜",25,9);
+    ctx.globalAlpha=.22;ctx.fillStyle="#ffaf42";ctx.beginPath();ctx.arc(0,12,10,0,TAU);ctx.fill();ctx.globalAlpha=1;ctx.fillStyle="#ffcf6e";ctx.fillRect(-2,8,4,6);
    }
-   // banners and lantern
-   ctx.fillStyle="#164b80";ctx.fillRect(-29,-3,8,19);ctx.fillRect(21,-3,8,19);
-   ctx.fillStyle="#e1c269";ctx.font="bold 7px serif";ctx.textAlign="center";ctx.fillText("♜",-25,9);ctx.fillText("♜",25,9);
-   ctx.globalAlpha=.22;ctx.fillStyle="#ffaf42";ctx.beginPath();ctx.arc(0,12,10,0,TAU);ctx.fill();ctx.globalAlpha=1;ctx.fillStyle="#ffcf6e";ctx.fillRect(-2,8,4,6);
-   if(lv>=2){ctx.fillStyle="#d7b45d";ctx.beginPath();ctx.arc(0,-40,3+Math.min(5,lv),0,TAU);ctx.fill()}
-   if(b.hp/b.maxHp<.7){ctx.strokeStyle="#20120e";ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(-12,-4);ctx.lineTo(1,7);ctx.lineTo(-7,19);ctx.moveTo(9,-3);ctx.lineTo(3,10);ctx.stroke()}
+   if(lv>=2){ctx.fillStyle="#d7b45d";ctx.beginPath();ctx.arc(0,-58,3+Math.min(5,lv),0,TAU);ctx.fill()}
    const hpRatio=Math.max(0,Math.min(1,b.hp/b.maxHp));
    ctx.fillStyle="#130b0b";ctx.fillRect(-26,34,52,7);
    ctx.fillStyle=hpRatio>.60?"#66c161":hpRatio>.30?"#d4a341":"#d54b45";
@@ -830,8 +856,8 @@ function drawBuildings(){
     ctx.fillStyle="#e2f8ff";ctx.font="bold 10px sans-serif";ctx.textAlign="center";ctx.fillText("▲",0,59);
    }
    if(inactiveWallTower){
-    ctx.fillStyle="#441914e8";ctx.strokeStyle="#ffc1aa";ctx.lineWidth=2;ctx.beginPath();ctx.arc(23,-37,10,0,TAU);ctx.fill();ctx.stroke();
-    ctx.fillStyle="#fff2df";ctx.font="bold 13px system-ui";ctx.textAlign="center";ctx.fillText("!",23,-32);
+    ctx.fillStyle="#441914e8";ctx.strokeStyle="#ffc1aa";ctx.lineWidth=2;ctx.beginPath();ctx.arc(23,-46,10,0,TAU);ctx.fill();ctx.stroke();
+    ctx.fillStyle="#fff2df";ctx.font="bold 13px system-ui";ctx.textAlign="center";ctx.fillText("!",23,-41);
    }
   }else{
    if(b.key==="house"&&drawHouseBuildingSprite(b,lv)){

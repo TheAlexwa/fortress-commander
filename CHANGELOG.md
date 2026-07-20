@@ -1,5 +1,11 @@
 # Fortress Commander – Changelog
 
+## v1.15.31 – Turm- und Statuengrafiken
+
+- Neue Comic-Grafiken für Bogenturm, Armbrustturm, Katapult und Kriegerstatue integriert.
+- Rendering der vier Bauwerke auf Sprite-Basis umgestellt, inklusive Auswahlmarkierung sowie Lebens- und EXP-Anzeigen für Türme.
+- Versionsangaben im Spiel auf v1.15.31 aktualisiert.
+
 ## v1.15.30 – Außenbereich-Korrektur
 - die Außenbereich-Grafik wurde als durchgehende Wald- und Wiesenlandschaft ohne sichtbare Kachelgrenzen neu aufgebaut
 - die grüne Zone rund um die Festung bleibt zur Mitte hin offen und wird zu den Kartenrändern dichter bewaldet
