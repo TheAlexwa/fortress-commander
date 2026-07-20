@@ -178,8 +178,13 @@ export function createEntityAt(x, y, key, context) {
     showToast("Bauplatz belegt");
     return false;
   }
-  if (blueprint.kind === "tower" && bestSlot.type === "wall") {
-    const supportingWall = state.walls[bestSlot.i];
+  if (
+    blueprint.kind === "tower" &&
+    (bestSlot.type === "wall" || bestSlot.type === "outer-wall")
+  ) {
+    const supportingWall = bestSlot.type === "outer-wall"
+      ? state.outerWalls[bestSlot.i]
+      : state.walls[bestSlot.i];
     if (!supportingWall?.built || supportingWall.hp <= 0) {
       showToast("Der Mauerturmplatz benötigt ein intaktes Mauersegment");
       return false;

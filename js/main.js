@@ -93,6 +93,7 @@ import {
   MIDDLE_WALL_WOOD_MAX_HP,
   MIDDLE_GATE_COUNT,
   isMiddleTowerSpotSegment,
+  isOuterTowerSpotSegment,
   OUTER_WALL_SEGMENT_COUNT,
   OUTER_GATE_COUNT,
   createInnerWallSegments,
@@ -133,8 +134,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.4";
-const GAME_RELEASE_NAME="Mauerturmplätze am mittleren Ring";
+const GAME_VERSION="1.15.5";
+const GAME_RELEASE_NAME="Mauerturmplätze am äußeren Ring";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -284,7 +285,7 @@ function initMap(){
   state.walls.push({kind:"wall",ring:"middle",i,quarterIndex,segmentInQuarter,name:getMiddleWallSegmentName(i,WALL_SEGMENTS),a0,a1,am,material:"wood",built:false,hp:0,maxHp:WALL_MAX_HP});
   const towerSpot=isMiddleTowerSpotSegment(i);
   wallSlots.push({
-   type:"wall",i,towerSpot,
+   type:"wall",ring:"middle",i,towerSpot,
    x:CX+Math.cos(am)*(WALL_R-4),
    y:CY+Math.sin(am)*(WALL_R-4),
    building:null
@@ -294,6 +295,15 @@ function initMap(){
  state.middleGates.push(...createMiddleGates());
  state.outerWalls.push(...createOuterWallSegments());
  state.outerGates.push(...createOuterGates());
+ for(const wall of state.outerWalls){
+  if(!isOuterTowerSpotSegment(wall.i))continue;
+  wallSlots.push({
+   type:"outer-wall",ring:"outer",i:wall.i,towerSpot:true,
+   x:CX+Math.cos(wall.am)*(OUTER_WALL_R-4),
+   y:CY+Math.sin(wall.am)*(OUTER_WALL_R-4),
+   building:null
+  });
+ }
  const villageSlots=[
   [-190,-115],[150,-165],[-228,20],[225,55],
   [-190,155],[-75,245],[85,245],[245,-95],[-110,-245],[15,-235]
@@ -640,8 +650,10 @@ function combatCallbacks(){
 function nearestEnemy(x,y,range){return findNearestEnemy(state.enemies,x,y,range)}
 function isTowerOperational(building){
  if(!building||building.base?.kind!=="tower"||building.hp<=0)return false;
- if(building.slot?.type!=="wall")return true;
- const support=state.walls[building.slot.i];
+ if(building.slot?.type!=="wall"&&building.slot?.type!=="outer-wall")return true;
+ const support=building.slot.type==="outer-wall"
+  ?state.outerWalls[building.slot.i]
+  :state.walls[building.slot.i];
  return Boolean(support?.built&&support.hp>0&&support.material==="stone");
 }
 function towerCoverage(enemy){return getTowerCoverage(state.buildings.filter(isTowerOperational),enemy)}
@@ -1038,7 +1050,7 @@ function renderLevelUpDock(){
  const readyTowers=state.buildings.filter(b=>b.base.kind==="tower"&&b.hp>0&&(b.pendingUpgrades||0)>0);
  const signature=[
   ...readyUnits.map(u=>`u:${u.uid}:${u.pendingUpgrades}:${u.expLevel}`),
-  ...readyTowers.map(b=>{const slots=b.slot.type==="wall"?wallSlots:castleSlots;return `t:${b.slot.type}:${slots.indexOf(b.slot)}:${b.key}:${b.pendingUpgrades}:${b.expLevel}`})
+  ...readyTowers.map(b=>{const slots=b.slot.type==="castle"?castleSlots:wallSlots;return `t:${b.slot.type}:${slots.indexOf(b.slot)}:${b.key}:${b.pendingUpgrades}:${b.expLevel}`})
  ].join("|");
  if(signature===lastDockSignature)return;
  lastDockSignature=signature;
@@ -1046,7 +1058,7 @@ function renderLevelUpDock(){
   ...readyUnits.map(u=>`<button class="levelCard" data-kind="unit" data-id="${u.uid}" title="Einheiten-Aufwertung">
    <span class="spark"></span><span class="portrait">${u.key==="guard"?"🛡️":"🏹"}</span><span class="badge">${u.pendingUpgrades}</span><span class="lvl">Stufe ${u.expLevel}</span>
   </button>`),
-  ...readyTowers.map(b=>{const slots=b.slot.type==="wall"?wallSlots:castleSlots;return `<button class="levelCard" data-kind="tower" data-slot-type="${b.slot.type}" data-slot="${slots.indexOf(b.slot)}" title="${b.base.name}-Aufwertung">
+  ...readyTowers.map(b=>{const slots=b.slot.type==="castle"?castleSlots:wallSlots;return `<button class="levelCard" data-kind="tower" data-slot-type="${b.slot.type}" data-slot="${slots.indexOf(b.slot)}" title="${b.base.name}-Aufwertung">
    <span class="spark"></span><span class="portrait">🏰</span><span class="badge">${b.pendingUpgrades}</span><span class="lvl">Stufe ${b.expLevel}</span>
   </button>`})
  ].join("");
@@ -1055,8 +1067,8 @@ function focusUpgradeEntity(card){
  closeStats();hideRepairDecision();let entity=null;
  if(card.dataset.kind==="unit")entity=state.units.find(u=>u.uid===Number(card.dataset.id)&&u.hp>0);
  if(card.dataset.kind==="tower"){
-  const slotType=card.dataset.slotType==="wall"?"wall":"castle";
-  const slots=slotType==="wall"?wallSlots:castleSlots;
+  const slotType=card.dataset.slotType||"castle";
+  const slots=slotType==="castle"?castleSlots:wallSlots;
   const slot=slots[Number(card.dataset.slot)];
   entity=state.buildings.find(b=>b.base.kind==="tower"&&b.slot===slot&&b.hp>0);
  }
@@ -1109,14 +1121,14 @@ function pickAt(x,y){
  }
  return best;
 }
-function hitTestMiddleTowerSpot(x,y){
+function hitTestWallTowerSpot(x,y){
  let best=null,bestDistance=34;
  for(const slot of wallSlots){
   if(slot.towerSpot!==true||slot.building)continue;
   const distance=Math.hypot(x-slot.x,y-slot.y);
   if(distance<bestDistance){bestDistance=distance;best=slot}
  }
- return best?{type:"middle-tower",slot:best}:null;
+ return best?{type:best.type==="outer-wall"?"outer-tower":"middle-tower",slot:best}:null;
 }
 function showFutureLayoutHint(hit){
  if(!hit)return false;
@@ -1126,8 +1138,11 @@ function showFutureLayoutHint(hit){
   "outer-wall":"Holzpalisade auswählen und dieses Außensegment für 5 Holz errichten.",
   "outer-gate":"Holztor auswählen und diesen äußeren Torplatz für 20 Holz schließen.",
   "middle-tower":hit.slot&&state.walls[hit.slot.i]?.material==="stone"&&state.walls[hit.slot.i]?.hp>0
-   ? "Fester Mauerturmplatz: Wähle einen Turm im Baumenü."
-   : "Dieser Mauerturmplatz wird erst auf einer intakten Steinmauer freigeschaltet."
+   ? "Mittlerer Mauerturmplatz: Wähle einen Turm im Baumenü."
+   : "Dieser mittlere Mauerturmplatz wird erst auf einer intakten Steinmauer freigeschaltet.",
+  "outer-tower":hit.slot&&state.outerWalls[hit.slot.i]?.material==="stone"&&state.outerWalls[hit.slot.i]?.hp>0
+   ? "Äußerer Mauerturmplatz: Wähle einen Turm im Baumenü."
+   : "Dieser äußere Mauerturmplatz wird erst auf einer intakten Steinmauer freigeschaltet."
  };
  const text=messages[hit.type];
  if(!text)return false;
@@ -1136,7 +1151,7 @@ function showFutureLayoutHint(hit){
 }
 function worldTap(x,y){
  if(gameOver)return;
- const futureHit=hitTestMiddleTowerSpot(x,y)
+ const futureHit=hitTestWallTowerSpot(x,y)
   ||hitTestMiddleGate(x,y,{CX,CY,WALL_R})
   ||hitTestMiddleWallSegment(x,y,{CX,CY,WALL_R,segmentCount:state.walls.length})
   ||hitTestOuterGate(x,y,{CX,CY,radius:OUTER_WALL_R})

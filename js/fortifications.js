@@ -49,6 +49,17 @@ export const OUTER_WALL_BUILD_WOOD = 5;
 export const OUTER_WALL_WOOD_MAX_HP = 420;
 export const OUTER_WALL_STONE_MAX_HP = 950;
 export const OUTER_WALL_STONE_COST = 10;
+
+// Auch der äußere Ring erhält genau einen festen Turmplatz pro Viertelkreis.
+// Bei sieben Segmenten je Viertel liegt das mittlere Segment an den Indizes
+// 3, 10, 17 und 24.
+export const OUTER_TOWER_SPOT_SEGMENTS = Object.freeze([3, 10, 17, 24]);
+export const OUTER_TOWER_SPOT_COUNT = OUTER_TOWER_SPOT_SEGMENTS.length;
+
+export function isOuterTowerSpotSegment(segmentIndex) {
+  return OUTER_TOWER_SPOT_SEGMENTS.includes(Number(segmentIndex));
+}
+
 // Alias für bestehende Aufrufer aus älteren Patches.
 export const OUTER_WALL_MAX_HP = OUTER_WALL_WOOD_MAX_HP;
 

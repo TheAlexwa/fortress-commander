@@ -25,7 +25,9 @@ const SAVE_FORMAT = 1;
 function getSlotIndex(slot, { wallSlots, insideSlots, castleSlots }) {
   if (!slot) return -1;
 
-  if (slot.type === "wall") return wallSlots.indexOf(slot);
+  if (slot.type === "wall" || slot.type === "outer-wall") {
+    return wallSlots.indexOf(slot);
+  }
   if (slot.type === "inside") return insideSlots.indexOf(slot);
   if (slot.type === "castle") return castleSlots.indexOf(slot);
 
@@ -35,6 +37,7 @@ function getSlotIndex(slot, { wallSlots, insideSlots, castleSlots }) {
 function getSlotByReference(reference, { wallSlots, insideSlots, castleSlots }) {
   const slotGroups = {
     wall: wallSlots,
+    "outer-wall": wallSlots,
     inside: insideSlots,
     castle: castleSlots,
   };
@@ -256,7 +259,7 @@ function restoreBuilding(savedBuilding, context) {
   const slot = getSlotByReference(savedBuilding.slot, context);
   const allowedSlot =
     blueprint.kind === "tower"
-      ? slot.type === "wall" || slot.type === "castle"
+      ? slot.type === "wall" || slot.type === "outer-wall" || slot.type === "castle"
       : slot.type === "inside" &&
         (blueprint.slotRole === "statue"
           ? slot.role === "statue"
