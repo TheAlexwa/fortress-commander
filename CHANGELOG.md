@@ -1,5 +1,11 @@
 # Fortress Commander – Changelog
 
+## v1.15.15 – Kampfanimationen
+- Bogenschütze erhält eine kurze Spann- und Schussanimation
+- Burgwache erhält einen sichtbaren Schwertschlag mit Hieb-Bogen
+- Animationszustände werden direkt aus dem bestehenden Angriffstimer abgeleitet
+- Angriffswerte, Nachladezeit, Zielerfassung und Balance bleiben unverändert
+
 ## v1.15.14 – Laufanimationen
 - zwei Geh-Frames für den Bogenschützen ergänzt
 - zwei Geh-Frames für die Burgwache ergänzt

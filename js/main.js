@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.14";
-const GAME_RELEASE_NAME="Laufanimationen";
+const GAME_VERSION="1.15.15";
+const GAME_RELEASE_NAME="Kampfanimationen";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -942,6 +942,7 @@ function update(dt){
     const meleeReach=getGuardMeleeReach(u,target);
     if(d<=meleeReach){
      if(u.attackCd<=0){
+      u.attackAngle=Math.atan2(target.y-u.y,target.x-u.x);
       u.attackCd=u.rate;
       const dealt=u.damage*(1-(target.armor||0));target.hp-=dealt;target.lastHitEntity=u;
       grantCombatXp(u,Math.min(7,dealt*.075));burst(target.x,target.y,"#f2cf82",7);
@@ -973,7 +974,7 @@ function update(dt){
    if(t){
     const distance=Math.hypot(t.x-u.x,t.y-u.y);
     if(distance<=u.range){
-     if(u.attackCd<=0){u.attackCd=u.rate;shoot(u,t,u.damage*bonus,480,0,"#bfe0ff")}
+     if(u.attackCd<=0){u.attackAngle=Math.atan2(t.y-u.y,t.x-u.x);u.attackCd=u.rate;shoot(u,t,u.damage*bonus,480,0,"#bfe0ff")}
     }else{
      const dx=t.x-u.x,dy=t.y-u.y,d=Math.max(1,distance);
      const desiredX=u.x+dx/d*u.speed*dt,desiredY=u.y+dy/d*u.speed*dt;
@@ -992,7 +993,7 @@ function update(dt){
    u.autoTarget=null;
    const e=nearestEnemy(u.x,u.y,u.range);
    if(e){
-    if(u.attackCd<=0){u.attackCd=u.rate;shoot(u,e,u.damage*bonus,480,0,"#bfe0ff")}
+    if(u.attackCd<=0){u.attackAngle=Math.atan2(e.y-u.y,e.x-u.x);u.attackCd=u.rate;shoot(u,e,u.damage*bonus,480,0,"#bfe0ff")}
    }else{
     const dx=u.targetX-u.x,dy=u.targetY-u.y,d=Math.hypot(dx,dy);
     if(d>4){

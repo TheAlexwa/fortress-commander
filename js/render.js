@@ -809,14 +809,48 @@ function isUnitMoving(unit){
  return moving;
 }
 
+function getUnitAttackAnimation(unit){
+ const rate=Math.max(.01,unit.rate||0);
+ const cooldown=unit.attackCd||0;
+ const duration=Math.min(.34,Math.max(.18,rate*.46));
+ const elapsed=rate-cooldown;
+ const active=cooldown>0&&elapsed>=0&&elapsed<=duration;
+ return {active,progress:active?Math.max(0,Math.min(1,elapsed/duration)):0,angle:Number.isFinite(unit.attackAngle)?unit.attackAngle:0};
+}
+
+function drawArcherAttackEffect(animation){
+ const release=Math.max(0,(animation.progress-.34)/.66);
+ const travel=10+release*23;
+ ctx.save();ctx.rotate(animation.angle);ctx.globalAlpha=release>0?(1-release)*.95:0;ctx.strokeStyle="#eaf5ff";ctx.fillStyle="#f8e6a7";ctx.lineWidth=1.6;
+ ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(travel,0);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(travel+4,0);ctx.lineTo(travel-2,-3);ctx.lineTo(travel-1,3);ctx.closePath();ctx.fill();
+ ctx.restore();
+}
+
+function drawGuardAttackEffect(animation){
+ const swing=Math.sin(animation.progress*Math.PI);
+ ctx.save();ctx.rotate(animation.angle);ctx.globalAlpha=.18+.58*swing;ctx.strokeStyle="#fff0b0";ctx.lineCap="round";ctx.lineWidth=5;
+ ctx.beginPath();ctx.arc(0,0,28,-1.05,-1.05+1.75*animation.progress);ctx.stroke();
+ ctx.globalAlpha=.35*swing;ctx.strokeStyle="#ffffff";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,31,-1.0,-1.0+1.68*animation.progress);ctx.stroke();ctx.restore();
+}
+
 function drawUnitSprite(unit){
  const sprite=unitSprites[unit.key];
  if(!sprite)return false;
  const moving=isUnitMoving(unit);
- const image=moving?sprite.walk[Math.floor(performance.now()/180)%sprite.walk.length]:sprite.idle;
+ const attack=getUnitAttackAnimation(unit);
+ const image=!attack.active&&moving?sprite.walk[Math.floor(performance.now()/180)%sprite.walk.length]:sprite.idle;
  if(!image||!image.complete||!image.naturalWidth)return false;
  const {width,height,offsetY=0}=sprite.def;
+ ctx.save();
+ if(attack.active){
+  const pulse=Math.sin(attack.progress*Math.PI);
+  if(unit.key==="guard")ctx.rotate((attack.progress-.5)*.28);
+  else{ctx.translate(-Math.cos(attack.angle)*pulse*2.7,-Math.sin(attack.angle)*pulse*2.7);ctx.rotate((.5-attack.progress)*.08)}
+ }
  ctx.drawImage(image,-width/2,-height/2+offsetY,width,height);
+ ctx.restore();
+ if(attack.active){if(unit.key==="guard")drawGuardAttackEffect(attack);else drawArcherAttackEffect(attack)}
  return true;
 }
 function drawCraftsmen(){
