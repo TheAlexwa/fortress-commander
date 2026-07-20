@@ -1,5 +1,10 @@
 # Fortress Commander – Changelog
 
+## v1.15.28 – Turmplatz-Sichtbarkeit
+- Turmfundamente am mittleren und äußeren Mauerring werden nur noch bei ausgewähltem Turmbau angezeigt
+- bereits belegte Turmplätze erhalten keine zusätzliche Fundament-Markierung
+- das Verhalten entspricht jetzt den Turmplätzen direkt an der Holzfestung
+
 ## v1.15.27 – Innerer Mauerring-Ausbau
 - der innere Mauerring startet jetzt als Holzpalisade statt als feste Steinmauer
 - innere Segmente können wie die mittlere und äußere Holzpalisade zu Steinmauern ausgebaut werden

@@ -468,9 +468,12 @@ function wallTowerSpotReady(slot){
  return Boolean(slot?.towerSpot&&wall?.built&&wall.hp>0);
 }
 function drawWallTowerSpots(){
+ // Wie die vier Turmplätze an der Holzfestung werden die Fundamente am
+ // mittleren und äußeren Ring nur während einer aktiven Turmauswahl gezeigt.
+ if(BUILD[buildMode]?.kind!=="tower")return;
  for(const slot of wallSlots){
-  if(slot.towerSpot!==true)continue;
-  const ready=wallTowerSpotReady(slot),occupied=Boolean(slot.building);
+  if(slot.towerSpot!==true||slot.building)continue;
+  const ready=wallTowerSpotReady(slot),occupied=false;
   ctx.save();ctx.translate(slot.x,slot.y);
   ctx.fillStyle="#11130f99";ctx.beginPath();ctx.arc(5,7,31,0,TAU);ctx.fill();
   ctx.fillStyle=ready?"#7f7e72":"#4c493f";ctx.strokeStyle=ready?"#d8cfaa":"#9d8c6e";ctx.lineWidth=3;
