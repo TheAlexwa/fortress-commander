@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.23";
-const GAME_RELEASE_NAME="Festungshof-Grafik";
+const GAME_VERSION="1.15.24";
+const GAME_RELEASE_NAME="Festungshof-Freistellung";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){

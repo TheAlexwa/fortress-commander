@@ -1,5 +1,10 @@
 # Fortress Commander – Changelog
 
+## v1.15.24 – Festungshof-Freistellung
+- der sichtbare Karohintergrund außerhalb des runden Festungshofs wurde entfernt
+- `assets/environment/fortress-yard.webp` besitzt jetzt echte Transparenz außerhalb der Arena
+- Spielmechanik und Positionierung des Hofes bleiben unverändert
+
 ## v1.15.23 – Festungshof-Grafik
 - der braune Festungshof verwendet jetzt ein neues comicartiges Bodendesign
 - Rendering lädt das neue Asset `assets/environment/fortress-yard.webp` direkt aus dem Asset-Ordner
