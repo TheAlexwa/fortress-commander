@@ -62,6 +62,7 @@ import {
  findNearestGuardTarget,
  getGuardMeleeReach,
  GUARD_DEFEND_RADIUS_BONUS,
+ getGuardRadiusLimit,
  resolveGuardEnemyOverlap,
  isGuardTargetAllowed,
  createProjectile,
@@ -253,6 +254,35 @@ const WORLD_W=3000,WORLD_H=2200,CX=WORLD_W/2,CY=WORLD_H/2;
 const SIEGE_CAMPS=getSiegeCampPositions({WORLD_W,WORLD_H});
 const WALL_R=355,WALL_SEGMENTS=MIDDLE_WALL_SEGMENT_COUNT,WALL_MAX_HP=MIDDLE_WALL_WOOD_MAX_HP;
 const OUTER_WALL_R=WALL_R+OUTER_WALL_OFFSET;
+const ARCHER_ZONE_RADII={inner:Math.max(110,FIXED_INNER_WALL_RADIUS-18),middle:WALL_R-26,outer:OUTER_WALL_R-26};
+
+function unitZoneLabel(unit){
+ if(!unit||unit.kind!=="unit")return "";
+ if(unit.key==="guard"){
+  if(unit.stance==="offense")return "Ausfall";
+  return (unit.guardZone||"middle")==="outer"?"Äußerer Ring":"Burghalten";
+ }
+ const zone=unit.zoneMode||"middle";
+ return zone==="inner"?"Innenring":zone==="outer"?"Außenring":"Mittelring";
+}
+function archerZoneRadius(unit){return ARCHER_ZONE_RADII[(unit&&unit.zoneMode)||"middle"]||ARCHER_ZONE_RADII.middle}
+function canPlaceMoveTarget(unit,x,y){
+ const d=Math.hypot(x-CX,y-CY);
+ if(!unit||unit.kind!=="unit")return false;
+ if(unit.key==="guard"){
+  if(unit.stance==="offense")return d<OUTER_WALL_R+250&&d>95;
+  return d<(((unit.guardZone||"middle")==="outer"?OUTER_WALL_R:WALL_R)-10)&&d>95;
+ }
+ return d<archerZoneRadius(unit)&&d>95;
+}
+function currentActionText(){
+ if(unitCommandMode==="move"&&selected&&selected.kind==="unit")return `➜ Bewegungsziel für ${selected.key==="guard"?"Burgwache":"Bogenschütze"} wählen`;
+ if(buildMode){
+  const btn=document.querySelector(`.buildBtn[data-build="${buildMode}"] .name`);
+  return `🧱 ${btn?btn.textContent:buildMode} bauen · Bauplatz wählen`;
+ }
+ return "";
+}
 let vw=1000,vh=700,dpr=1,last=performance.now(),paused=true,gameOver=false;
 const BASE_MIN_ZOOM=.18;
 const CAMERA_OVERSCROLL_PX=120;
@@ -569,12 +599,49 @@ function updateUI(){
 
 function buildRequirement(key){return getBuildRequirement(state,key)}
 
+function isPanelVisible(id){const el=document.getElementById(id);return !!(el&&!el.classList.contains("hidden"));}
+function isBlockingPanelOpen(){
+ return ["statsScreen","workshopPanel","marketPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision"].some(isPanelVisible);
+}
+function closeTopBlockingPanel(){
+ if(isPanelVisible("enemyInfoOverlay")){closeEnemyInfo(true);return "Fenster geschlossen"}
+ if(isPanelVisible("marketPanel")){closeMarketPanel();return "Fenster geschlossen"}
+ if(isPanelVisible("workshopPanel")){closeWorkshopPanel(true);return "Fenster geschlossen"}
+ if(isPanelVisible("statsScreen")){closeStats();return "Fenster geschlossen"}
+ if(isPanelVisible("pauseMenu")){hidePauseMenu(true);return "Pause geschlossen"}
+ if(isPanelVisible("instructionsScreen")){returnToTitle();return "Anleitung geschlossen"}
+ if(isPanelVisible("repairDecision")){hideRepairDecision();return "Hinweis geschlossen"}
+ return "";
+}
 function closeAllBlockingPanels(){
  hideRepairDecision();
- const stats=document.getElementById("statsScreen");
- if(stats&&stats.classList.contains("hidden")){stats.style.display="none";stats.style.pointerEvents="none";stats.style.visibility="hidden"}
+ ["statsScreen","workshopPanel","marketPanel","enemyInfoOverlay","pauseMenu"].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el&&el.classList.contains("hidden")){el.style.display="none";el.style.pointerEvents="none";el.style.visibility="hidden"}
+ });
  const ins=document.getElementById("instructionsScreen");
  if(ins&&ins.classList.contains("hidden"))ins.style.pointerEvents="none";
+}
+function cancelActiveAction(source=""){
+ const panelMessage=closeTopBlockingPanel();
+ if(panelMessage){showToast(panelMessage);return true}
+ if(unitCommandMode){unitCommandMode=null;showToast("Bewegungsbefehl abgebrochen");return true}
+ if(buildMode){buildMode=null;showToast("Baumodus beendet");return true}
+ if(selected){selected=null;showToast("Auswahl aufgehoben");return true}
+ return false;
+}
+function cycleUnitZone(unit){
+ if(!unit||unit.kind!=="unit")return;
+ if(unit.key==="guard"){
+  unit.retreating=false;unit.autoTarget=null;unit.stance="defend";
+  unit.guardZone=(unit.guardZone||"middle")==="middle"?"outer":"middle";
+  showToast(unit.guardZone==="outer"?"Burgwache hält bis zum äußeren Ring":"Burgwache hält bis zur mittleren Mauer");
+  return;
+ }
+ const next={inner:"middle",middle:"outer",outer:"inner"};
+ unit.zoneMode=next[unit.zoneMode||"middle"];
+ unit.controlMode="auto";unit.autoTarget=null;unit.retargetCd=0;unitCommandMode=null;
+ showToast(`Bogenschütze hält jetzt den ${unitZoneLabel(unit)}`);
 }
 
 function siegeContext(){return {getWaveEnemyCount,selectWaveEnemyType}}
@@ -884,8 +951,8 @@ function update(dt){
      const travel=Math.max(0,d-stopDistance);
      const step=Math.min(travel,u.speed*dt);let nx=u.x+dx/d*step,ny=u.y+dy/d*step;
      const nr=Math.hypot(nx-CX,ny-CY);
-     const defendLimit=WALL_R+GUARD_DEFEND_RADIUS_BONUS;
-     if(u.stance==="defend"&&nr>defendLimit){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(defendLimit-2);ny=CY+Math.sin(a)*(defendLimit-2)}
+     const defendLimit=getGuardRadiusLimit(u,WALL_R);
+     if(u.stance!=="offense"&&nr>defendLimit){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(defendLimit-2);ny=CY+Math.sin(a)*(defendLimit-2)}
      if(u.stance==="offense"&&nr>WALL_R+330){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(WALL_R+328);ny=CY+Math.sin(a)*(WALL_R+328)}
      u.x=nx;u.y=ny;
     }
@@ -911,9 +978,10 @@ function update(dt){
      const dx=t.x-u.x,dy=t.y-u.y,d=Math.max(1,distance);
      const desiredX=u.x+dx/d*u.speed*dt,desiredY=u.y+dy/d*u.speed*dt;
      const dc=Math.hypot(desiredX-CX,desiredY-CY);
-     if(dc<WALL_R-24&&dc>92){u.x=desiredX;u.y=desiredY}
+     const zoneR=archerZoneRadius(u);
+     if(dc<zoneR&&dc>92){u.x=desiredX;u.y=desiredY}
      else{
-      const a=Math.atan2(t.y-CY,t.x-CX),r=WALL_R-28;
+      const a=Math.atan2(t.y-CY,t.x-CX),r=zoneR-4;
       u.targetX=CX+Math.cos(a)*r;u.targetY=CY+Math.sin(a)*r;
       const mdx=u.targetX-u.x,mdy=u.targetY-u.y,md=Math.hypot(mdx,mdy);
       if(md>4){const step=Math.min(md,u.speed*dt);u.x+=mdx/md*step;u.y+=mdy/md*step}
@@ -927,7 +995,14 @@ function update(dt){
     if(u.attackCd<=0){u.attackCd=u.rate;shoot(u,e,u.damage*bonus,480,0,"#bfe0ff")}
    }else{
     const dx=u.targetX-u.x,dy=u.targetY-u.y,d=Math.hypot(dx,dy);
-    if(d>4){const step=Math.min(d,u.speed*dt);u.x+=dx/d*step;u.y+=dy/d*step}
+    if(d>4){
+      const step=Math.min(d,u.speed*dt);
+      let nx=u.x+dx/d*step,ny=u.y+dy/d*step;
+      const zoneR=archerZoneRadius(u);
+      const nd=Math.hypot(nx-CX,ny-CY);
+      if(nd>zoneR){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(zoneR-2);ny=CY+Math.sin(a)*(zoneR-2)}
+      u.x=nx;u.y=ny;
+    }
    }
   }
  }
@@ -1134,10 +1209,10 @@ function renderBestiary(){const grid=document.getElementById("bestiaryGrid"),pro
 function openEnemyInfo(e){if(!e||e.dead)return;discoverEnemy(e.type);const overlay=document.getElementById("enemyInfoOverlay");document.getElementById("enemyInfoPortrait").textContent=ENEMY_CODEX[e.type]?.icon||"⚔";document.getElementById("enemyInfoName").textContent=e.name;document.getElementById("enemyInfoClan").textContent=`${e.clan||"Eisenclans"} · Welle ${state.wave}`;const roleTag=document.getElementById("enemyBossTag"),codex=ENEMY_CODEX[e.type]||{};roleTag.textContent=codex.role||(codex.boss?"BOSS":"KRIEGER");roleTag.hidden=false;roleTag.classList.toggle("isBoss",!!codex.boss);roleTag.classList.toggle("isElite",codex.role==="ELITE");document.getElementById("enemyHpText").textContent=`Leben ${Math.max(0,Math.ceil(e.hp))} / ${Math.ceil(e.maxHp)}`;document.getElementById("enemyHpFill").style.width=`${Math.max(0,Math.min(100,e.hp/e.maxHp*100))}%`;document.getElementById("enemyStatsGrid").innerHTML=`<div class="enemyStatTile"><span>Schaden</span><b>⚔ ${Math.round(e.damage)}</b></div><div class="enemyStatTile"><span>Rüstung</span><b>🛡 ${armorLabel(e.armor)}</b></div><div class="enemyStatTile"><span>Geschwindigkeit</span><b>➤ ${speedLabel(e.speed)} (${e.speed.toFixed(1)})</b></div><div class="enemyStatTile"><span>Angriffstakt</span><b>⏱ ${e.attackRate.toFixed(2)} s</b></div><div class="enemyStatTile"><span>Goldbelohnung</span><b>🪙 ${e.reward}</b></div><div class="enemyStatTile"><span>Besonderheit</span><b>${ENEMY_CODEX[e.type]?.strength||"–"}</b></div>`;document.getElementById("enemyInfoLore").textContent=ENEMY_CODEX[e.type]?.lore||"Krieger der Eisenclans.";overlay.classList.remove("hidden");paused=true;last=performance.now()}
 function closeEnemyInfo(resume=true){const o=document.getElementById("enemyInfoOverlay");if(o)o.classList.add("hidden");if(resume&&!gameOver){paused=false;last=performance.now()}}
 function pickAt(x,y){
- let best=null,bd=32;
- for(const e of state.enemies){if(e.dead)continue;const d=Math.hypot(x-e.x,y-e.y),visualRadius=e.radius*(Number.isFinite(e.visualScale)?e.visualScale:1);if(d<Math.max(bd,visualRadius+12)){bd=d;best=e}}
- for(const u of state.units){const d=Math.hypot(x-u.x,y-u.y);if(d<bd){bd=d;best=u}}
+ let best=null,bd=34;
+ for(const u of state.units){const d=Math.hypot(x-u.x,y-u.y);if(d<Math.max(24,bd)){bd=d;best=u}}
  for(const b of state.buildings){const d=Math.hypot(x-b.slot.x,y-b.slot.y);if(d<bd){bd=d;best=b}}
+ for(const e of state.enemies){if(e.dead)continue;const d=Math.hypot(x-e.x,y-e.y),visualRadius=e.radius*(Number.isFinite(e.visualScale)?e.visualScale:1);if(d<Math.max(bd,visualRadius+10)){bd=d;best=e}}
  const innerHit=hitTestInnerWallSegment(x,y,{CX,CY,radius:FIXED_INNER_WALL_RADIUS,tolerance:24});
  if(!best&&innerHit){
   const wall=state.innerWalls[innerHit.index];
@@ -1206,12 +1281,11 @@ function worldTap(x,y){
   return;
  }
  if(selected&&selected.kind==="unit"&&unitCommandMode==="move"){
-  const d=Math.hypot(x-CX,y-CY);
-  if(d<WALL_R-25&&d>95){
-   selected.controlMode="manual";selected.autoTarget=null;selected.targetX=x;selected.targetY=y;unitCommandMode=null;
+  if(canPlaceMoveTarget(selected,x,y)){
+   selected.controlMode="manual";selected.autoTarget=null;selected.targetX=x;selected.targetY=y;selected.moveMarkerUntil=performance.now()+5000;unitCommandMode=null;
    showToast("Bewegungsbefehl gesetzt");return;
   }
-  showToast("Ziel muss hinter der Mauer liegen");return;
+  showToast(selected.key==="guard"?"Ziel liegt außerhalb des erlaubten Einsatzbereichs":"Ziel liegt außerhalb des gewählten Bereichs");return;
  }
  const picked=pickAt(x,y);
  if(picked&&picked.kind==="enemy"){openEnemyInfo(picked);selected=null;unitCommandMode=null;return}
@@ -1285,6 +1359,8 @@ attachGameInput({
  getBuildMode:()=>buildMode,
  getSelected:()=>selected,
  clearSelectionModes:()=>{buildMode=null;selected=null;unitCommandMode=null},
+ cancelAction:cancelActiveAction,
+ hasBlockingPanelOpen:isBlockingPanelOpen,
  isPaused:()=>paused,
  setPaused:value=>{paused=value},
  isGameOver:()=>gameOver,
@@ -1315,10 +1391,14 @@ const statsTitle=document.getElementById("statsTitle");
 const statsCloseBtn=document.getElementById("statsCloseBtn");
 const selectionMoveBtn=document.getElementById("selectionMoveBtn");
 const selectionAutoBtn=document.getElementById("selectionAutoBtn");
+const selectionModeBtn=document.getElementById("selectionModeBtn");
 const selectionUpgradeBtn=document.getElementById("selectionUpgradeBtn");
 const selectionDetailsBtn=document.getElementById("selectionDetailsBtn");
 const selectionRangeBtn=document.getElementById("selectionRangeBtn");
 const selectionTalentBar=document.getElementById("selectionTalentBar");
+const activeModeBanner=document.getElementById("activeModeBanner");
+const activeModeText=document.getElementById("activeModeText");
+const activeModeCancelBtn=document.getElementById("activeModeCancelBtn");
 let rangeDisplayMode=0; // 0=Aus, 1=Auswahl, 2=Alle
 
 
@@ -1595,7 +1675,7 @@ statsScreen.addEventListener("click",e=>{if(e.target===statsScreen)closeStats()}
 selectionMoveBtn.addEventListener("click",e=>{
  e.stopPropagation();
  if(!selected||selected.kind!=="unit")return;
- if(selected.key==="guard"){selected.retreating=true;selected.retreatTimer=1.1;selected.autoTarget=null;unitCommandMode=null;showToast("Burgwache zieht sich zum Wachpunkt zurück");return}
+ if(selected.key==="guard"){selected.retreating=true;selected.retreatTimer=1.1;selected.autoTarget=null;unitCommandMode=null;selected.stance="defend";showToast("Burgwache zieht sich zum Wachpunkt zurück");return}
  selected.controlMode="manual";selected.autoTarget=null;unitCommandMode="move";
  selectionTalentBar.classList.add("hidden");
  showToast("Zielposition auf der Karte antippen");
@@ -1603,12 +1683,24 @@ selectionMoveBtn.addEventListener("click",e=>{
 selectionAutoBtn.addEventListener("click",e=>{
  e.stopPropagation();
  if(!selected||selected.kind!=="unit")return;
- if(selected.key==="guard"){selected.stance=selected.stance==="offense"?"defend":"offense";selected.retreating=false;selected.autoTarget=null;unitCommandMode=null;showToast(selected.stance==="offense"?"Ausfall: Burgwache kämpft außerhalb":"Burg halten: Burgwache bleibt innerhalb");return}
+ if(selected.key==="guard"){
+  const switchingToOffense=selected.stance!=="offense";
+  selected.stance=switchingToOffense?"offense":"defend";selected.retreating=false;selected.autoTarget=null;unitCommandMode=null;
+  showToast(switchingToOffense?"Ausfall: Burgwache greift auch außerhalb an":`Burg halten: ${unitZoneLabel(selected)}`);
+  return
+ }
  selected.controlMode=selected.controlMode==="auto"?"manual":"auto";
  selected.autoTarget=null;selected.retargetCd=0;unitCommandMode=null;
  selectionTalentBar.classList.add("hidden");
  showToast(selected.controlMode==="auto"?"Automatik aktiviert":"Automatik deaktiviert");
 });
+selectionModeBtn.addEventListener("click",e=>{
+ e.stopPropagation();
+ if(!selected||selected.kind!=="unit")return;
+ cycleUnitZone(selected);
+ selectionTalentBar.classList.add("hidden");
+});
+if(activeModeCancelBtn)activeModeCancelBtn.addEventListener("click",()=>cancelActiveAction("button"));
 selectionUpgradeBtn.addEventListener("click",e=>{
  e.preventDefault();e.stopPropagation();closeStats();hideRepairDecision();
  if(!selected)return;
@@ -1661,6 +1753,13 @@ navMenu.addEventListener("click",()=>{
 });
 setBuildTab("towers");
 
+function updateActionBanner(){
+ const text=currentActionText();
+ if(!activeModeBanner)return;
+ if(text){activeModeText.textContent=text;activeModeBanner.classList.remove("hidden")}
+ else activeModeBanner.classList.add("hidden");
+}
+
 function updateSelectionHud(){
  if(!selected){
   ui.selectionHud.classList.remove("show");
@@ -1672,7 +1771,7 @@ function updateSelectionHud(){
  const isUnit=selected.kind==="unit";
  if(isUnit){
   icon=selected.key==="guard"?"🛡️":"🏹";name=`${selected.key==="guard"?"Burgwache":"Bogenschütze"} · Stufe ${selected.expLevel||1}`;
-  details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${selected.key==="guard"?`🛡️ ${Math.round((selected.armor||0)*100)}% · ${selected.retreating?"Rückzug":selected.stance==="offense"?"Ausfall":"Burg halten"} · `:""}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP`;
+  details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${selected.key==="guard"?`🛡️ ${Math.round((selected.armor||0)*100)}% · ${selected.retreating?"Rückzug":unitZoneLabel(selected)} · `:`📍 ${unitZoneLabel(selected)} · `}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP`;
  }else if(selected.kind==="building"){
   icon=selected.base.kind==="tower"?"🏰":selected.base.decorative?"🗿":"🏠";
   name=selected.base.decorative
@@ -1700,6 +1799,7 @@ function updateSelectionHud(){
  ui.selectionText.innerHTML=`<b>${name}</b><br>${details}`;
  selectionMoveBtn.classList.toggle("hidden",!isUnit);
  selectionAutoBtn.classList.toggle("hidden",!isUnit);
+ selectionModeBtn.classList.toggle("hidden",!isUnit);
  const canShowRange=isUnit||(selected.kind==="building"&&selected.base.kind==="tower");
  selectionRangeBtn.classList.toggle("hidden",!canShowRange);
  const isNormalBuilding=selected.kind==="building"&&selected.base.kind!=="tower"&&!selected.base.decorative&&hasBuildingUpgradeEffect(selected);
@@ -1724,12 +1824,16 @@ function updateSelectionHud(){
   selectionUpgradeBtn.disabled=false;
  }
  selectionMoveBtn.classList.toggle("moveActive",isUnit&&unitCommandMode==="move");
+ selectionMoveBtn.classList.toggle("cancelActive",isUnit&&unitCommandMode==="move");
  const isGuard=isUnit&&selected.key==="guard";
  selectionMoveBtn.querySelector("span").textContent=isGuard?"↩":"➜";
- selectionMoveBtn.querySelector("small").textContent=isGuard?"Zurückziehen":"Bewegen";
+ selectionMoveBtn.querySelector("small").textContent=isGuard?"Rückzug":"Bewegen";
  selectionAutoBtn.classList.toggle("active",isGuard?selected.stance==="offense":isUnit&&selected.controlMode==="auto");
  selectionAutoBtn.querySelector("span").textContent=isGuard?(selected.stance==="offense"?"⚔️":"🛡️"):(isUnit&&selected.controlMode==="auto"?"🎯":"🛡️");
- selectionAutoBtn.querySelector("small").textContent=isGuard?(selected.stance==="offense"?"Ausfall":"Burg halten"):(isUnit&&selected.controlMode==="auto"?"Automatik an":"Automatik aus");
+ selectionAutoBtn.querySelector("small").textContent=isGuard?(selected.stance==="offense"?"Ausfall":"Automatik"):(isUnit&&selected.controlMode==="auto"?"Automatik an":"Automatik aus");
+ selectionModeBtn.classList.toggle("modeActive",isUnit);
+ selectionModeBtn.querySelector("span").textContent=isGuard?((selected.guardZone||"middle")==="outer"?"🛡️":"🏰"):(selected.zoneMode==="inner"?"◉":selected.zoneMode==="outer"?"◎":"◌");
+ selectionModeBtn.querySelector("small").textContent=isGuard?((selected.guardZone||"middle")==="outer"?"Äußerer Ring":"Burghalten"):unitZoneLabel(selected);
  const rangeLabels=["Aus","Auswahl","Alle"],rangeIcons=["◌","◎","◉"];
  selectionRangeBtn.querySelector("span").textContent=rangeIcons[rangeDisplayMode];
  selectionRangeBtn.querySelector("small").textContent=`Reichweite: ${rangeLabels[rangeDisplayMode]}`;
@@ -1772,7 +1876,7 @@ function updateSelectionHud(){
 
 function loop(now){
  const dt=Math.min(.04,Math.max(0,(now-last)/1000));last=now;
- try{update(dt);draw();renderLevelUpDock();updateSelectionHud();updateUI()}
+ try{update(dt);draw();renderLevelUpDock();updateSelectionHud();updateActionBanner();updateUI()}
  catch(err){console.error("Spielschleife abgefangen:",err);closeAllBlockingPanels();canvas.style.pointerEvents="auto";showToast("Darstellungsfehler abgefangen – Spiel läuft weiter")}
  requestAnimationFrame(loop)
 }

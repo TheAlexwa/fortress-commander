@@ -118,7 +118,11 @@ export function createEntityAt(x, y, key, context) {
     state.wood < blueprint.wood ||
     state.stone < stoneCost
   ) {
-    showToast("Nicht genug Ressourcen");
+    const missing = [];
+    if (state.gold < blueprint.gold) missing.push(`${Math.max(0, blueprint.gold - state.gold)} Gold`);
+    if (state.wood < blueprint.wood) missing.push(`${Math.max(0, blueprint.wood - state.wood)} Holz`);
+    if (state.stone < stoneCost) missing.push(`${Math.max(0, stoneCost - state.stone)} Stein`);
+    showToast(`Es fehlen ${missing.join(" und ")}`);
     return false;
   }
 
@@ -153,6 +157,8 @@ export function createEntityAt(x, y, key, context) {
       speed: stats.speed,
       armor: stats.armor,
       stance: key === "guard" ? "defend" : null,
+      guardZone: key === "guard" ? "middle" : null,
+      zoneMode: key === "guard" ? null : "middle",
       retreating: false,
       level: 1,
       expLevel: 1,

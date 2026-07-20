@@ -220,10 +220,12 @@ export function renderGameUI({
         ? "Rückzug"
         : selected.stance === "offense"
           ? "Ausfall"
-          : "Burg halten"
+          : selected.guardZone === "outer"
+            ? "Äußerer Ring"
+            : "Burg halten"
       : selected.controlMode === "auto"
-        ? "Automatik"
-        : "Manuell";
+        ? `Automatik · ${selected.zoneMode === "inner" ? "Innenring" : selected.zoneMode === "outer" ? "Außenring" : "Mittelring"}`
+        : `Manuell · ${selected.zoneMode === "inner" ? "Innenring" : selected.zoneMode === "outer" ? "Außenring" : "Mittelring"}`;
 
     ui.selected.innerHTML = `<b>${unitName} · Erfahrungsstufe ${selected.expLevel || 1}</b><br>HP ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · EXP ${Math.floor(selected.xp || 0)}/${Math.floor(selected.xpMax || 65)}<br>Schaden ${Math.round(selected.damage)} · Rüstung ${Math.round((selected.armor || 0) * 100)}% · Tempo ${Math.round(selected.speed)}<br>Modus: ${unitMode}${selected.pendingUpgrades ? ` · <b>${selected.pendingUpgrades} Aufwertung bereit</b>` : ""}<br>Aufwertung: EXP-Auswahl oder Werkstatt-Forschung`;
     ui.upgrade.style.display = "none";

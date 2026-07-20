@@ -761,3 +761,12 @@ footer{min-height:0}
  .navBtn{height:58px}
  .navBtn .navIcon{font-size:23px}
 }
+
+
+#activeModeBanner{position:absolute;left:50%;bottom:196px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:10px 16px;border-radius:18px;background:linear-gradient(180deg,#0f181c,#13242d);border:1px solid rgba(255,227,146,.36);box-shadow:0 12px 30px rgba(0,0,0,.35);z-index:18;color:#eef7ff;font-weight:700;pointer-events:auto}
+#activeModeBanner.hidden{display:none}
+#activeModeBanner button{border:none;border-radius:12px;padding:8px 12px;background:linear-gradient(180deg,#795224,#5d3b17);color:#fff4cf;font-weight:700;cursor:pointer}
+#activeModeBanner button:hover{filter:brightness(1.08)}
+.selectionAction.cancelActive{outline:2px solid rgba(255,226,138,.55)}
+.selectionAction.modeActive{outline:2px solid rgba(120,196,255,.45)}
+.selectionAction.disabledHint{opacity:.65}

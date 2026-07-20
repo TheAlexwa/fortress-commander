@@ -17,6 +17,8 @@ export function attachGameInput({
   getBuildMode,
   getSelected,
   clearSelectionModes,
+  cancelAction,
+  hasBlockingPanelOpen,
   isPaused,
   setPaused,
   isGameOver,
@@ -101,7 +103,8 @@ export function attachGameInput({
     if (pointerDown && pointerDown.id === event.pointerId) {
       const dx = event.clientX - pointerDown.x;
       const dy = event.clientY - pointerDown.y;
-      if (Math.hypot(dx, dy) > 8) dragged = true;
+      const dragThreshold = event.pointerType === "touch" ? 14 : 8;
+      if (Math.hypot(dx, dy) > dragThreshold) dragged = true;
       const zoom = getZoom();
       setCamera(pointerDown.camX - dx / zoom, pointerDown.camY - dy / zoom);
       clampCamera();
@@ -158,8 +161,10 @@ export function attachGameInput({
       ArrowUp: [0, -1], w: [0, -1], W: [0, -1],
       ArrowDown: [0, 1], s: [0, 1], S: [0, 1],
     };
+    const blockerOpen = typeof hasBlockingPanelOpen === "function" && hasBlockingPanelOpen();
     const pan = panKeys[event.key];
     if (pan) {
+      if (blockerOpen) return;
       event.preventDefault();
       const camera = getCamera();
       const step = (event.shiftKey ? 230 : 115) / Math.max(0.1, getZoom());
@@ -175,9 +180,13 @@ export function attachGameInput({
 
     if (event.code === "Space") {
       event.preventDefault();
-      startWave();
+      if (!blockerOpen) startWave();
     }
-    if (event.key === "Escape") clearSelectionModes();
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (typeof cancelAction === "function") cancelAction("escape");
+      else clearSelectionModes();
+    }
     if (event.key.toLowerCase() === "p") {
       if (isPaused()) hidePauseMenu(true);
       else showPauseMenu();
@@ -199,6 +208,10 @@ export function attachGameInput({
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerEnd);
   canvas.addEventListener("pointercancel", onPointerEnd);
+  canvas.addEventListener("contextmenu", event => {
+    event.preventDefault();
+    if (typeof cancelAction === "function") cancelAction("context");
+  });
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("resize", onResize);
   window.addEventListener("orientationchange", onOrientationChange);

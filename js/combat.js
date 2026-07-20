@@ -156,6 +156,14 @@ export function findNearestCastleTower(buildings, enemy) {
 
 
 export const GUARD_DEFEND_RADIUS_BONUS = 135;
+export const GUARD_OUTER_HOLD_RADIUS_BONUS = 235;
+
+export function getGuardRadiusLimit(unit, wallRadius) {
+  if (!unit || unit.key !== "guard") return wallRadius + GUARD_DEFEND_RADIUS_BONUS;
+  if (unit.stance === "offense") return wallRadius + 330;
+  const zone = unit.guardZone || "middle";
+  return wallRadius + (zone === "outer" ? GUARD_OUTER_HOLD_RADIUS_BONUS : GUARD_DEFEND_RADIUS_BONUS);
+}
 
 export function isGuardTargetAllowed(
   unit,
@@ -165,16 +173,7 @@ export function isGuardTargetAllowed(
   if (!unit || unit.key !== "guard" || !enemy || enemy.hp <= 0) return false;
 
   const enemyCenterRadius = Math.hypot(enemy.x - centerX, enemy.y - centerY);
-  if (
-    unit.stance === "defend" &&
-    enemyCenterRadius > wallRadius + GUARD_DEFEND_RADIUS_BONUS
-  ) {
-    return false;
-  }
-  if (unit.stance === "offense" && enemyCenterRadius > wallRadius + 330) {
-    return false;
-  }
-  return true;
+  return enemyCenterRadius <= getGuardRadiusLimit(unit, wallRadius);
 }
 
 export function findNearestGuardTarget(
@@ -237,11 +236,11 @@ export function resolveGuardEnemyOverlap(
   unit.x += (dx / directionLength) * push;
   unit.y += (dy / directionLength) * push;
 
-  if (unit.stance === "defend") {
+  if (unit.stance !== "offense") {
     const ux = unit.x - centerX;
     const uy = unit.y - centerY;
     const unitRadius = Math.hypot(ux, uy);
-    const maximumRadius = wallRadius + GUARD_DEFEND_RADIUS_BONUS - 10;
+    const maximumRadius = getGuardRadiusLimit(unit, wallRadius) - 10;
     if (unitRadius > maximumRadius) {
       unit.x = centerX + (ux / unitRadius) * maximumRadius;
       unit.y = centerY + (uy / unitRadius) * maximumRadius;
