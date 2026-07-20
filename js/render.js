@@ -394,6 +394,30 @@ function drawOuterWallSegment(wall,radius){
  ctx.restore();
 }
 
+function middleTowerSupport(slot){
+ return slot?.type==="wall"?state.walls?.[slot.i]||null:null;
+}
+function middleTowerSpotReady(slot){
+ const wall=middleTowerSupport(slot);
+ return Boolean(slot?.towerSpot&&wall?.built&&wall.hp>0&&wall.material==="stone");
+}
+function drawMiddleTowerSpots(){
+ for(const slot of wallSlots){
+  if(slot.towerSpot!==true)continue;
+  const ready=middleTowerSpotReady(slot),occupied=Boolean(slot.building);
+  ctx.save();ctx.translate(slot.x,slot.y);
+  ctx.fillStyle="#11130f99";ctx.beginPath();ctx.arc(5,7,31,0,TAU);ctx.fill();
+  ctx.fillStyle=ready?"#7f7e72":"#4c493f";ctx.strokeStyle=ready?"#d8cfaa":"#9d8c6e";ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(0,0,27,0,TAU);ctx.fill();ctx.stroke();
+  ctx.strokeStyle=ready?"#ece3bd":"#756b59";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,17,0,TAU);ctx.stroke();
+  for(let i=0;i<8;i++){const a=i/8*TAU;ctx.fillStyle=ready?"#aaa592":"#666052";ctx.fillRect(Math.cos(a)*23-4,Math.sin(a)*23-4,8,8)}
+  if(!occupied){
+   ctx.fillStyle=ready?"#fff1bd":"#d3bd91";ctx.font="bold 8px system-ui";ctx.textAlign="center";
+   ctx.fillText(ready?"TURMPLATZ":"STEIN NÖTIG",0,40);
+  }
+  ctx.restore();
+ }
+}
 function drawFutureFortressLayout(){
  const layout=getFutureLayoutGeometry({CX,CY,WALL_R});
  ctx.save();
@@ -418,6 +442,7 @@ function drawFutureFortressLayout(){
  ctx.fillStyle="#e8d19dcc";ctx.font="bold 10px system-ui";ctx.textAlign="center";
  ctx.fillText(`MITTLERER RING · ${MIDDLE_WALL_SEGMENT_COUNT} SEGMENTE · ${MIDDLE_GATE_COUNT} TORE`,CX,CY-WALL_R-30);
  for(const gate of state.middleGates||[])drawMiddleGate(gate);
+ drawMiddleTowerSpots();
  // Achtundzwanzig einzeln baubare Segmente der äußeren Holzpalisade.
  for(const wall of state.outerWalls||[]){
   if(wall.built)drawOuterWallSegment(wall,layout.outerRadius);
@@ -565,12 +590,15 @@ function drawSlots(){
  if(!buildMode)return;
  for(const s of [...wallSlots,...insideSlots,...castleSlots]){
   if(s.building)continue;
-  const c=BUILD[buildMode],valid=c&&((c.kind==="tower"&&s.type==="castle")||(c.kind==="inside"&&s.type==="inside"&&(c.slotRole==="statue"?s.role==="statue":s.role!=="statue")));
+  const c=BUILD[buildMode];
+  const wallTower=c?.kind==="tower"&&s.type==="wall"&&s.towerSpot===true;
+  const valid=c&&((c.kind==="tower"&&(s.type==="castle"||wallTower))||(c.kind==="inside"&&s.type==="inside"&&(c.slotRole==="statue"?s.role==="statue":s.role!=="statue")));
   if(!valid)continue;
+  const wallReady=!wallTower||middleTowerSpotReady(s);
   ctx.save();
   const pulse=.72+Math.sin(performance.now()*.006+s.x*.01)*.18;
-  ctx.globalAlpha=pulse;ctx.shadowBlur=20;ctx.shadowColor="#ffe38a";
-  ctx.fillStyle="#c39b4266";ctx.strokeStyle="#ffe9a2";ctx.lineWidth=3;
+  ctx.globalAlpha=pulse;ctx.shadowBlur=20;ctx.shadowColor=wallReady?"#ffe38a":"#d76a55";
+  ctx.fillStyle=wallReady?"#c39b4266":"#7d393355";ctx.strokeStyle=wallReady?"#ffe9a2":"#f1a18f";ctx.lineWidth=3;
   const slotRadius=s.type==="castle"?20:s.type==="wall"?24:31;
   ctx.beginPath();ctx.arc(s.x,s.y,slotRadius,0,TAU);ctx.fill();ctx.stroke();
   ctx.strokeStyle="#fff3c277";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(s.x,s.y,Math.max(12,slotRadius-9),0,TAU);ctx.stroke();
@@ -608,11 +636,11 @@ function drawRangeIndicators(){
  const selectedOnly=rangeDisplayMode===1;
  if(selectedOnly){
   if(selected&&selected.kind==="unit"&&selected.hp>0)drawRangeCircle(selected.x,selected.y,selected.range,"#8bd68d");
-  else if(selected&&selected.kind==="building"&&selected.base.kind==="tower"&&selected.hp>0)drawRangeCircle(selected.slot.x,selected.slot.y,selected.range,"#72bfff");
+  else if(selected&&selected.kind==="building"&&selected.base.kind==="tower"&&selected.hp>0&&(selected.slot.type!=="wall"||middleTowerSpotReady(selected.slot)))drawRangeCircle(selected.slot.x,selected.slot.y,selected.range,"#72bfff");
   return;
  }
  for(const b of state.buildings){
-  if(b.base.kind==="tower"&&b.hp>0)drawRangeCircle(b.slot.x,b.slot.y,b.range,b.key==="catapult"?"#c9a1ff":"#72bfff");
+  if(b.base.kind==="tower"&&b.hp>0&&(b.slot.type!=="wall"||middleTowerSpotReady(b.slot)))drawRangeCircle(b.slot.x,b.slot.y,b.range,b.key==="catapult"?"#c9a1ff":"#72bfff");
  }
  for(const u of state.units){
   if(u.hp>0)drawRangeCircle(u.x,u.y,u.range,"#8bd68d");
@@ -623,6 +651,7 @@ function drawBuildings(){
  for(const b of state.buildings){
   const x=b.slot.x,y=b.slot.y;ctx.save();ctx.translate(x,y);
   const lv=b.level||1,isTower=b.base.kind==="tower";
+  const inactiveWallTower=isTower&&b.slot.type==="wall"&&!middleTowerSpotReady(b.slot);
   ctx.fillStyle="#07090788";ctx.beginPath();ctx.ellipse(8,20,35,15,0,0,TAU);ctx.fill();
   if(selected===b){ctx.strokeStyle="#ffe184";ctx.shadowBlur=22;ctx.shadowColor="#ffd665";ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,43,0,TAU);ctx.stroke();ctx.shadowBlur=0}
   if(b.key==="statue"){
@@ -671,6 +700,10 @@ function drawBuildings(){
    ctx.strokeStyle="#9edcff66";ctx.lineWidth=1;ctx.strokeRect(-26,43,52,6);
    if((b.pendingUpgrades||0)>0){
     ctx.fillStyle="#e2f8ff";ctx.font="bold 10px sans-serif";ctx.textAlign="center";ctx.fillText("▲",0,59);
+   }
+   if(inactiveWallTower){
+    ctx.fillStyle="#441914e8";ctx.strokeStyle="#ffc1aa";ctx.lineWidth=2;ctx.beginPath();ctx.arc(23,-37,10,0,TAU);ctx.fill();ctx.stroke();
+    ctx.fillStyle="#fff2df";ctx.font="bold 13px system-ui";ctx.textAlign="center";ctx.fillText("!",23,-32);
    }
   }else{
    // masonry base

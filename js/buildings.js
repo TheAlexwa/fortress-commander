@@ -144,7 +144,10 @@ export function createEntityAt(x, y, key, context) {
 
   const slots =
     blueprint.kind === "tower"
-      ? [...castleSlots]
+      ? [
+          ...castleSlots,
+          ...wallSlots.filter((slot) => slot.towerSpot === true),
+        ]
       : insideSlots.filter((slot) =>
           blueprint.slotRole === "statue"
             ? slot.role === "statue"
@@ -175,13 +178,16 @@ export function createEntityAt(x, y, key, context) {
     showToast("Bauplatz belegt");
     return false;
   }
-  if (
-    blueprint.kind === "tower" &&
-    bestSlot.type === "wall" &&
-    state.walls[bestSlot.i].hp <= 0
-  ) {
-    showToast("Auf einer zerstörten Mauer kann nicht gebaut werden");
-    return false;
+  if (blueprint.kind === "tower" && bestSlot.type === "wall") {
+    const supportingWall = state.walls[bestSlot.i];
+    if (!supportingWall?.built || supportingWall.hp <= 0) {
+      showToast("Der Mauerturmplatz benötigt ein intaktes Mauersegment");
+      return false;
+    }
+    if (supportingWall.material !== "stone") {
+      showToast("Mauertürme können nur auf einer intakten Steinmauer errichtet werden");
+      return false;
+    }
   }
 
   state.gold -= blueprint.gold;

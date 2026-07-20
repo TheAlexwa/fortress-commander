@@ -22,6 +22,16 @@ export const MIDDLE_WALL_WOOD_MAX_HP = 420;
 export const MIDDLE_WALL_STONE_MAX_HP = 850;
 export const MIDDLE_WALL_STONE_COST = 8;
 
+// Vier feste Mauerturmplätze liegen jeweils auf dem mittleren Segment eines
+// Viertelkreises. Dadurch bleibt der Ring lesbar und die Zahl zusätzlicher
+// Türme kontrollierbar.
+export const MIDDLE_TOWER_SPOT_SEGMENTS = Object.freeze([2, 7, 12, 17]);
+export const MIDDLE_TOWER_SPOT_COUNT = MIDDLE_TOWER_SPOT_SEGMENTS.length;
+
+export function isMiddleTowerSpotSegment(segmentIndex) {
+  return MIDDLE_TOWER_SPOT_SEGMENTS.includes(Number(segmentIndex));
+}
+
 export const MIDDLE_GATE_COUNT = 4;
 export const MIDDLE_GATE_BUILD_WOOD = 20;
 export const MIDDLE_GATE_WOOD_MAX_HP = 620;

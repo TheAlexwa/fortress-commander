@@ -237,7 +237,18 @@ export function renderGameUI({
   }
 
   if (building.base.kind === "tower") {
-    ui.selected.innerHTML = `<b>${building.base.name} · EXP-Stufe ${building.expLevel || 1}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · EXP ${Math.floor(building.xp || 0)}/${Math.floor(building.xpMax || 90)}<br>Schaden ${Math.round(building.damage)} · Reichweite ${Math.round(building.range)}${building.pendingUpgrades ? ` · <b>${building.pendingUpgrades} EXP-Aufwertung bereit</b>` : ""}<br>Aufwertung: nur über EXP; Turmforschung folgt separat`;
+    const supportingWall = building.slot?.type === "wall"
+      ? state.walls?.[building.slot.i] || null
+      : null;
+    const wallTowerReady = !supportingWall || (
+      supportingWall.built &&
+      supportingWall.hp > 0 &&
+      supportingWall.material === "stone"
+    );
+    const placementInfo = supportingWall
+      ? `<br>Standort: mittlerer Mauerturmplatz · ${wallTowerReady ? "einsatzbereit" : "<b>inaktiv – intakte Steinmauer nötig</b>"}`
+      : "<br>Standort: Kernburg";
+    ui.selected.innerHTML = `<b>${building.base.name} · EXP-Stufe ${building.expLevel || 1}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · EXP ${Math.floor(building.xp || 0)}/${Math.floor(building.xpMax || 90)}<br>Schaden ${Math.round(building.damage)} · Reichweite ${Math.round(building.range)}${building.pendingUpgrades ? ` · <b>${building.pendingUpgrades} EXP-Aufwertung bereit</b>` : ""}${placementInfo}<br>Aufwertung: nur über EXP und Forschung`;
     ui.upgrade.style.display = "none";
     ui.sell.disabled = false;
     return;
