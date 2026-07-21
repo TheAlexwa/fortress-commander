@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.15.45 – Taktisches Kontersystem</title>
+<title>Fortress Commander v1.15.46 – Gegnerfähigkeiten & Kampfinfos</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,7 +20,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Spiel starten">Spiel starten</button>
-  <div id="gameVersionBadge">v1.15.45</div>
+  <div id="gameVersionBadge">v1.15.46</div>
   <div id="developmentNotice"><strong>🏗 Festungsumbau in Entwicklung</strong><span>Mauertürme stehen jetzt bereits auf Holzpalisaden. Der mittlere Ring bietet acht, der äußere Ring zwölf feste Turmplätze.</span></div>
  </div>
 </div>
@@ -99,6 +99,22 @@
    <div class="guideBody"><div class="guideTip"><b>⛺ Belagerungsphase:</b> Zwischen den Angriffen sammeln sich Gegner sichtbar in vier Außenlagern. Nord-, Ost-, Süd- und Westlager sind jeweils einem Festungstor zugeordnet. Der Button <b>Angriff</b> setzt die Armee in mehreren Angriffspulsen in Bewegung; wartender Nachschub bleibt an seinen Lagern sichtbar und rückt von der vorgesehenen Front nach. Zahlen und Gefahrensymbole zeigen die Stärke jeder Angriffsrichtung.</div><div class="guideTip"><b>👥 Belagerungsdichte:</b> Ab Welle 4 erscheinen deutlich mehr Plünderer, Späher und Speerjäger. Ihre gemeinsame Gesamtstärke, Belohnung und Erfahrung bleiben über ein Bedrohungsbudget nahezu gleich. Gegner besitzen einen weichen persönlichen Abstand, bilden sichtbare Reihen und können nicht mehr vollständig auf demselben Punkt stehen. An Toren greifen höchstens sechs und an Mauersegmenten höchstens vier bis fünf Gegner gleichzeitig an; die nächsten Reihen rücken automatisch nach.</div><div class="guideTip"><b>🧭 Angriffsformationen:</b> Jede Welle kündigt ihren Typ bereits in der Belagerungsphase an. Späherangriffe nutzen zwei gegenüberliegende Flanken, Schildwälle bündeln sich an einer Hauptfront, Berserker stürmen über zwei benachbarte Seiten, Vier-Fronten-Angriffe verteilen sich gleichmäßig und jede achte Welle wird vom Häuptling angeführt.</div><div class="guideTip"><b>🔱 Upgrade-Zentrale:</b> Das Upgrade-Symbol im unteren Hauptmenü öffnet eine Gesamtübersicht für Gebäude, Einheiten, Forschung, globale Boni und Empfehlungen. Reguläre Versorgungsgebäude können dort direkt aufgewertet werden. Einheiten und Türme erhalten keine direkten Gold-/Holz-Upgrades; ihre individuelle Entwicklung läuft über Kampf-EXP.</div><div class="guideTip"><b>Globale Forschungskosten:</b> Forschung in einem Zweig verteuert alle anderen Zweige. Eine höherstufige Werkstatt reduziert diesen globalen Aufschlag von 30 % bis auf 10 %.</div><ul><li>Gold, Holz und Stein oben links zeigen den aktuellen Bestand. Antippen öffnet die ausführliche Übersicht; Forschungspunkte stehen am Forschungsbutton und im Forschungsfenster.</li><li>Nach jeder bestandenen Welle erhältst du Forschungspunkte und eine Schadensübersicht.</li><li>Handwerker reparieren je nach Gebäudestufe 16 bis 24 Lebenspunkte pro Takt und verbrauchen 0,5 Holz pro Reparaturtakt, bevor Forschung wirkt.</li><li>Kleine und normale Gegner verursachen an Mauern nur 25 % ihres normalen Schadens; Schildträger, Berserker und Bosse verursachen vollen Mauerschaden.</li></ul><div class="guideTip">Baue zuerst mindestens einen schnellen Turm. Ergänze danach Unterkünfte und Holzproduktion, bevor die Reparaturkosten stark steigen.</div></div>
   </details>
 
+
+  <details class="guideSection">
+   <summary>🧠 Gegnerfähigkeiten & taktische Konter</summary>
+   <div class="guideBody">
+    <div class="guideTip"><b>ⓘ Direktinfo:</b> In der Turm- und Einheitenauswahl öffnet das kleine Informationssymbol eine kompakte Übersicht mit Rolle, Stärken, Schwächen und empfohlenen Gegnerkontern.</div>
+    <div class="guideGrid">
+     <article class="guideCard"><h3>🪓 Plünderer</h3><p>Verursachen im Innenhof 40 % zusätzlichen Schaden an Versorgungsgebäuden.</p><div class="guideMeta"><span>Konter: Bogenturm</span><span>Burgwache an Breschen</span></div></article>
+     <article class="guideCard"><h3>🥾 Clanspäher</h3><p>Suchen regelmäßig nach offenen oder beschädigten Toren und wechseln dafür ihre Angriffsfront.</p><div class="guideMeta"><span>Konter: Bogenturm</span><span>Ziel: schnelle Gegner</span></div></article>
+     <article class="guideCard"><h3>🔱 Speerjäger</h3><p>Greifen Verteidiger aus der zweiten Reihe an und benötigen keinen direkten Nahkampfkontakt.</p><div class="guideMeta"><span>Konter: Bogenschützen</span><span>Katapult-Gruppenschaden</span></div></article>
+     <article class="guideCard"><h3>🛡️ Eisenschild</h3><p>Schützt nahe Verbündete vor Projektilen. Katapult-Rüstungsbruch setzt die Schilddeckung vorübergehend außer Kraft.</p><div class="guideMeta"><span>Konter: Armbrust</span><span>Katapult</span></div></article>
+     <article class="guideCard"><h3>⚔️ Blutberserker</h3><p>Unter 50 % Leben erhält er +30 % Tempo und Schaden sowie schnellere Angriffe.</p><div class="guideMeta"><span>Früh fokussieren</span><span>Ziel: stärkste Gegner</span></div></article>
+     <article class="guideCard"><h3>👑 Häuptling</h3><p>Stärkt seine Eskorte mit Schaden, Tempo und Rüstung. Sein Tod verursacht einen kurzen Moralbruch.</p><div class="guideMeta"><span>Konter: Andreas</span><span>Armbrust & Fokusfeuer</span></div></article>
+    </div>
+   </div>
+  </details>
+
   <details class="guideSection">
    <summary>📖 Gegnerlexikon: Eisenclans</summary>
    <div class="guideBody"><p class="bestiaryIntro">Gegner werden dauerhaft enthüllt, sobald sie dir erstmals begegnen. Tippe im Kampf auf einen Feind, um seine aktuellen Werte, Rüstung und Besonderheiten zu sehen.</p><div id="bestiaryProgress" class="bestiaryProgress">0 / 6 entdeckt</div><div id="bestiaryGrid" class="bestiaryGrid" aria-live="polite"></div></div>
@@ -172,11 +188,11 @@
  <div id="buildTray">
   <button class="buildBtn" data-build="palisade" data-group="towers" data-icon="🧱"><div class="name">Holzpalisade</div><div class="cost">🪵 5</div><div class="desc">Mittlerer oder äußerer Ring</div></button>
   <button class="buildBtn" data-build="gate" data-group="towers" data-icon="🚪"><div class="name">Holztor</div><div class="cost">🪵 20</div><div class="desc">Mittlerer oder äußerer Ring</div></button>
-  <button class="buildBtn" data-build="archer" data-group="towers" data-icon="🏹"><div class="name">Bogenturm</div><div class="cost">🪙 60 · 🪵 20</div><div class="desc">Leichte Gegner +35 %</div></button>
-  <button class="buildBtn" data-build="crossbow" data-group="towers" data-icon="🎯"><div class="name">Armbrustturm</div><div class="cost">🪙 95 · 🪵 30</div><div class="desc">50 % Rüstungsdurchdringung</div></button>
-  <button class="buildBtn" data-build="catapult" data-group="towers" data-icon="🪨"><div class="name">Katapult</div><div class="cost">🪙 140 · 🪵 55</div><div class="desc">Fläche · Rüstungsbruch</div></button>
-  <button class="buildBtn" data-build="soldier" data-group="units" data-icon="🏹"><div class="name">Bogenschütze</div><div class="cost">🪙 55 · 🪵 10</div><div class="desc">Beweglich · Automatik</div></button>
-  <button class="buildBtn" data-build="guard" data-group="units" data-icon="🛡️"><div class="name">Burgwache</div><div class="cost">🪙 120 · 🪵 10</div><div class="desc">Nahkampf · Burg halten / Ausfall</div></button>
+  <button class="buildBtn" data-build="archer" data-group="towers" data-icon="🏹"><span class="buildInfoBtn" data-build-info="archer" role="button" tabindex="0" aria-label="Informationen öffnen">ⓘ</span><div class="name">Bogenturm</div><div class="cost">🪙 60 · 🪵 20</div><div class="desc">Leichte Gegner +35 %</div></button>
+  <button class="buildBtn" data-build="crossbow" data-group="towers" data-icon="🎯"><span class="buildInfoBtn" data-build-info="crossbow" role="button" tabindex="0" aria-label="Informationen öffnen">ⓘ</span><div class="name">Armbrustturm</div><div class="cost">🪙 95 · 🪵 30</div><div class="desc">50 % Rüstungsdurchdringung</div></button>
+  <button class="buildBtn" data-build="catapult" data-group="towers" data-icon="🪨"><span class="buildInfoBtn" data-build-info="catapult" role="button" tabindex="0" aria-label="Informationen öffnen">ⓘ</span><div class="name">Katapult</div><div class="cost">🪙 140 · 🪵 55</div><div class="desc">Fläche · Rüstungsbruch</div></button>
+  <button class="buildBtn" data-build="soldier" data-group="units" data-icon="🏹"><span class="buildInfoBtn" data-build-info="soldier" role="button" tabindex="0" aria-label="Informationen öffnen">ⓘ</span><div class="name">Bogenschütze</div><div class="cost">🪙 55 · 🪵 10</div><div class="desc">Beweglich · Automatik</div></button>
+  <button class="buildBtn" data-build="guard" data-group="units" data-icon="🛡️"><span class="buildInfoBtn" data-build-info="guard" role="button" tabindex="0" aria-label="Informationen öffnen">ⓘ</span><div class="name">Burgwache</div><div class="cost">🪙 120 · 🪵 10</div><div class="desc">Nahkampf · Burg halten / Ausfall</div></button>
   <button class="buildBtn" data-build="house" data-group="support" data-icon="⛺"><div class="name">Zeltlager</div><div class="cost">🪙 65 · 🪵 20</div><div class="desc">2 Bewohner · Gold im Kampf</div></button>
   <button class="buildBtn" data-build="lumber" data-group="support" data-icon="🪵"><div class="name">Holzfäller</div><div class="cost">🪙 70</div><div class="desc">Benötigt 1 Bewohner</div></button>
   <button class="buildBtn" data-build="quarry" data-group="support" data-icon="🪨"><div class="name">Steinbruch</div><div class="cost">🪙 90 · 🪵 25</div><div class="desc">Steinproduktion · 1 Bewohner</div></button>
@@ -217,7 +233,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.15.45 · Türme und Einheiten besitzen jetzt klare Konterrollen, Rüstungsbruch, Torboni und Zielprioritäten.</div>
+  <div class="workshopFoot">v1.15.46 · Gegner besitzen jetzt eigene Fähigkeiten; ⓘ-Kampfinfos erklären Konter direkt an Türmen und Einheiten.</div>
  </section>
 </div>
 

@@ -145,8 +145,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.45";
-const GAME_RELEASE_NAME="Taktisches Kontersystem";
+const GAME_VERSION="1.15.46";
+const GAME_RELEASE_NAME="Gegnerfähigkeiten & Kampfinfos";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const ACTIVE_ENEMY_LIMIT=(window.matchMedia("(max-width: 900px)").matches||navigator.maxTouchPoints>0)?64:72;
 const ENEMY_PULSE_INTERVAL=.11;
@@ -351,6 +351,21 @@ function towerCounterText(tower){
  if(tower?.key==="crossbow")return "Durchdringt 50 % Rüstung · stark gegen Eisenschilde, Berserker und Häuptlinge";
  if(tower?.key==="catapult")return "Flächenschaden · 4 Sek. lang −20 % Rüstung und −15 % Tempo";
  return "";
+}
+const BUILD_COMBAT_INFO=Object.freeze({
+ archer:{icon:"🏹",name:"Bogenturm",role:"Schneller Konterturm gegen leichte Massen",strong:"Plünderer und Clanspäher · +35 % Schaden",weak:"Schwere Rüstung und Schilddeckung",tip:"An Flanken und vor erwarteten Späherangriffen bauen. Gegen Eisenschilde durch Armbrust oder Katapult ergänzen."},
+ crossbow:{icon:"🎯",name:"Armbrustturm",role:"Präzisionsturm gegen schwere Einzelziele",strong:"Eisenschilde, Blutberserker und Häuptlinge · 50 % Rüstungsdurchdringung",weak:"Langsame Schussfolge und große leichte Gruppen",tip:"Auf Schwerpunktfronten und bei Schildwall- oder Häuptlingsangriffen einsetzen."},
+ catapult:{icon:"🪨",name:"Katapult",role:"Flächenkontrolle gegen dichte Formationen",strong:"Gegnergruppen · Rüstungsbruch und Verlangsamung für 4 Sekunden",weak:"Einzelne schnelle Gegner und lange Nachladezeit",tip:"Öffnet Schildformationen für Bogentürme und Armbrüste. Besonders stark vor Toren mit mehreren Reihen."},
+ soldier:{icon:"🏹",name:"Bogenschütze",role:"Flexible mobile Fernkampfeinheit",strong:"Zielpriorität frei wählbar: nächste, schnelle oder stärkste Gegner",weak:"Nahkampf und fehlender Schutz außerhalb der Ringe",tip:"Schnelle Priorität gegen Späher, stärkste Priorität gegen Berserker und Häuptlinge verwenden."},
+ guard:{icon:"🛡️",name:"Burgwache",role:"Blockierer und Torverteidiger",strong:"Nahe intakten Toren +15 % Schaden und +15 Prozentpunkte Rüstung",weak:"Speerjäger aus zweiter Reihe und große Gegnergruppen",tip:"Direkt hinter gefährdeten Toren oder Breschen positionieren. Bogenschützen gegen Speerjäger ergänzen."}
+});
+function buildCombatInfoHtml(key){
+ const info=BUILD_COMBAT_INFO[key];if(!info)return '<div class="statsHint">Keine Kampfinformation verfügbar.</div>';
+ return `<div class="combatInfoHero"><div class="combatInfoIcon">${info.icon}</div><div><h3>${info.name}</h3><p>${info.role}</p></div></div><div class="combatInfoGrid"><div class="combatInfoBlock"><h4>✅ Stark gegen</h4><p>${info.strong}</p></div><div class="combatInfoBlock"><h4>⚠ Schwächen</h4><p>${info.weak}</p></div></div><div class="combatInfoTip"><b>Taktischer Einsatz:</b> ${info.tip}</div>`;
+}
+function openBuildCombatInfo(key){
+ const info=BUILD_COMBAT_INFO[key];if(!info)return;
+ prepareStatsScreen();statsTitle.textContent=`${info.icon} ${info.name} – Kampfinfos`;statsContent.innerHTML=buildCombatInfoHtml(key);
 }
 
 function currentActionText(){
@@ -923,6 +938,46 @@ function moveEnemyToward(enemy,x,y,dt){
  enemy.x+=dx/d*step;enemy.y+=dy/d*step;
  return d;
 }
+function enemyIsEnraged(enemy){return enemy?.type==="berserker"&&enemy.hp>0&&enemy.hp<=enemy.maxHp*.5}
+function enemyAttackInterval(enemy){
+ let multiplier=enemyIsEnraged(enemy)?.70:1;
+ if((Number(enemy?.moraleBreakTime)||0)>0)multiplier*=1.2;
+ return Math.max(.22,(Number(enemy?.attackRate)||1)*multiplier);
+}
+function enemyAttackDamage(enemy){
+ let multiplier=enemyIsEnraged(enemy)?1.3:1;
+ if(enemy?.bossAura)multiplier*=1.15;
+ if((Number(enemy?.moraleBreakTime)||0)>0)multiplier*=.8;
+ return Math.max(0,(Number(enemy?.damage)||0)*multiplier);
+}
+function refreshEnemyAbilityStates(dt){
+ const active=state.enemies.filter(enemy=>enemy&&enemy.hp>0);
+ for(const enemy of active){enemy.bossAura=false;enemy.shieldProtected=false;enemy.moraleBreakTime=Math.max(0,(Number(enemy.moraleBreakTime)||0)-dt)}
+ for(const boss of active.filter(enemy=>enemy.type==="boss"))for(const ally of active){if(ally!==boss&&Math.hypot(ally.x-boss.x,ally.y-boss.y)<=165)ally.bossAura=true}
+ for(const shield of active.filter(enemy=>enemy.type==="shield"&&(Number(enemy.armorBreakTime)||0)<=0))for(const ally of active){if(ally!==shield&&Math.hypot(ally.x-shield.x,ally.y-shield.y)<=76)ally.shieldProtected=true}
+}
+function angularDistance(a,b){let d=Math.abs(a-b)%(Math.PI*2);return d>Math.PI?Math.PI*2-d:d}
+function weakestGateIndex(enemy,gates){
+ if(!gates?.length)return null;const angle=Math.atan2(enemy.y-CY,enemy.x-CX);let best=null,bestScore=Infinity;
+ for(const gate of gates){const ratio=!gate?.built||gate.hp<=0?-1:gate.hp/Math.max(1,gate.maxHp);const score=ratio*3+angularDistance(angle,gate.angle)*.28;if(score<bestScore){bestScore=score;best=gate.i}}
+ return best;
+}
+function updateRunnerWeakPoint(enemy,dt){
+ if(enemy?.type!=="runner")return;enemy.scoutRetargetCd=(Number(enemy.scoutRetargetCd)||0)-dt;if(enemy.scoutRetargetCd>0)return;
+ const gates=enemy.phase==="outer"?state.outerGates:enemy.phase==="outside"?state.middleGates:null;if(!gates)return;
+ const target=weakestGateIndex(enemy,gates);if(Number.isInteger(target)){enemy.approachGateIndex=target;enemy.scoutTargetGateIndex=target}enemy.scoutRetargetCd=1.35;
+}
+function nearestRaidBuilding(enemy,maxRange=190){
+ let best=null,bestDistance=maxRange;for(const building of state.buildings){if(building.hp<=0||building.base.kind==="tower"||building.base.decorative||building.key==="statue")continue;const d=Math.hypot(building.slot.x-enemy.x,building.slot.y-enemy.y);if(d<bestDistance){bestDistance=d;best=building}}return best;
+}
+function attackRaidBuilding(enemy,building,dt){
+ if(!building)return false;const dx=building.slot.x-enemy.x,dy=building.slot.y-enemy.y,d=Math.max(1,Math.hypot(dx,dy));
+ if(d<=40+(Number(enemy.radius)||12)){if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;building.hp=Math.max(0,building.hp-enemyAttackDamage(enemy)*1.4);burst(building.slot.x,building.slot.y,"#b56b32",7);if(building.hp<=0)showToast(`${building.base.name} wurde geplündert!`)}}else{const speed=getEffectiveEnemySpeed(enemy);enemy.x+=dx/d*speed*dt;enemy.y+=dy/d*speed*dt}return true;
+}
+function applyBossDeathShock(boss){
+ let affected=0;for(const enemy of state.enemies){if(enemy===boss||enemy.hp<=0)continue;if(Math.hypot(enemy.x-boss.x,enemy.y-boss.y)<=190){enemy.moraleBreakTime=Math.max(Number(enemy.moraleBreakTime)||0,4);affected++}}
+ if(affected)showToast(`Der Häuptling fällt – ${affected} Gegner verlieren ihren Kampfgeist!`);
+}
 function createAt(x,y,key){
  return createEntityAt(x,y,key,{
   state,BUILD,CX,CY,WALL_R,OUTER_WALL_R,wallSlots,castleSlots,insideSlots,
@@ -1016,9 +1071,9 @@ function nearestGateDefender(enemy,gate,radius){
  }
  return best;
 }
-function enemyAttackDefender(enemy,defender){
+function enemyAttackDefender(enemy,defender,damageFactor=.6){
  if(!defender)return false;
- if(enemy.attackCd<=0){enemy.attackCd=enemy.attackRate;enemy.attackAnim=.22;defender.hp-=enemy.damage*.6*(1-effectiveUnitArmor(defender));burst(defender.x,defender.y,"#b84640",4)}
+ if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;defender.hp-=enemyAttackDamage(enemy)*damageFactor*(1-effectiveUnitArmor(defender));burst(defender.x,defender.y,"#b84640",4)}
  return true;
 }
 function handleHeroTaunt(enemy,dt){
@@ -1028,7 +1083,7 @@ function handleHeroTaunt(enemy,dt){
  if(d>HERO_ABILITY_TAUNT_RADIUS)return false;
  const reach=Math.max(44,(Number(enemy.radius)||12)+31);
  if(d<=reach){
-  if(enemy.attackCd<=0){enemy.attackCd=enemy.attackRate;enemy.attackAnim=.22;hero.hp-=enemy.damage*.6*(1-effectiveUnitArmor(hero));burst(hero.x,hero.y,"#b84640",5)}
+  if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;hero.hp-=enemyAttackDamage(enemy)*.6*(1-effectiveUnitArmor(hero));burst(hero.x,hero.y,"#b84640",5)}
  }else{const speed=getEffectiveEnemySpeed(enemy);enemy.x+=dx/d*speed*dt;enemy.y+=dy/d*speed*dt}
  return true;
 }
@@ -1047,8 +1102,10 @@ function applyProjectileEffects(enemy,projectile){
  }
 }
 function projectileDamage(projectile,enemy,multiplier=1){
- const armor=Math.max(0,getEffectiveEnemyArmor(enemy)*(1-(Number(projectile.armorPenetration)||0)));
- return Math.max(0,projectile.damage*multiplier*(1-armor));
+ const penetration=Math.max(0,Math.min(1,Number(projectile.armorPenetration)||0));
+ const armor=Math.max(0,getEffectiveEnemyArmor(enemy)*(1-penetration));
+ const shieldReduction=enemy?.shieldProtected?(penetration>=.5?.12:.28):0;
+ return Math.max(0,projectile.damage*multiplier*(1-armor)*(1-shieldReduction));
 }
 function grantCombatXp(owner,amount){return grantCombatExperience(owner,amount,combatCallbacks())}
 function applyTowerExpTalent(tower,type){return applyTowerTalent(tower,type,combatCallbacks())}
@@ -1230,6 +1287,7 @@ function update(dt){
    }
   }
  }
+ refreshEnemyAbilityStates(dt);
  const bonus=1;
  for(const b of state.buildings){
   if(!isTowerOperational(b))continue;
@@ -1367,7 +1425,8 @@ function update(dt){
  state.projectiles=state.projectiles.filter(p=>!p.dead);
 
  for(const e of state.enemies){
-  e.queueWaiting=false;e.assaultKey="";
+  e.queueWaiting=false;e.assaultKey="";e.secondRowAttack=false;
+  updateRunnerWeakPoint(e,dt);
   e.armorBreakTime=Math.max(0,(Number(e.armorBreakTime)||0)-dt);
   e.slowTime=Math.max(0,(Number(e.slowTime)||0)-dt);
   e.attackCd-=dt;
@@ -1388,7 +1447,7 @@ function update(dt){
      if(gateDefender){enemyAttackDefender(e,gateDefender)}else{
       const assault=assaultFormationPoint(e,outerGate.angle,targetR,`og:${outerGate.i}`,6);
       const d=moveEnemyToward(e,assault.x,assault.y,dt);
-      if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
+      if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const gateDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.35);
        outerGate.hp=Math.max(0,outerGate.hp-gateDamage);burst(baseX,baseY,"#775039",6);if(outerGate.hp<=0)showToast(`Das ${outerGate.name} wurde durchbrochen!`)}
      }
     }
@@ -1403,7 +1462,7 @@ function update(dt){
     }else{
      const assault=assaultFormationPoint(e,wallAngle,targetR,`ow:${wi}`,4);
      const d=moveEnemyToward(e,assault.x,assault.y,dt);
-     if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
+     if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const wallDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.25);
       wall.hp=Math.max(0,wall.hp-wallDamage);burst(baseX,baseY,"#8a5d3c",5);if(wall.hp<=0)showToast(`Bresche in äußerer Palisade: ${wall.name||getOuterWallSegmentName(wi,state.outerWalls.length)}!`)}
     }
    }
@@ -1422,7 +1481,7 @@ function update(dt){
      if(gateDefender){enemyAttackDefender(e,gateDefender)}else{
       const assault=assaultFormationPoint(e,gate.angle,targetR,`mg:${gate.i}`,6);
       const d=moveEnemyToward(e,assault.x,assault.y,dt);
-      if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
+      if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const gateDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.35);
        gate.hp=Math.max(0,gate.hp-gateDamage);burst(baseX,baseY,"#8c5734",6);if(gate.hp<=0)showToast(`Das ${gate.name} wurde durchbrochen!`)}
      }
     }
@@ -1434,24 +1493,30 @@ function update(dt){
     else{
      const assault=assaultFormationPoint(e,wallAngle,targetR,`mw:${wi}`,4);
      const d=moveEnemyToward(e,assault.x,assault.y,dt);
-     if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
+     if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const wallDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.25);
       wall.hp=Math.max(0,wall.hp-wallDamage);burst(baseX,baseY,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in mittlerer Palisade: ${wall.name||getMiddleWallSegmentName(wi,state.walls.length)}!`)}
     }
    }
   }else if(e.phase==="inside"){
    const tauntedByHero=handleHeroTaunt(e,dt);
    const tower=towerBehindWall(e.wallIndex);
+   const spearDefender=!tauntedByHero&&e.type==="spear"?nearestBlockingUnit(e,112):null;
    const blockingUnit=tauntedByHero?null:nearestBlockingUnit(e,62);
+   const raidTarget=!tauntedByHero&&e.type==="raider"?nearestRaidBuilding(e):null;
    const innerWall=getInnerWallSegmentForPoint(state,e.x,e.y,{CX,CY});
    e.innerWallIndex=innerWall?.i??null;
    if(tauntedByHero){
     // Ruf des Helden lenkt nahe Feinde auf Andreas, ohne Mauern zu überspringen.
+   }else if(spearDefender){
+    e.secondRowAttack=true;enemyAttackDefender(e,spearDefender,.48);
    }else if(blockingUnit){
-    if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;blockingUnit.hp-=e.damage*.6*(1-effectiveUnitArmor(blockingUnit));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
+    enemyAttackDefender(e,blockingUnit);
+   }else if(raidTarget){
+    attackRaidBuilding(e,raidTarget,dt);
    }else if(tower){
     const tdx=tower.slot.x-e.x,tdy=tower.slot.y-e.y,td=Math.max(1,Math.hypot(tdx,tdy));
     if(td<38+e.radius){
-     if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;tower.hp-=e.damage;burst(tower.slot.x,tower.slot.y,"#b67a45",6)}
+     if(e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;tower.hp-=enemyAttackDamage(e);burst(tower.slot.x,tower.slot.y,"#b67a45",6)}
     }else{const speed=getEffectiveEnemySpeed(e);e.x+=tdx/td*speed*dt;e.y+=tdy/td*speed*dt}
    }else if(!innerWall||innerWall.hp<=0){
     e.phase="core";
@@ -1460,8 +1525,8 @@ function update(dt){
     const assault=assaultFormationPoint(e,innerWall.am,targetR,`iw:${innerWall.i}`,5);
     const d=moveEnemyToward(e,assault.x,assault.y,dt);
     if(d<5&&assault.canAttack&&e.attackCd<=0){
-     e.attackCd=e.attackRate;e.attackAnim=.22;
-     const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.3);
+     e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;
+     const wallDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.3);
      innerWall.hp=Math.max(0,innerWall.hp-wallDamage);
      const tx=CX+Math.cos(innerWall.am)*targetR,ty=CY+Math.sin(innerWall.am)*targetR;
      burst(tx,ty,"#9b8b70",5);
@@ -1471,15 +1536,21 @@ function update(dt){
   }else{
    const tauntedByHero=handleHeroTaunt(e,dt);
    const castleTower=nearestCastleTower(e);
+   const spearDefender=!tauntedByHero&&e.type==="spear"?nearestBlockingUnit(e,112):null;
    const blockingUnit=tauntedByHero?null:nearestBlockingUnit(e,62);
+   const raidTarget=!tauntedByHero&&e.type==="raider"?nearestRaidBuilding(e):null;
    if(tauntedByHero){
     // Andreas bindet nahe Feinde während seiner aktiven Fähigkeit.
+   }else if(spearDefender){
+    e.secondRowAttack=true;enemyAttackDefender(e,spearDefender,.48);
    }else if(blockingUnit){
-    if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;blockingUnit.hp-=e.damage*.6*(1-effectiveUnitArmor(blockingUnit));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
+    enemyAttackDefender(e,blockingUnit);
+   }else if(raidTarget){
+    attackRaidBuilding(e,raidTarget,dt);
    }else if(castleTower){
     const cdx=castleTower.slot.x-e.x,cdy=castleTower.slot.y-e.y,cd=Math.max(1,Math.hypot(cdx,cdy));
     if(cd<38+e.radius){
-     if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;castleTower.hp-=e.damage;burst(castleTower.slot.x,castleTower.slot.y,"#b67a45",6)}
+     if(e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;castleTower.hp-=enemyAttackDamage(e);burst(castleTower.slot.x,castleTower.slot.y,"#b67a45",6)}
     }else{const speed=getEffectiveEnemySpeed(e);e.x+=cdx/cd*speed*dt;e.y+=cdy/cd*speed*dt}
    }else{
     // Der Angriffswinkel wird beim ersten Erreichen der Kernzone fixiert.
@@ -1489,22 +1560,29 @@ function update(dt){
    if(!Number.isFinite(e.coreAssaultAngle))e.coreAssaultAngle=Math.atan2(e.y-CY,e.x-CX);
    const assault=assaultFormationPoint(e,e.coreAssaultAngle,44,"core",8);
     const d=moveEnemyToward(e,assault.x,assault.y,dt);
-    if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;state.hp-=e.damage;burst(CX,CY,e.color,8)}
+    if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;state.hp-=enemyAttackDamage(e);burst(CX,CY,e.color,8)}
    }
   }
  }
  resolveEnemySeparation(state.enemies,dt);
- for(const e of state.enemies)if(e.hp<=0&&!e.dead){e.dead=true;state.gold+=e.reward;state.kills++;if(e.lastHitEntity){const baseXp=e.type==="boss"?55:e.type==="shield"?22:e.type==="runner"?13:16;grantCombatXp(e.lastHitEntity,baseXp*Math.max(.15,Number(e.xpScale)||1))}burst(e.x,e.y,e.color,8)}
+ for(const e of state.enemies)if(e.hp<=0&&!e.dead){
+  e.dead=true;if(e.type==="boss")applyBossDeathShock(e);state.gold+=e.reward;state.kills++;
+  if(e.lastHitEntity){const baseXp=e.type==="boss"?55:e.type==="shield"?22:e.type==="runner"?13:16;grantCombatXp(e.lastHitEntity,baseXp*Math.max(.15,Number(e.xpScale)||1))}
+  burst(e.x,e.y,e.color,8)
+ }
  state.enemies=state.enemies.filter(e=>!e.dead);
+ let supportBuildingDestroyed=false;
  state.buildings=state.buildings.filter(b=>{
-  if(b.base.kind==="tower"&&b.hp<=0){
-   burst(b.slot.x,b.slot.y,"#8c6543",16);
+  if(b.hp<=0){
+   burst(b.slot.x,b.slot.y,b.base.kind==="tower"?"#8c6543":"#9b5b35",16);
    b.slot.building=null;
+   if(b.base.kind!=="tower"){supportBuildingDestroyed=true;state.craftsmen=state.craftsmen.filter(c=>c.home!==b&&c.homeId!==b.bid)}
    if(selected===b)selected=null;
    return false;
   }
   return true;
  });
+ if(supportBuildingDestroyed){syncResidents();assignCraftsmen()}
  state.units=state.units.filter(u=>{if(u.hp<=0){burst(u.x,u.y,u.key==="hero"?"#ffd76e":"#47739c",u.key==="hero"?24:10);if(u.key==="hero"&&!state.heroFallen){state.heroFallen=true;showToast("Andreas, der große Held, ist im Kampf gefallen")};if(selected===u)selected=null;return false}return true});
  if(state.hp<=0&&!gameOver){state.hp=0;gameOver=true;state.inWave=false;paused=true;showEndScreen()}
  if(state.inWave&&state.toSpawn===0&&state.enemies.length===0){
@@ -1571,8 +1649,20 @@ function focusUpgradeEntity(card){
 
 function speedLabel(v){return v>=58?"Sehr schnell":v>=44?"Schnell":v>=33?"Mittel":v>=25?"Langsam":"Sehr langsam"}
 function armorLabel(v){const p=Math.round((v||0)*100);return p?`${p} % Schadensreduktion`:"Keine"}
-function renderBestiary(){const grid=document.getElementById("bestiaryGrid"),progress=document.getElementById("bestiaryProgress");if(!grid)return;const entries=Object.entries(ENEMY_CODEX);if(progress)progress.textContent=`${entries.filter(([k])=>discoveredEnemies.has(k)).length} / ${entries.length} entdeckt`;grid.innerHTML=entries.map(([type,d])=>{const unlocked=discoveredEnemies.has(type);if(!unlocked)return `<article class="bestiaryEntry locked"><div class="bestiaryEntryHead"><div class="bestiaryIcon">?</div><div><h4>???</h4><small>Noch nicht entdeckt</small></div></div><div class="bestiaryLockedText">Begegne diesem Gegner im Kampf.</div></article>`;const st=enemyStatsFor(type,d.unlockWave);return `<article class="bestiaryEntry"><div class="bestiaryEntryHead"><div class="bestiaryIcon">${d.icon}</div><div><h4>${d.name}</h4><small>Ab Welle ${d.unlockWave}${d.boss?" · Boss":""}</small></div></div><p>${d.lore}</p><div class="bestiaryMiniStats"><span>❤️ Basis ${Math.round(st.hp)}</span><span>⚔ ${st.damage}</span><span>🛡 ${armorLabel(st.armor)}</span><span>🪙 ${st.reward}</span><span>➤ ${speedLabel(st.speed)}</span><span>⏱ ${st.attackRate.toFixed(2)} s</span></div></article>`}).join("")}
-function openEnemyInfo(e){if(!e||e.dead)return;discoverEnemy(e.type);const overlay=document.getElementById("enemyInfoOverlay");document.getElementById("enemyInfoPortrait").textContent=ENEMY_CODEX[e.type]?.icon||"⚔";document.getElementById("enemyInfoName").textContent=e.name;document.getElementById("enemyInfoClan").textContent=`${e.clan||"Eisenclans"} · Welle ${state.wave}`;const roleTag=document.getElementById("enemyBossTag"),codex=ENEMY_CODEX[e.type]||{};roleTag.textContent=codex.role||(codex.boss?"BOSS":"KRIEGER");roleTag.hidden=false;roleTag.classList.toggle("isBoss",!!codex.boss);roleTag.classList.toggle("isElite",codex.role==="ELITE");document.getElementById("enemyHpText").textContent=`Leben ${Math.max(0,Math.ceil(e.hp))} / ${Math.ceil(e.maxHp)}`;document.getElementById("enemyHpFill").style.width=`${Math.max(0,Math.min(100,e.hp/e.maxHp*100))}%`;document.getElementById("enemyStatsGrid").innerHTML=`<div class="enemyStatTile"><span>Schaden</span><b>⚔ ${Math.round(e.damage)}</b></div><div class="enemyStatTile"><span>Rüstung</span><b>🛡 ${armorLabel(e.armor)}</b></div><div class="enemyStatTile"><span>Geschwindigkeit</span><b>➤ ${speedLabel(e.speed)} (${e.speed.toFixed(1)})</b></div><div class="enemyStatTile"><span>Angriffstakt</span><b>⏱ ${e.attackRate.toFixed(2)} s</b></div><div class="enemyStatTile"><span>Goldbelohnung</span><b>🪙 ${e.reward}</b></div><div class="enemyStatTile"><span>Besonderheit</span><b>${ENEMY_CODEX[e.type]?.strength||"–"}</b></div>`;document.getElementById("enemyInfoLore").textContent=ENEMY_CODEX[e.type]?.lore||"Krieger der Eisenclans.";overlay.classList.remove("hidden");paused=true;last=performance.now()}
+function renderBestiary(){
+ const grid=document.getElementById("bestiaryGrid"),progress=document.getElementById("bestiaryProgress");if(!grid)return;
+ const entries=Object.entries(ENEMY_CODEX);if(progress)progress.textContent=`${entries.filter(([k])=>discoveredEnemies.has(k)).length} / ${entries.length} entdeckt`;
+ grid.innerHTML=entries.map(([type,d])=>{const unlocked=discoveredEnemies.has(type);if(!unlocked)return `<article class="bestiaryEntry locked"><div class="bestiaryEntryHead"><div class="bestiaryIcon">?</div><div><h4>???</h4><small>Noch nicht entdeckt</small></div></div><div class="bestiaryLockedText">Begegne diesem Gegner im Kampf.</div></article>`;const st=enemyStatsFor(type,d.unlockWave);return `<article class="bestiaryEntry"><div class="bestiaryEntryHead"><div class="bestiaryIcon">${d.icon}</div><div><h4>${d.name}</h4><small>Ab Welle ${d.unlockWave}${d.boss?" · Boss":""}</small></div></div><p>${d.lore}</p><div class="bestiaryMiniStats"><span>❤️ Basis ${Math.round(st.hp)}</span><span>⚔ ${st.damage}</span><span>🛡 ${armorLabel(st.armor)}</span><span>➤ ${speedLabel(st.speed)}</span></div><div class="guideTip"><b>Fähigkeit:</b> ${d.ability||d.strength}</div><div class="guideTip"><b>Konter:</b> ${d.counter||d.weakness}</div></article>`}).join("");
+}
+function openEnemyInfo(e){
+ if(!e||e.dead)return;discoverEnemy(e.type);const overlay=document.getElementById("enemyInfoOverlay");const codex=ENEMY_CODEX[e.type]||{};
+ document.getElementById("enemyInfoPortrait").textContent=codex.icon||"⚔";document.getElementById("enemyInfoName").textContent=e.name;document.getElementById("enemyInfoClan").textContent=`${e.clan||"Eisenclans"} · Welle ${state.wave}`;
+ const roleTag=document.getElementById("enemyBossTag");roleTag.textContent=codex.role||(codex.boss?"BOSS":"KRIEGER");roleTag.hidden=false;roleTag.classList.toggle("isBoss",!!codex.boss);roleTag.classList.toggle("isElite",codex.role==="ELITE");
+ document.getElementById("enemyHpText").textContent=`Leben ${Math.max(0,Math.ceil(e.hp))} / ${Math.ceil(e.maxHp)}`;document.getElementById("enemyHpFill").style.width=`${Math.max(0,Math.min(100,e.hp/e.maxHp*100))}%`;
+ const activeAbility=e.type==="berserker"&&enemyIsEnraged(e)?"Raserei aktiv":e.bossAura?"Häuptlingsaura aktiv":e.shieldProtected?"Schilddeckung aktiv":(e.moraleBreakTime||0)>0?"Moral gebrochen":codex.ability||codex.strength||"–";
+ document.getElementById("enemyStatsGrid").innerHTML=`<div class="enemyStatTile"><span>Schaden</span><b>⚔ ${Math.round(enemyAttackDamage(e))}</b></div><div class="enemyStatTile"><span>Rüstung</span><b>🛡 ${armorLabel(getEffectiveEnemyArmor(e))}</b></div><div class="enemyStatTile"><span>Geschwindigkeit</span><b>➤ ${speedLabel(getEffectiveEnemySpeed(e))}</b></div><div class="enemyStatTile"><span>Angriffstakt</span><b>⏱ ${enemyAttackInterval(e).toFixed(2)} s</b></div><div class="enemyStatTile"><span>Fähigkeit</span><b>${activeAbility}</b></div><div class="enemyStatTile"><span>Empfohlener Konter</span><b>${codex.weakness||"–"}</b></div>`;
+ document.getElementById("enemyInfoLore").innerHTML=`${codex.lore||"Krieger der Eisenclans."}<br><br><b>Konter:</b> ${codex.counter||codex.weakness||"–"}`;overlay.classList.remove("hidden");paused=true;last=performance.now();
+}
 function closeEnemyInfo(resume=true){const o=document.getElementById("enemyInfoOverlay");if(o)o.classList.add("hidden");if(resume&&!gameOver){paused=false;last=performance.now()}}
 function pickAt(x,y){
  let best=null,bd=34;
@@ -1690,7 +1780,11 @@ function reset(){
  selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();showToast("Neue Belagerung beginnt");
 }
 
-document.querySelectorAll(".buildBtn").forEach(b=>b.addEventListener("click",()=>{hideRepairDecision();const k=b.dataset.build;buildMode=buildMode===k?null:k;selected=null;unitCommandMode=null}));
+document.querySelectorAll(".buildBtn").forEach(b=>b.addEventListener("click",e=>{if(e.target.closest(".buildInfoBtn"))return;hideRepairDecision();const k=b.dataset.build;buildMode=buildMode===k?null:k;selected=null;unitCommandMode=null}));
+document.querySelectorAll(".buildInfoBtn").forEach(info=>{
+ const open=e=>{e.preventDefault();e.stopPropagation();buildMode=null;selected=null;unitCommandMode=null;openBuildCombatInfo(info.dataset.buildInfo)};
+ info.addEventListener("click",open);info.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")open(e)});
+});
 document.getElementById("enemyInfoClose").addEventListener("click",()=>closeEnemyInfo(true));
 document.getElementById("enemyInfoOverlay").addEventListener("click",e=>{if(e.target.id==="enemyInfoOverlay")closeEnemyInfo(true)});
 renderBestiary();refreshSaveStatus();

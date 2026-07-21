@@ -24,10 +24,12 @@ export function findNearestEnemy(enemies, x, y, range) {
 
 export function getEffectiveEnemyArmor(enemy) {
   const baseArmor = Math.max(0, Number(enemy?.armor) || 0);
+  const auraArmor = enemy?.bossAura ? 0.08 : 0;
+  const moralePenalty = (Number(enemy?.moraleBreakTime) || 0) > 0 ? 0.08 : 0;
   const breakAmount = (Number(enemy?.armorBreakTime) || 0) > 0
     ? Math.max(0, Number(enemy?.armorBreakAmount) || 0)
     : 0;
-  return Math.max(0, baseArmor - breakAmount);
+  return Math.max(0, baseArmor + auraArmor - moralePenalty - breakAmount);
 }
 
 export function getEffectiveEnemySpeed(enemy) {
@@ -35,7 +37,10 @@ export function getEffectiveEnemySpeed(enemy) {
   const slowAmount = (Number(enemy?.slowTime) || 0) > 0
     ? Math.max(0, Math.min(0.75, Number(enemy?.slowAmount) || 0))
     : 0;
-  return baseSpeed * (1 - slowAmount);
+  const rageMultiplier = enemy?.type === "berserker" && Number(enemy?.hp) > 0 && Number(enemy?.hp) <= Number(enemy?.maxHp) * 0.5 ? 1.3 : 1;
+  const auraMultiplier = enemy?.bossAura ? 1.1 : 1;
+  const moraleMultiplier = (Number(enemy?.moraleBreakTime) || 0) > 0 ? 0.8 : 1;
+  return baseSpeed * (1 - slowAmount) * rageMultiplier * auraMultiplier * moraleMultiplier;
 }
 
 export function findTowerTarget(enemies, tower, range) {

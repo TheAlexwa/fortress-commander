@@ -1,3 +1,14 @@
+## v1.15.46 – Gegnerfähigkeiten & Kampfinfos
+
+- Alle sechs Gegnerklassen besitzen jetzt eine eigene aktive oder passive Fähigkeit.
+- Clanspäher suchen beschädigte oder offene Tore; Speerjäger greifen aus der zweiten Reihe an.
+- Eisenschilde geben nahen Verbündeten Projektilschutz, der durch Katapult-Rüstungsbruch ausfällt.
+- Blutberserker verfallen unter 50 % Leben in Raserei; Häuptlinge stärken ihre Eskorte und verursachen beim Tod einen Moralbruch.
+- Plünderer greifen im Innenhof bevorzugt Versorgungsgebäude an und verursachen dort erhöhten Schaden.
+- Turm- und Einheitenkarten besitzen ein kleines ⓘ mit Rolle, Stärken, Schwächen und taktischem Einsatz.
+- Anleitung, Gegnerlexikon und Gegnerdetailfenster erklären Fähigkeiten und passende Konter.
+- Versionsangaben im Spiel wurden auf v1.15.46 aktualisiert.
+
 ## v1.15.45 – Taktisches Kontersystem
 
 - Bogentürme verursachen gegen Eisenclan-Plünderer und Clanspäher 35 % zusätzlichen Schaden.
