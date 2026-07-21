@@ -1,4 +1,4 @@
-import { getSiegeCampCounts, getSiegeCampPositions } from "./siege.js";
+import { getSiegeCampOverview, getSiegeCampPositions } from "./siege.js";
 import {
   FIXED_INNER_WALL_RADIUS,
   getFutureLayoutGeometry
@@ -226,16 +226,22 @@ function drawSiegeCamps(){
  const siege=state.siege;
  if(state.inWave||!siege?.active)return;
  const camps=getSiegeCampPositions({WORLD_W,WORLD_H});
- const counts=getSiegeCampCounts(siege);
+ const overview=getSiegeCampOverview(siege);
  const now=performance.now();
 
  camps.forEach((camp,index)=>{
-  const count=counts[index]||0;
+  const campInfo=overview[index]||{arrived:0,total:0,special:{shield:0,berserker:0,boss:0},dangerous:false};
+  const count=campInfo.arrived||0;
+  const total=campInfo.total||0;
   const tentCount=Math.min(3,1+Math.floor(count/5));
   ctx.save();ctx.translate(camp.x,camp.y);
 
   ctx.fillStyle="#17110baa";ctx.beginPath();ctx.ellipse(0,18,92,54,0,0,TAU);ctx.fill();
-  ctx.strokeStyle=count?"#b54236aa":"#7b694f88";ctx.lineWidth=3;ctx.setLineDash([8,7]);ctx.beginPath();ctx.ellipse(0,18,98,60,0,0,TAU);ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle=campInfo.dangerous?"#ef493f":count?"#b54236aa":"#7b694f88";ctx.lineWidth=campInfo.dangerous?5:3;ctx.setLineDash([8,7]);ctx.beginPath();ctx.ellipse(0,18,98,60,0,0,TAU);ctx.stroke();ctx.setLineDash([]);
+  if(campInfo.dangerous){
+   ctx.fillStyle="#ef493f";ctx.beginPath();ctx.moveTo(72,-64);ctx.lineTo(92,-30);ctx.lineTo(52,-30);ctx.closePath();ctx.fill();
+   ctx.fillStyle="#fff4df";ctx.font="bold 20px system-ui";ctx.textAlign="center";ctx.fillText("!",72,-37);
+  }
 
   // Zelte wachsen mit der Anzahl versammelter Gegner.
   for(let i=0;i<tentCount;i++){
@@ -270,8 +276,18 @@ function drawSiegeCamps(){
 
   ctx.fillStyle="#16110de8";ctx.strokeStyle="#d5b46b";ctx.lineWidth=2;
   ctx.beginPath();ctx.roundRect(-36,-78,72,28,8);ctx.fill();ctx.stroke();
-  ctx.fillStyle="#fff0bd";ctx.textAlign="center";ctx.font="bold 15px system-ui";ctx.fillText(String(count),0,-59);
-  ctx.fillStyle="#e6d4ad";ctx.font="bold 10px system-ui";ctx.fillText(camp.label,0,93);
+  ctx.fillStyle="#fff0bd";ctx.textAlign="center";ctx.font="bold 13px system-ui";ctx.fillText(`${count}/${total}`,0,-59);
+  const specialLabels=[];
+  if(campInfo.special.shield)specialLabels.push(`🛡${campInfo.special.shield}`);
+  if(campInfo.special.berserker)specialLabels.push(`⚔${campInfo.special.berserker}`);
+  if(campInfo.special.boss)specialLabels.push(`👑${campInfo.special.boss}`);
+  if(specialLabels.length){
+   ctx.fillStyle="#1a120de8";ctx.strokeStyle=campInfo.dangerous?"#ef493f":"#9b7a4b";ctx.lineWidth=1.5;
+   const labelWidth=Math.max(58,specialLabels.join("  ").length*8+12);
+   ctx.beginPath();ctx.roundRect(-labelWidth/2,68,labelWidth,23,7);ctx.fill();ctx.stroke();
+   ctx.fillStyle="#ffe3a0";ctx.font="bold 11px system-ui";ctx.fillText(specialLabels.join("  "),0,84);
+  }
+  ctx.fillStyle="#e6d4ad";ctx.font="bold 10px system-ui";ctx.fillText(`${camp.label} · ${camp.gateLabel}`,0,108);
   ctx.restore();
  });
 }

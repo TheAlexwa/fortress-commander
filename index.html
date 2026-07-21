@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.15.36 – Forschungsfenster-Fix</title>
+<title>Fortress Commander v1.15.37 – Belagerungslager 2.0</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,7 +20,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Spiel starten">Spiel starten</button>
-  <div id="gameVersionBadge">v1.15.36</div>
+  <div id="gameVersionBadge">v1.15.37</div>
   <div id="developmentNotice"><strong>🏗 Festungsumbau in Entwicklung</strong><span>Mauertürme stehen jetzt bereits auf Holzpalisaden. Der mittlere Ring bietet acht, der äußere Ring zwölf feste Turmplätze.</span></div>
  </div>
 </div>
@@ -96,7 +96,7 @@
 
   <details class="guideSection">
    <summary>🌊 Wellen, Reparatur & Strategie</summary>
-   <div class="guideBody"><div class="guideTip"><b>⛺ Belagerungsphase:</b> Zwischen den Angriffen sammeln sich Gegner sichtbar in drei Außenlagern. Der Button <b>Angriff</b> schickt alle bereits eingetroffenen Gegner gleichzeitig los; noch nicht eingetroffene Einheiten folgen als Verstärkung. Die gesamte Wellenstärke bleibt gleich – längeres Warten vergrößert nur den ersten Angriffspulk.</div><div class="guideTip"><b>🔱 Upgrade-Zentrale:</b> Das Upgrade-Symbol im unteren Hauptmenü öffnet eine Gesamtübersicht für Gebäude, Einheiten, Forschung, globale Boni und Empfehlungen. Reguläre Versorgungsgebäude können dort direkt aufgewertet werden. Einheiten und Türme erhalten keine direkten Gold-/Holz-Upgrades; ihre individuelle Entwicklung läuft über Kampf-EXP.</div><div class="guideTip"><b>Globale Forschungskosten:</b> Forschung in einem Zweig verteuert alle anderen Zweige. Eine höherstufige Werkstatt reduziert diesen globalen Aufschlag von 30 % bis auf 10 %.</div><ul><li>Gold und Holz oben links zeigen Bestand und aktuelle Produktion. Antippen öffnet die ausführliche Übersicht.</li><li>Nach jeder bestandenen Welle erhältst du Forschungspunkte und eine Schadensübersicht.</li><li>Handwerker reparieren je nach Gebäudestufe 16 bis 24 Lebenspunkte pro Takt und verbrauchen 0,5 Holz pro Reparaturtakt, bevor Forschung wirkt.</li><li>Kleine und normale Gegner verursachen an Mauern nur 25 % ihres normalen Schadens; Schildträger, Berserker und Bosse verursachen vollen Mauerschaden.</li></ul><div class="guideTip">Baue zuerst mindestens einen schnellen Turm. Ergänze danach Unterkünfte und Holzproduktion, bevor die Reparaturkosten stark steigen.</div></div>
+   <div class="guideBody"><div class="guideTip"><b>⛺ Belagerungsphase:</b> Zwischen den Angriffen sammeln sich Gegner sichtbar in vier Außenlagern. Nord-, Ost-, Süd- und Westlager sind jeweils einem Festungstor zugeordnet. Der Button <b>Angriff</b> schickt alle bereits eingetroffenen Gegner gleichzeitig los; Nachzügler folgen weiterhin aus ihrem vorgesehenen Lager. Zahlen und Gefahrensymbole zeigen die Stärke jeder Angriffsrichtung. Die gesamte Wellenstärke bleibt gleich – längeres Warten vergrößert nur den ersten Angriffspulk.</div><div class="guideTip"><b>🔱 Upgrade-Zentrale:</b> Das Upgrade-Symbol im unteren Hauptmenü öffnet eine Gesamtübersicht für Gebäude, Einheiten, Forschung, globale Boni und Empfehlungen. Reguläre Versorgungsgebäude können dort direkt aufgewertet werden. Einheiten und Türme erhalten keine direkten Gold-/Holz-Upgrades; ihre individuelle Entwicklung läuft über Kampf-EXP.</div><div class="guideTip"><b>Globale Forschungskosten:</b> Forschung in einem Zweig verteuert alle anderen Zweige. Eine höherstufige Werkstatt reduziert diesen globalen Aufschlag von 30 % bis auf 10 %.</div><ul><li>Gold und Holz oben links zeigen Bestand und aktuelle Produktion. Antippen öffnet die ausführliche Übersicht.</li><li>Nach jeder bestandenen Welle erhältst du Forschungspunkte und eine Schadensübersicht.</li><li>Handwerker reparieren je nach Gebäudestufe 16 bis 24 Lebenspunkte pro Takt und verbrauchen 0,5 Holz pro Reparaturtakt, bevor Forschung wirkt.</li><li>Kleine und normale Gegner verursachen an Mauern nur 25 % ihres normalen Schadens; Schildträger, Berserker und Bosse verursachen vollen Mauerschaden.</li></ul><div class="guideTip">Baue zuerst mindestens einen schnellen Turm. Ergänze danach Unterkünfte und Holzproduktion, bevor die Reparaturkosten stark steigen.</div></div>
   </details>
 
   <details class="guideSection">
@@ -219,7 +219,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.15.36 · Der Forschungsbutton öffnet den Forschungsbaum wieder korrekt; das zuvor gesetzte unsichtbare Inline-Layout wird beim Öffnen zurückgesetzt.</div>
+  <div class="workshopFoot">v1.15.37 · Vier feste Belagerungslager greifen ihre zugeordneten Tore an; Nachzügler behalten ihre Richtung und Lager zeigen Stärke, Spezialgegner sowie die gefährlichste Front.</div>
  </section>
 </div>
 

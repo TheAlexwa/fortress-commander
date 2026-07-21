@@ -1,4 +1,5 @@
 import { getMiddleFortificationUpgrade } from "./fortifications.js";
+import { getSiegeCampPreview } from "./siege.js";
 
 /**
  * Benutzeroberfläche von Fortress Commander.
@@ -122,9 +123,10 @@ export function renderGameUI({
     siegeNotice.classList.toggle("hidden", !showSiegeNotice);
     if (siegeNoticeText && showSiegeNotice) {
       const remaining = Math.max(0, siegeTotal - siegeReady);
+      const campPreview = getSiegeCampPreview(siege);
       siegeNoticeText.textContent = siegeReady >= siegeTotal
-        ? `${siegeReady} Gegner stehen vollständig in den Außenlagern bereit. Ein Angriff löst alle Lager gleichzeitig aus.`
-        : `${siegeReady} von ${siegeTotal} Gegnern sind eingetroffen · ${remaining} Nachzügler. Je länger du wartest, desto größer wird der erste Angriffspulk.`;
+        ? `${campPreview} · Alle Gegner bereit. Vier Lager greifen ihre zugeordneten Tore gleichzeitig an.`
+        : `${campPreview} · ${remaining} Nachzügler. Jeder Gegner behält seine Lager- und Torrichtung.`;
     }
   }
 

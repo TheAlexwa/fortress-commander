@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.36";
-const GAME_RELEASE_NAME="Forschungsfenster-Fix";
+const GAME_VERSION="1.15.37";
+const GAME_RELEASE_NAME="Belagerungslager 2.0";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -661,20 +661,31 @@ function startWave(){
   setSelected:value=>{selected=value}
  });
  if(!release)return false;
- const campOrders=[0,0,0];
+ const campOrders=[0,0,0,0];
  for(const entry of release.arrived){
-  const campIndex=Math.max(0,Math.min(2,Number(entry.camp)||0));
+  const campIndex=Math.max(0,Math.min(SIEGE_CAMPS.length-1,Number(entry.camp)||0));
+  const camp=SIEGE_CAMPS[campIndex];
   const point=getSiegeReleasePoint(entry,campOrders[campIndex]++,SIEGE_CAMPS);
-  spawnEnemy(entry.type,point);
+  spawnEnemy(entry.type,point,camp?.gateIndex);
  }
  return true;
 }
-function spawnEnemy(forcedType=null,spawnPoint=null){
+function spawnEnemy(forcedType=null,spawnPoint=null,approachGateIndex=null){
  const enemy=createWaveEnemy(state,{WORLD_W,WORLD_H,TAU,enemyStatsFor,discoverEnemy,forcedType,spawnPoint});
  if(enemy&&spawnPoint){
-  enemy.approachGateIndex=getNearestMiddleGateIndexForAngle(Math.atan2(spawnPoint.y-CY,spawnPoint.x-CX));
+  enemy.approachGateIndex=Number.isInteger(approachGateIndex)
+   ?approachGateIndex
+   :getNearestMiddleGateIndexForAngle(Math.atan2(spawnPoint.y-CY,spawnPoint.x-CX));
  }
  return enemy;
+}
+function spawnQueuedEnemy(entry){
+ if(!entry)return spawnEnemy();
+ if(typeof entry==="string")return spawnEnemy(entry);
+ const campIndex=Math.max(0,Math.min(SIEGE_CAMPS.length-1,Number(entry.camp)||0));
+ const camp=SIEGE_CAMPS[campIndex];
+ const point=getSiegeReleasePoint(entry,Math.max(0,Number(entry.orderInCamp)||0),SIEGE_CAMPS);
+ return spawnEnemy(String(entry.type||"raider"),point,camp?.gateIndex);
 }
 function createAt(x,y,key){
  return createEntityAt(x,y,key,{
@@ -911,7 +922,7 @@ function update(dt){
   while(state.supportTimer>=1){state.supportTimer-=1;runSupportTick()}
  }else state.supportTimer=0;
  updateCraftsmen(dt)
- if(state.inWave){state.spawnTimer-=dt;if(state.toSpawn>0&&state.spawnTimer<=0){const forcedType=state.spawnQueue.shift()||null;spawnEnemy(forcedType);state.toSpawn=Math.max(0,state.spawnQueue.length);state.spawnTimer=Math.max(.18,.88-state.wave*.024)}}
+ if(state.inWave){state.spawnTimer-=dt;if(state.toSpawn>0&&state.spawnTimer<=0){const queuedEnemy=state.spawnQueue.shift()||null;spawnQueuedEnemy(queuedEnemy);state.toSpawn=Math.max(0,state.spawnQueue.length);state.spawnTimer=Math.max(.18,.88-state.wave*.024)}}
  const bonus=1;
  for(const b of state.buildings){
   if(!isTowerOperational(b))continue;

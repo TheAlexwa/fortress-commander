@@ -1,3 +1,15 @@
+## v1.15.37 – Belagerungslager 2.0
+
+- Die Belagerungsphase verwendet jetzt vier feste Lager: Nord, Ost, Süd und West.
+- Jedes Lager ist eindeutig dem entsprechenden Festungstor zugeordnet.
+- Nachzügler behalten ihre geplante Lager- und Torrichtung, statt zufällig an einem Kartenrand zu erscheinen.
+- Lageranzeigen zeigen eingetroffene und insgesamt geplante Gegner als Verhältnis an.
+- Schildträger, Berserker und Bosse werden direkt am Lager mit Symbol und Anzahl angekündigt.
+- Die gefährlichste Angriffsrichtung wird mit einer roten Warnmarkierung hervorgehoben.
+- Der Belagerungshinweis im HUD zeigt eine kompakte Vorschau aller vier Fronten.
+- Bestehende Spielstände aus v1.15.x bleiben kompatibel.
+- Versionsangaben im Spiel wurden auf v1.15.37 aktualisiert.
+
 ## v1.15.36 – Forschungsfenster-Fix
 
 - Der Forschungsbutton öffnet den Forschungsbaum wieder zuverlässig.
