@@ -5,6 +5,69 @@
  * Dadurch bleibt es unabhängig von DOM, Canvas und der Benutzeroberfläche.
  */
 
+
+export const WAVE_TYPE_DEFINITIONS = Object.freeze({
+  standard: Object.freeze({
+    key: "standard",
+    icon: "⚔️",
+    label: "Eisenclan-Sturm",
+    description: "Ausgewogene Truppen greifen über alle Fronten an.",
+    formation: "balanced",
+  }),
+  scoutRaid: Object.freeze({
+    key: "scoutRaid",
+    icon: "🥾",
+    label: "Späherangriff",
+    description: "Schnelle Clanspäher und Speerjäger stürmen über zwei gegenüberliegende Flanken.",
+    formation: "flanks",
+  }),
+  shieldWall: Object.freeze({
+    key: "shieldWall",
+    icon: "🛡️",
+    label: "Schildwall",
+    description: "Schwer gepanzerte Eisenschilde bündeln sich an einer Hauptfront.",
+    formation: "focus",
+  }),
+  berserkerStorm: Object.freeze({
+    key: "berserkerStorm",
+    icon: "⚔️",
+    label: "Berserkersturm",
+    description: "Blutberserker schlagen mit hoher Gewalt an zwei benachbarten Fronten zu.",
+    formation: "adjacent",
+  }),
+  fourFront: Object.freeze({
+    key: "fourFront",
+    icon: "🧭",
+    label: "Vier-Fronten-Angriff",
+    description: "Die Armee verteilt sich bewusst gleichmäßig auf alle vier Tore.",
+    formation: "four-front",
+  }),
+  bossAssault: Object.freeze({
+    key: "bossAssault",
+    icon: "👑",
+    label: "Häuptlingsangriff",
+    description: "Der Eisenclan-Häuptling führt seine Elite an einer Schwerpunktfront an.",
+    formation: "boss-focus",
+  }),
+});
+
+export function getWaveTypeKey(wave) {
+  const value = Math.max(1, Math.floor(Number(wave) || 1));
+  if (value % 8 === 0) return "bossAssault";
+  if (value >= 10 && value % 6 === 2) return "berserkerStorm";
+  if (value >= 6 && value % 6 === 0) return "shieldWall";
+  if (value >= 5 && value % 6 === 5) return "fourFront";
+  if (value >= 4 && value % 6 === 4) return "scoutRaid";
+  return "standard";
+}
+
+export function getWaveTypeInfo(wave, forcedKey = null) {
+  const key = Object.hasOwn(WAVE_TYPE_DEFINITIONS, forcedKey)
+    ? forcedKey
+    : getWaveTypeKey(wave);
+  return WAVE_TYPE_DEFINITIONS[key];
+}
+
 export function getWaveEnemyCount(wave) {
   return Math.floor(4 + wave * 2.15 + Math.pow(wave, 1.25));
 }
@@ -55,7 +118,8 @@ export function beginWave(
 
   setBuildMode(null);
   setSelected(null);
-  showToast(`Welle ${state.wave}: Die Eisenclans greifen an`);
+  const waveType = getWaveTypeInfo(state.wave);
+  showToast(`${waveType.icon} ${waveType.label}: Die Eisenclans greifen an`);
   return true;
 }
 
@@ -68,6 +132,36 @@ function selectEarlyWaveEnemyType(wave, roll) {
   else if (wave >= 3 && roll > 0.58 && roll < 0.74) type = "spear";
 
   return type;
+}
+
+function selectWeightedEnemyType(wave, weights, roll) {
+  const unlockWave = { raider: 1, spear: 3, runner: 4, shield: 6, berserker: 10 };
+  const available = Object.entries(weights)
+    .filter(([type, weight]) => wave >= unlockWave[type] && weight > 0);
+  const total = available.reduce((sum, [, weight]) => sum + weight, 0);
+  if (total <= 0) return "raider";
+
+  let threshold = 0;
+  for (const [type, weight] of available) {
+    threshold += weight / total;
+    if (roll < threshold) return type;
+  }
+  return available.at(-1)?.[0] || "raider";
+}
+
+function getWaveTypeWeights(waveType) {
+  switch (waveType) {
+    case "scoutRaid":
+      return { raider: 0.18, runner: 0.58, spear: 0.24, shield: 0, berserker: 0 };
+    case "shieldWall":
+      return { raider: 0.12, runner: 0.05, spear: 0.18, shield: 0.58, berserker: 0.07 };
+    case "berserkerStorm":
+      return { raider: 0.18, runner: 0.07, spear: 0.10, shield: 0.10, berserker: 0.55 };
+    case "bossAssault":
+      return { raider: 0.18, runner: 0.08, spear: 0.18, shield: 0.36, berserker: 0.20 };
+    default:
+      return null;
+  }
 }
 
 export function getWaveEnemyWeights(wave) {
@@ -95,9 +189,11 @@ export function getBossEscortTypes(wave) {
 export function selectWaveEnemyType(
   wave,
   remainingToSpawn,
-  random = Math.random
+  random = Math.random,
+  forcedWaveType = null
 ) {
-  if (wave % 8 === 0) {
+  const waveType = getWaveTypeInfo(wave, forcedWaveType).key;
+  if (waveType === "bossAssault") {
     if (remainingToSpawn === 1) return "boss";
 
     const escort = getBossEscortTypes(wave);
@@ -108,6 +204,8 @@ export function selectWaveEnemyType(
   }
 
   const roll = Math.min(0.999999, Math.max(0, random()));
+  const specialWeights = getWaveTypeWeights(waveType);
+  if (specialWeights) return selectWeightedEnemyType(wave, specialWeights, roll);
   if (wave < 12) return selectEarlyWaveEnemyType(wave, roll);
 
   const weights = getWaveEnemyWeights(wave);

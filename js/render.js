@@ -1,4 +1,5 @@
 import { getSiegeCampOverview, getSiegeCampPositions } from "./siege.js";
+import { getWaveTypeInfo } from "./game.js";
 import {
   FIXED_INNER_WALL_RADIUS,
   getFutureLayoutGeometry
@@ -232,6 +233,7 @@ function drawSiegeCamps(){
  if(state.inWave||!siege?.active)return;
  const camps=getSiegeCampPositions({WORLD_W,WORLD_H});
  const overview=getSiegeCampOverview(siege);
+ const waveType=getWaveTypeInfo(state.wave,siege.waveType);
  const now=performance.now();
 
  camps.forEach((camp,index)=>{
@@ -281,7 +283,7 @@ function drawSiegeCamps(){
 
   ctx.fillStyle="#16110de8";ctx.strokeStyle="#d5b46b";ctx.lineWidth=2;
   ctx.beginPath();ctx.roundRect(-36,-78,72,28,8);ctx.fill();ctx.stroke();
-  ctx.fillStyle="#fff0bd";ctx.textAlign="center";ctx.font="bold 13px system-ui";ctx.fillText(`${count}/${total}`,0,-59);
+  ctx.fillStyle="#fff0bd";ctx.textAlign="center";ctx.font="bold 13px system-ui";ctx.fillText(`${campInfo.dangerous?waveType.icon+" ":""}${count}/${total}`,0,-59);
   const specialLabels=[];
   if(campInfo.special.shield)specialLabels.push(`🛡${campInfo.special.shield}`);
   if(campInfo.special.berserker)specialLabels.push(`⚔${campInfo.special.berserker}`);

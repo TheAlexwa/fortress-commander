@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.15.40 – Ruf des Helden</title>
+<title>Fortress Commander v1.15.41 – Angriffsformationen</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -96,7 +96,7 @@
 
   <details class="guideSection">
    <summary>🌊 Wellen, Reparatur & Strategie</summary>
-   <div class="guideBody"><div class="guideTip"><b>⛺ Belagerungsphase:</b> Zwischen den Angriffen sammeln sich Gegner sichtbar in vier Außenlagern. Nord-, Ost-, Süd- und Westlager sind jeweils einem Festungstor zugeordnet. Der Button <b>Angriff</b> schickt alle bereits eingetroffenen Gegner gleichzeitig los; Nachzügler folgen weiterhin aus ihrem vorgesehenen Lager. Zahlen und Gefahrensymbole zeigen die Stärke jeder Angriffsrichtung. Die gesamte Wellenstärke bleibt gleich – längeres Warten vergrößert nur den ersten Angriffspulk.</div><div class="guideTip"><b>🔱 Upgrade-Zentrale:</b> Das Upgrade-Symbol im unteren Hauptmenü öffnet eine Gesamtübersicht für Gebäude, Einheiten, Forschung, globale Boni und Empfehlungen. Reguläre Versorgungsgebäude können dort direkt aufgewertet werden. Einheiten und Türme erhalten keine direkten Gold-/Holz-Upgrades; ihre individuelle Entwicklung läuft über Kampf-EXP.</div><div class="guideTip"><b>Globale Forschungskosten:</b> Forschung in einem Zweig verteuert alle anderen Zweige. Eine höherstufige Werkstatt reduziert diesen globalen Aufschlag von 30 % bis auf 10 %.</div><ul><li>Gold und Holz oben links zeigen Bestand und aktuelle Produktion. Antippen öffnet die ausführliche Übersicht.</li><li>Nach jeder bestandenen Welle erhältst du Forschungspunkte und eine Schadensübersicht.</li><li>Handwerker reparieren je nach Gebäudestufe 16 bis 24 Lebenspunkte pro Takt und verbrauchen 0,5 Holz pro Reparaturtakt, bevor Forschung wirkt.</li><li>Kleine und normale Gegner verursachen an Mauern nur 25 % ihres normalen Schadens; Schildträger, Berserker und Bosse verursachen vollen Mauerschaden.</li></ul><div class="guideTip">Baue zuerst mindestens einen schnellen Turm. Ergänze danach Unterkünfte und Holzproduktion, bevor die Reparaturkosten stark steigen.</div></div>
+   <div class="guideBody"><div class="guideTip"><b>⛺ Belagerungsphase:</b> Zwischen den Angriffen sammeln sich Gegner sichtbar in vier Außenlagern. Nord-, Ost-, Süd- und Westlager sind jeweils einem Festungstor zugeordnet. Der Button <b>Angriff</b> schickt alle bereits eingetroffenen Gegner gleichzeitig los; Nachzügler folgen weiterhin aus ihrem vorgesehenen Lager. Zahlen und Gefahrensymbole zeigen die Stärke jeder Angriffsrichtung. Die gesamte Wellenstärke bleibt gleich – längeres Warten vergrößert nur den ersten Angriffspulk.</div><div class="guideTip"><b>🧭 Angriffsformationen:</b> Jede Welle kündigt ihren Typ bereits in der Belagerungsphase an. Späherangriffe nutzen zwei gegenüberliegende Flanken, Schildwälle bündeln sich an einer Hauptfront, Berserker stürmen über zwei benachbarte Seiten, Vier-Fronten-Angriffe verteilen sich gleichmäßig und jede achte Welle wird vom Häuptling angeführt.</div><div class="guideTip"><b>🔱 Upgrade-Zentrale:</b> Das Upgrade-Symbol im unteren Hauptmenü öffnet eine Gesamtübersicht für Gebäude, Einheiten, Forschung, globale Boni und Empfehlungen. Reguläre Versorgungsgebäude können dort direkt aufgewertet werden. Einheiten und Türme erhalten keine direkten Gold-/Holz-Upgrades; ihre individuelle Entwicklung läuft über Kampf-EXP.</div><div class="guideTip"><b>Globale Forschungskosten:</b> Forschung in einem Zweig verteuert alle anderen Zweige. Eine höherstufige Werkstatt reduziert diesen globalen Aufschlag von 30 % bis auf 10 %.</div><ul><li>Gold und Holz oben links zeigen Bestand und aktuelle Produktion. Antippen öffnet die ausführliche Übersicht.</li><li>Nach jeder bestandenen Welle erhältst du Forschungspunkte und eine Schadensübersicht.</li><li>Handwerker reparieren je nach Gebäudestufe 16 bis 24 Lebenspunkte pro Takt und verbrauchen 0,5 Holz pro Reparaturtakt, bevor Forschung wirkt.</li><li>Kleine und normale Gegner verursachen an Mauern nur 25 % ihres normalen Schadens; Schildträger, Berserker und Bosse verursachen vollen Mauerschaden.</li></ul><div class="guideTip">Baue zuerst mindestens einen schnellen Turm. Ergänze danach Unterkünfte und Holzproduktion, bevor die Reparaturkosten stark steigen.</div></div>
   </details>
 
   <details class="guideSection">
@@ -129,7 +129,7 @@
 
 <div id="gameWrap">
  <canvas id="game"></canvas>
- <div id="siegePhaseNotice" class="siegePhaseNotice hidden" role="status" aria-live="polite"><strong>⛺ Belagerungsphase</strong><span id="siegePhaseText">Die nächste Armee sammelt sich in den Außenlagern.</span></div>
+ <div id="siegePhaseNotice" class="siegePhaseNotice hidden" role="status" aria-live="polite"><strong id="siegePhaseTitle">⛺ Belagerungsphase</strong><span id="siegePhaseText">Die nächste Armee sammelt sich in den Außenlagern.</span></div>
  <button id="resourceOverviewBtn" type="button" aria-label="Rohstoffübersicht öffnen">
   <span class="resourceCompact"><span>🪙</span><strong id="gold">0</strong></span>
   <span class="resourceDivider"></span>
@@ -221,7 +221,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.15.40 · Andreas kann jetzt den „Ruf des Helden“ mit 10 Sekunden Wirkung und 60 Sekunden Abklingzeit einsetzen.</div>
+  <div class="workshopFoot">v1.15.41 · Neue Wellentypen und Formationen machen jede Belagerung klarer erkennbar und taktisch abwechslungsreicher.</div>
  </section>
 </div>
 

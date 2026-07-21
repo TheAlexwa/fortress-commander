@@ -1,3 +1,15 @@
+## v1.15.41 – Angriffsformationen
+
+- Neue Wellentypen kündigen die Zusammensetzung und Angriffsformation bereits während der Belagerungsphase an.
+- Späherangriffe konzentrieren schnelle Clanspäher und Speerjäger auf zwei gegenüberliegende Flanken.
+- Schildwälle bündeln schwere Eisenschilde an einer klar erkennbaren Hauptfront.
+- Berserkerstürme greifen mit vielen Blutberserkern über zwei benachbarte Lager an.
+- Vier-Fronten-Angriffe verteilen die Armee bewusst gleichmäßig auf alle vier Tore.
+- Jede achte Welle bleibt eine Häuptlingswelle; Boss und Eliteeskorte sammeln sich an einer Schwerpunktfront.
+- HUD, Belagerungshinweis, Lageranzeige und Angriffsmeldungen zeigen den aktuellen Wellentyp.
+- Wellentyp und Formation werden mit der Belagerungsphase gespeichert; ältere Spielstände bleiben kompatibel.
+- Versionsangaben im Spiel wurden auf v1.15.41 aktualisiert.
+
 ## v1.15.40 – Ruf des Helden
 
 - Andreas besitzt jetzt die aktiv einsetzbare Spezialfähigkeit „Ruf des Helden“.

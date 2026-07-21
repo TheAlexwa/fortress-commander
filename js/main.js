@@ -73,6 +73,7 @@ import {
 
 import {
  getWaveEnemyCount,
+ getWaveTypeInfo,
  selectWaveEnemyType,
  createWaveEnemy,
  applyWaveAutoRepair,
@@ -139,8 +140,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.40";
-const GAME_RELEASE_NAME="Ruf des Helden";
+const GAME_VERSION="1.15.41";
+const GAME_RELEASE_NAME="Angriffsformationen";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -1361,8 +1362,9 @@ function update(dt){
   state.repairActive=false;
   state.spawnQueue=[];
   prepareSiegePhase(state,siegeContext());
+  const nextWaveType=getWaveTypeInfo(state.wave,state.siege?.waveType);
   for(const c of state.craftsmen)sendCraftsmanHome(c);
-  showToast(`Welle geschafft: +${gold} Gold · +${rp} Forschung${autoRepaired>0?` · +${Math.round(autoRepaired)} HP automatisch repariert`:""} · Neue Belagerung beginnt`);hideRepairDecision();saveGame(true);
+  showToast(`Welle geschafft: +${gold} Gold · +${rp} Forschung${autoRepaired>0?` · +${Math.round(autoRepaired)} HP automatisch repariert`:""} · ${nextWaveType.icon} ${nextWaveType.label}`);hideRepairDecision();saveGame(true);
  }
  for(const p of state.particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96}
  state.particles=state.particles.filter(p=>p.life>0);

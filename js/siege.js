@@ -1,3 +1,5 @@
+import { getWaveTypeInfo } from "./game.js";
+
 /**
  * Belagerungsphase von Fortress Commander.
  *
@@ -44,13 +46,55 @@ export function getSiegeCampPositions({ WORLD_W, WORLD_H }) {
   }));
 }
 
-function chooseCamp(_type, campCounts, random) {
-  const minimum = Math.min(...campCounts);
-  const candidates = campCounts
-    .map((count, index) => (count === minimum ? index : -1))
-    .filter((index) => index >= 0);
+function chooseLeastUsedCamp(campCounts, candidates, random) {
+  const valid = candidates.filter((index) => index >= 0 && index < SIEGE_CAMP_COUNT);
+  const minimum = Math.min(...valid.map((index) => campCounts[index]));
+  const leastUsed = valid.filter((index) => campCounts[index] === minimum);
+  return leastUsed[Math.floor(random() * leastUsed.length)] ?? valid[0] ?? 0;
+}
 
-  return candidates[Math.floor(random() * candidates.length)] ?? 0;
+function createFormationPlan(waveType, random) {
+  const focusCamp = Math.floor(random() * SIEGE_CAMP_COUNT);
+  const clockwise = (focusCamp + 1) % SIEGE_CAMP_COUNT;
+  const counterClockwise = (focusCamp + SIEGE_CAMP_COUNT - 1) % SIEGE_CAMP_COUNT;
+  const flankCamps = random() < 0.5 ? [0, 2] : [1, 3];
+  return {
+    waveType,
+    focusCamp,
+    flankCamps,
+    assaultCamps: random() < 0.5
+      ? [focusCamp, clockwise]
+      : [focusCamp, counterClockwise],
+  };
+}
+
+function chooseCamp(type, campCounts, random, formation) {
+  const allCamps = [0, 1, 2, 3];
+  switch (formation.waveType) {
+    case "scoutRaid":
+      return chooseLeastUsedCamp(campCounts, formation.flankCamps, random);
+    case "shieldWall":
+      if (type === "shield" || random() < 0.68) return formation.focusCamp;
+      return chooseLeastUsedCamp(
+        campCounts,
+        allCamps.filter((index) => index !== formation.focusCamp),
+        random
+      );
+    case "berserkerStorm":
+      if (type === "berserker" || random() < 0.75) {
+        return chooseLeastUsedCamp(campCounts, formation.assaultCamps, random);
+      }
+      return chooseLeastUsedCamp(campCounts, allCamps, random);
+    case "bossAssault":
+      if (["boss", "shield", "berserker"].includes(type) || random() < 0.55) {
+        return formation.focusCamp;
+      }
+      return chooseLeastUsedCamp(campCounts, allCamps, random);
+    case "fourFront":
+    case "standard":
+    default:
+      return chooseLeastUsedCamp(campCounts, allCamps, random);
+  }
 }
 
 export function prepareSiegePhase(
@@ -58,12 +102,14 @@ export function prepareSiegePhase(
   { getWaveEnemyCount, selectWaveEnemyType, random = Math.random }
 ) {
   const total = getWaveEnemyCount(state.wave);
+  const waveType = getWaveTypeInfo(state.wave);
+  const formation = createFormationPlan(waveType.key, random);
   const campCounts = Array(SIEGE_CAMP_COUNT).fill(0);
   const planned = [];
 
   for (let remaining = total; remaining > 0; remaining--) {
-    const type = selectWaveEnemyType(state.wave, remaining, random);
-    const camp = chooseCamp(type, campCounts, random);
+    const type = selectWaveEnemyType(state.wave, remaining, random, waveType.key);
+    const camp = chooseCamp(type, campCounts, random, formation);
     campCounts[camp]++;
     planned.push({ type, camp });
   }
@@ -71,6 +117,7 @@ export function prepareSiegePhase(
   state.siege = {
     active: true,
     wave: state.wave,
+    waveType: waveType.key,
     total,
     arrived: 0,
     elapsed: 0,
@@ -196,10 +243,11 @@ export function beginSiegeAttack(
 
   setBuildMode(null);
   setSelected(null);
+  const waveType = getWaveTypeInfo(state.wave, siege.waveType);
   showToast(
     arrived.length
-      ? `Welle ${state.wave}: ${arrived.length} Gegner brechen aus vier Lagern auf`
-      : `Welle ${state.wave}: Angriff frühzeitig ausgelöst`
+      ? `${waveType.icon} ${waveType.label}: ${arrived.length} Gegner greifen an`
+      : `${waveType.icon} ${waveType.label}: Angriff frühzeitig ausgelöst`
   );
 
   return { arrived, reinforcements };
@@ -222,9 +270,14 @@ export function getSiegeReleasePoint(entry, orderInCamp, campPositions, random =
 export function serializeSiegeState(siege) {
   if (!siege || !Array.isArray(siege.planned)) return null;
 
+  const waveType = typeof siege.waveType === "string"
+    ? getWaveTypeInfo(siege.wave, siege.waveType).key
+    : "standard";
+
   return {
     active: siege.active === true,
     wave: Math.max(1, Number(siege.wave) || 1),
+    waveType,
     total: Math.max(0, Number(siege.total) || 0),
     arrived: Math.max(0, Number(siege.arrived) || 0),
     elapsed: Math.max(0, Number(siege.elapsed) || 0),

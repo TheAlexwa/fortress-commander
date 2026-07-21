@@ -1,4 +1,5 @@
 import { getMiddleFortificationUpgrade } from "./fortifications.js";
+import { getWaveTypeInfo } from "./game.js";
 import { getSiegeCampPreview } from "./siege.js";
 
 /**
@@ -101,7 +102,9 @@ export function renderGameUI({
   const siegeReady = !state.inWave && siege?.active ? Math.max(0, Number(siege.arrived) || 0) : 0;
   const siegeTotal = !state.inWave && siege?.active ? Math.max(0, Number(siege.total) || 0) : waveCount(state.wave);
   const siegeNotice = document.getElementById("siegePhaseNotice");
+  const siegeNoticeTitle = document.getElementById("siegePhaseTitle");
   const siegeNoticeText = document.getElementById("siegePhaseText");
+  const waveType = getWaveTypeInfo(state.wave, siege?.waveType);
 
   ui.start.disabled = state.inWave || gameOver;
   ui.start.textContent = state.inWave
@@ -110,24 +113,27 @@ export function renderGameUI({
       ? "✖ Verloren"
       : "⚔ Angriff";
   ui.start.title = state.inWave
-    ? "Angriff läuft"
-    : "Alle bereits versammelten Gegner greifen gemeinsam an; Nachzügler folgen als Verstärkung.";
+    ? `${waveType.label} läuft`
+    : `${waveType.label}: Alle bereits versammelten Gegner greifen gemeinsam an; Nachzügler folgen als Verstärkung.`;
   ui.pause.textContent = paused ? "▶ Weiter" : "Ⅱ Pause";
   ui.status.textContent = gameOver
     ? "Burg gefallen"
     : state.inWave
-      ? `${state.enemies.length + state.toSpawn} Eisenclan-Krieger`
-      : `Belagerung · ${siegeReady}/${siegeTotal} bereit`;
+      ? `${waveType.icon} ${waveType.label} · ${state.enemies.length + state.toSpawn} Gegner`
+      : `${waveType.icon} ${waveType.label} · ${siegeReady}/${siegeTotal} bereit`;
 
   if (siegeNotice) {
     const showSiegeNotice = !gameOver && !state.inWave && siege?.active;
     siegeNotice.classList.toggle("hidden", !showSiegeNotice);
+    if (siegeNoticeTitle && showSiegeNotice) {
+      siegeNoticeTitle.textContent = `${waveType.icon} ${waveType.label}`;
+    }
     if (siegeNoticeText && showSiegeNotice) {
       const remaining = Math.max(0, siegeTotal - siegeReady);
       const campPreview = getSiegeCampPreview(siege);
       siegeNoticeText.textContent = siegeReady >= siegeTotal
-        ? `${campPreview} · Alle Gegner bereit. Vier Lager greifen ihre zugeordneten Tore gleichzeitig an.`
-        : `${campPreview} · ${remaining} Nachzügler. Jeder Gegner behält seine Lager- und Torrichtung.`;
+        ? `${waveType.description} ${campPreview} · Alle Gegner bereit.`
+        : `${waveType.description} ${campPreview} · ${remaining} Nachzügler.`;
     }
   }
 
