@@ -17,9 +17,6 @@ button:active{transform:translateY(1px);box-shadow:inset 0 2px 4px #0007}
 button:disabled{opacity:.42}.primary{background:linear-gradient(#7b914f,#4e6338);font-weight:900;border-color:#b2c77d}
 #gameWrap{position:relative;min-height:0;background:#607a4d}
 canvas{display:block;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none}
-#zoomControls{position:absolute;left:8px;top:8px;display:flex;gap:6px;z-index:4}
-#zoomControls button{width:44px;height:44px;padding:0;font-size:23px;font-weight:900;background:#132013e8}
-#zoomLabel{height:44px;min-width:60px;display:grid;place-items:center;background:#132013e8;border:1px solid #fff3;border-radius:9px;font-weight:800}
 #toast{position:absolute;top:61px;left:50%;transform:translateX(-50%);z-index:6;background:#111e;border:1px solid #fff3;border-radius:10px;padding:9px 13px;text-align:center;opacity:0;pointer-events:none;transition:.18s;max-width:88%}
 #toast.show{opacity:1}
 #tip{position:absolute;right:8px;top:8px;width:260px;background:#152015df;border:1px solid #fff2;border-radius:10px;padding:9px;font-size:12px;line-height:1.35;color:#d5dacd}
@@ -45,9 +42,6 @@ header::-webkit-scrollbar,footer::-webkit-scrollbar{display:none}
 #startWaveBtn:before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 25%,#ffffff22 45%,transparent 65%);transform:translateX(-130%);animation:buttonShine 3.6s infinite}
 @keyframes buttonShine{0%,65%{transform:translateX(-130%)}85%,100%{transform:translateX(130%)}}
 #gameWrap:after{content:"";position:absolute;inset:0;pointer-events:none;border:1px solid #ffffff0b;box-shadow:inset 0 0 35px #0006}
-#zoomControls{background:#0a1110b8;padding:4px;border:1px solid #ffffff1c;border-radius:17px;box-shadow:0 6px 18px #0009;backdrop-filter:blur(10px)}
-#zoomControls button{border-radius:13px;border-color:#9cb79a55}
-#zoomLabel{border-radius:12px;color:#e6f1e4}
 #toast{font-weight:800;background:linear-gradient(#1b2a27f2,#0b1211f2);border-color:#8ed2ff66;box-shadow:0 10px 30px #000b,0 0 18px #55b9ff28;backdrop-filter:blur(12px)}
 footer{position:relative;padding-top:21px;padding-bottom:calc(8px + var(--safeB));background:linear-gradient(180deg,#1d2925f4,#0b1110fa);border-top:1px solid #e1cf8c55;box-shadow:0 -10px 28px #000b;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
 footer:before{content:"BAUEN & BEFEHLE";position:absolute;top:4px;left:12px;font-size:9px;font-weight:900;letter-spacing:1.5px;color:#d9c98b}
@@ -74,9 +68,6 @@ footer:after{content:"";position:absolute;top:7px;left:50%;width:42px;height:4px
  .grow{font-size:10px;min-width:82px;max-width:112px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
  header button{min-height:36px;padding:6px 9px;font-size:11px;border-radius:12px}
  #tip{display:none}
- #zoomControls{left:7px;top:7px;gap:3px}
- #zoomControls button{width:40px;height:40px;font-size:21px}
- #zoomLabel{height:40px;min-width:52px;font-size:11px}
  #levelUpDock{right:7px;top:62px;max-height:calc(100vh - 190px)}
  .levelCard{width:58px;height:58px;border-radius:15px}
  .levelCard .portrait{font-size:22px}
@@ -216,13 +207,6 @@ header{
  content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
  box-shadow:inset 0 0 55px #0009
 }
-#zoomControls{
- top:14px;left:14px;background:linear-gradient(#151b19e8,#090c0be8);
- border:1px solid #b4986855;border-radius:24px;padding:5px;gap:4px;
- box-shadow:0 8px 20px #000b;z-index:8
-}
-#zoomControls button{width:52px;height:52px;border-radius:18px;font-size:25px;background:#111715}
-#zoomLabel{height:52px;min-width:78px;border-radius:17px;background:#101513;font-size:14px}
 #tip{display:none}
 #levelUpDock{right:84px;top:78px}
 #quickRail{
@@ -307,7 +291,6 @@ footer:before,footer:after{display:none}
  #startWaveBtn{height:43px;min-width:76px;font-size:11px;padding:0 9px}
  #pauseBtn{height:43px;width:45px;min-width:45px}
  #quickRail{right:7px;gap:9px}.railBtn{width:59px;height:64px;font-size:9px}.railBtn .railIcon{font-size:22px}
- #zoomControls{left:8px;top:8px}.zoomControls button{width:46px}
  #buildTray{min-height:103px;padding-left:7px}.buildBtn{flex-basis:112px;height:94px}
  .buildBtn:after{height:39px;font-size:27px}.buildBtn .name{font-size:11px}
  #bottomNav{gap:4px;padding-left:5px;padding-right:5px}.navBtn{height:61px}.navBtn .navIcon{font-size:24px}
@@ -598,9 +581,6 @@ header>.stat,header>.grow{min-width:0}
 #pauseBtn{grid-column:2;grid-row:1;margin-right:80px;z-index:30}
 header>.stat,header>.grow{grid-row:1}
 .resourceStat{padding:0 7px!important}.resourceStat .resourceIcon{font-size:15px}.resourceStat strong{font-size:13px!important}.resourceStat small{font-size:8px}
-#zoomControls{left:6px!important;top:6px!important;padding:3px!important;gap:2px!important;border-radius:14px!important}
-#zoomControls button{width:34px!important;height:34px!important;border-radius:11px!important;font-size:18px!important}
-#zoomLabel{height:34px!important;min-width:46px!important;border-radius:10px!important;font-size:11px!important}
 #repairDecision{position:fixed!important;inset:auto 8px calc(86px + var(--safeB)) 8px!important;z-index:60!important;display:block!important;padding:0!important;background:transparent!important;backdrop-filter:none!important;pointer-events:none!important}
 #repairDecision.hidden{display:none!important}
 #repairDecision .repairCard{width:min(420px,100%)!important;max-height:42vh!important;margin:0 auto!important;padding:12px 14px!important;border-radius:16px!important;pointer-events:auto!important;box-shadow:0 10px 30px #000c!important}
@@ -649,9 +629,7 @@ header>.stat,header>.grow{grid-row:1}
 #populationOverviewBtn .popFree{color:#9fe3aa}#populationOverviewBtn .popBusy{color:#ffd97d}
 .populationActions{display:grid;gap:8px}.populationWorkplace{display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center;padding:9px;border:1px solid #ffffff18;border-radius:13px;background:#09110ed9}.populationWorkplace .workIcon{font-size:25px}.populationWorkplace small{display:block;color:#b9c5bd;margin-top:2px}.populationWorkplace button{min-width:92px;padding:7px 9px;font-size:11px}.residentState{display:inline-flex;gap:5px;align-items:center;padding:3px 7px;border-radius:999px;background:#ffffff10;font-size:10px}.residentState.free{color:#9fe3aa}.residentState.busy{color:#ffd97d}
 .resourceCompact{display:flex;align-items:center;gap:3px;font-size:14px;white-space:nowrap}.resourceCompact strong{font-size:12px;color:#fff8d2;text-shadow:0 1px 2px #000}.resourceDivider{width:1px;height:19px;background:#ffffff2d}.resourceChevron{font-size:13px;color:#d9c98b;margin-left:auto}
-#zoomControls{top:46px!important}
 header{grid-template-columns:minmax(0,1fr) auto!important}
-@media(max-width:520px){#resourceOverviewBtn{left:5px;top:5px;height:32px;min-width:198px;padding:3px 6px;gap:4px}.resourceCompact{font-size:12px}.resourceCompact strong{font-size:10px}#populationOverviewBtn{left:210px;top:5px;height:32px;min-width:86px;padding:3px 6px;font-size:10px}#zoomControls{top:43px!important}}
 
 
 .buildBtn:disabled{filter:grayscale(.65);opacity:.36}.buildBtn.unlocked:not(:disabled){box-shadow:0 0 0 1px #f4d87944,inset 0 1px #ffffff18,0 4px 10px #0008}
@@ -745,7 +723,6 @@ body.orientationBlocked{overflow:hidden;touch-action:none}body.orientationBlocke
 /* v1.15.0 – frei bewegliche größere Karte */
 #game{cursor:grab}
 #game:active{cursor:grabbing}
-#zoomCenterBtn{font-size:18px!important}
 @media(min-width:900px){#gameWrap{min-height:560px}}
 
 
@@ -883,3 +860,59 @@ footer{min-height:0}
 .selectionAction.heroAbilityAction.abilityCooldown{background:linear-gradient(#3d3831,#201b18);border-color:#8a765b;color:#c9bca1;box-shadow:none}
 .selectionAction.heroAbilityAction:disabled{opacity:.72;cursor:not-allowed}
 @keyframes heroAbilityButtonPulse{from{box-shadow:0 0 10px #ffc84566,inset 0 1px #fff3}to{box-shadow:0 0 24px #ffcf55bb,inset 0 1px #fff5;transform:translateY(-1px)}}
+
+/* v1.15.42 – HUD-Bereinigung */
+header{
+ display:grid!important;
+ grid-template-columns:max-content minmax(88px,1fr) 52px minmax(78px,96px)!important;
+ gap:6px!important;
+ align-items:center;
+ overflow:hidden!important;
+ padding:calc(7px + var(--safeT)) 7px 7px!important;
+}
+header>.waveStat,header>.grow,header>#pauseBtn,header>#startWaveBtn{
+ position:static!important;grid-row:1!important;margin:0!important;min-width:0;
+}
+header>.grow{display:flex!important}
+header>.waveStat{
+ grid-column:1!important;display:flex!important;align-items:center;justify-content:center;gap:4px;
+ height:43px;padding:0 11px;border-radius:16px;font-size:12px;
+}
+header>.waveStat span{font-size:10px;color:#cbd7c7;text-transform:uppercase;letter-spacing:.45px}
+header>.waveStat strong{font-size:16px;color:#fff1bd}
+header>.grow{
+ grid-column:2!important;max-width:none!important;width:auto;height:43px;padding:5px 8px;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;
+}
+header>#pauseBtn{grid-column:3!important;width:52px!important;height:43px!important}
+header>#startWaveBtn{grid-column:4!important;width:100%!important;height:43px!important;padding:0 8px!important}
+
+#resourceOverviewBtn{
+ left:6px;top:6px;height:34px;min-width:0;width:auto;padding:4px 9px;gap:6px;
+}
+#populationOverviewBtn{
+ left:auto;right:6px;top:6px;height:34px;min-width:76px;padding:4px 9px;
+}
+#populationOverviewBtn .popFree{display:none}
+#populationOverviewBtn.hasFreeResidents .popFree{
+ display:inline-block;width:8px;height:8px;margin-left:1px;border-radius:50%;
+ background:#6ee58a;box-shadow:0 0 9px #6ee58acc;
+}
+.siegePhaseNotice{
+ top:48px;left:6px;right:6px;width:auto;max-width:720px;margin:0 auto;transform:none;
+ padding:8px 11px;display:block;text-align:left;
+}
+.siegePhaseNotice strong{display:block;margin-bottom:2px;white-space:normal}
+.siegePhaseNotice span{display:block;white-space:normal;overflow:visible;text-overflow:clip}
+
+@media(max-width:520px){
+ header{grid-template-columns:max-content minmax(70px,1fr) 45px minmax(68px,78px)!important;gap:4px!important}
+ header>.waveStat{height:40px;padding:0 8px}.waveStat span{display:none}
+ header>.grow{height:40px;padding:4px 7px;font-size:10px}
+ header>#pauseBtn{width:45px!important;height:40px!important}
+ header>#startWaveBtn{height:40px!important;font-size:10px!important;padding:0 6px!important}
+ #resourceOverviewBtn{left:5px;top:5px;height:32px;padding:3px 7px;gap:4px}
+ #populationOverviewBtn{right:5px;top:5px;height:32px;min-width:70px;padding:3px 7px;font-size:10px}
+ .siegePhaseNotice{top:43px;left:5px;right:5px;padding:7px 9px;max-height:74px;overflow:auto}
+ .siegePhaseNotice strong{font-size:11px}.siegePhaseNotice span{font-size:9px;line-height:1.3}
+}

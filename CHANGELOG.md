@@ -1,3 +1,16 @@
+## v1.15.42 – HUD-Bereinigung
+
+- Die doppelte Festungs-Lebensanzeige wurde aus der oberen Leiste entfernt.
+- Die Holzfestung besitzt jetzt einen deutlich größeren, farbabhängigen Lebensbalken direkt über der Burg, inklusive Warnpuls und Trefferblitz bei kritischem Schaden.
+- Die obere Leiste zeigt nur noch Welle, aktuelle Gegner- beziehungsweise Bereitschaftszahl, Pause und Angriff.
+- Wellentyp und Frontverteilung stehen ausschließlich im Belagerungshinweis und werden dort auf kleinen Displays vollständig umgebrochen.
+- Forschungspunkte wurden aus der Rohstoffleiste entfernt und bleiben am Forschungsbutton sowie in den Forschungsfenstern sichtbar.
+- Die Bewohneranzeige wurde auf beschäftigt/gesamt verkürzt; freie Bewohner werden durch einen grünen Punkt signalisiert.
+- Die sichtbaren Zoomschaltflächen und die Prozentanzeige wurden vollständig entfernt. Mausrad, Zwei-Finger-Geste und Tastatursteuerung bleiben erhalten.
+- Bauplatz-, Ehrenplatz- und Ringbeschriftungen erscheinen nur noch im jeweils passenden Baumodus.
+- Lebens- und Erfahrungsbalken von Einheiten, Türmen und Gegnern werden nur noch bei Schaden, Auswahl, Aufwertungsbereitschaft oder besonderen Gegnerklassen eingeblendet.
+- Versionsangaben im Spiel wurden auf v1.15.42 aktualisiert.
+
 ## v1.15.41 – Angriffsformationen
 
 - Neue Wellentypen kündigen die Zusammensetzung und Angriffsformation bereits während der Belagerungsphase an.

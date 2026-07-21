@@ -140,8 +140,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.41";
-const GAME_RELEASE_NAME="Angriffsformationen";
+const GAME_VERSION="1.15.42";
+const GAME_RELEASE_NAME="HUD-Bereinigung";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -242,12 +242,11 @@ instructionsScreen.addEventListener("click",e=>{if(e.target===instructionsScreen
 const canvas=document.getElementById("game"),ctx=canvas.getContext("2d"),wrap=document.getElementById("gameWrap");
 const ui={
  gold:document.getElementById("gold"),wood:document.getElementById("wood"),stone:document.getElementById("stone"),goldRate:document.getElementById("goldRate"),woodRate:document.getElementById("woodRate"),stoneRate:document.getElementById("stoneRate"),
- resourceOverviewBtn:document.getElementById("resourceOverviewBtn"),populationOverviewBtn:document.getElementById("populationOverviewBtn"),populationBusy:document.getElementById("populationBusy"),populationTotal:document.getElementById("populationTotal"),populationFree:document.getElementById("populationFree"),hp:document.getElementById("hp"),
- wallInfo:document.getElementById("wallInfo"),wave:document.getElementById("wave"),status:document.getElementById("waveStatus"),
+ resourceOverviewBtn:document.getElementById("resourceOverviewBtn"),populationOverviewBtn:document.getElementById("populationOverviewBtn"),populationBusy:document.getElementById("populationBusy"),populationTotal:document.getElementById("populationTotal"),populationFree:document.getElementById("populationFree"),
+ wave:document.getElementById("wave"),status:document.getElementById("waveStatus"),
  start:document.getElementById("startWaveBtn"),pause:document.getElementById("pauseBtn"),toast:document.getElementById("toast"),
  selected:document.getElementById("selectedPanel"),levelDock:document.getElementById("levelUpDock"),upgrade:document.getElementById("upgradeBtn"),
  repairWall:document.getElementById("repairWallBtn"),craftsmanToggle:document.getElementById("craftsmanToggleBtn"),marketTrade:document.getElementById("marketTradeBtn"),statueOffering:document.getElementById("statueOfferingBtn"),sell:document.getElementById("sellBtn"),
- zoomOut:document.getElementById("zoomOutBtn"),zoomIn:document.getElementById("zoomInBtn"),zoomCenter:document.getElementById("zoomCenterBtn"),zoomLabel:document.getElementById("zoomLabel"),
  selectionHud:document.getElementById("selectionHud"),selectionText:document.getElementById("selectionText"),selectionPortrait:document.getElementById("selectionPortrait")
 };
 const TAU=Math.PI*2;
@@ -405,7 +404,6 @@ function resize(){
  ctx.setTransform(dpr,0,0,dpr,0,0);
  zoom=Math.max(effectiveMinZoom(),Math.min(maxZoom,zoom));
  clampCamera();
- if(ui.zoomLabel)ui.zoomLabel.textContent=Math.round(zoom*100)+"%";
 }
 function clampCamera(){
  const visibleW=vw/zoom,visibleH=vh/zoom;
@@ -419,7 +417,6 @@ function clampCamera(){
 function setZoom(v,focusX=vw/2,focusY=vh/2){
  const before=screenToWorld(focusX,focusY);zoom=Math.max(effectiveMinZoom(),Math.min(maxZoom,v));
  const after=screenToWorld(focusX,focusY);camX+=before.x-after.x;camY+=before.y-after.y;clampCamera();
- ui.zoomLabel.textContent=Math.round(zoom*100)+"%";
 }
 function centerCamera(){camX=CX;camY=CY;clampCamera();}
 function screenToWorld(x,y){return{x:camX+(x-vw/2)/zoom,y:camY+(y-vh/2)/zoom}}
@@ -1557,7 +1554,6 @@ document.getElementById("deleteSaveBtn").onclick=e=>{e.preventDefault();e.stopPr
 document.getElementById("pauseRestartBtn").onclick=e=>{e.preventDefault();e.stopPropagation();document.getElementById("pauseRestartConfirm").classList.remove("hidden")};
 document.getElementById("cancelPauseRestartBtn").onclick=e=>{e.preventDefault();e.stopPropagation();document.getElementById("pauseRestartConfirm").classList.add("hidden")};
 document.getElementById("confirmPauseRestartBtn").onclick=e=>{e.preventDefault();e.stopPropagation();reset()};
-ui.zoomOut.onclick=()=>setZoom(zoom-.1);ui.zoomIn.onclick=()=>setZoom(zoom+.1);if(ui.zoomCenter)ui.zoomCenter.onclick=()=>{centerCamera();showToast("Karte zentriert")};
 attachGameInput({
  canvas,
  startScreen,

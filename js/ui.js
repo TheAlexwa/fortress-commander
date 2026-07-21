@@ -58,9 +58,6 @@ export function renderGameUI({
   ui.wood.textContent = Math.floor(state.wood);
   if (ui.stone) ui.stone.textContent = Math.floor(state.stone || 0);
 
-  const rpHud = document.getElementById("researchPoints");
-  if (rpHud) rpHud.textContent = Math.floor(state.researchPoints || 0);
-
   const hasWorkshop = state.buildings.some((building) => building.key === "workshop");
   if (navResearch) {
     navResearch.disabled = !hasWorkshop;
@@ -77,11 +74,16 @@ export function renderGameUI({
   if (ui.stoneRate) ui.stoneRate.textContent = `+${totalStonePerSecond().toFixed(2)}/Sek.`;
 
   syncResidents();
-  ui.populationBusy.textContent = assignedResidents();
-  ui.populationTotal.textContent = totalResidents();
-  ui.populationFree.textContent = `${freeResidents()} frei`;
+  const busyResidents = assignedResidents();
+  const residentTotal = totalResidents();
+  const availableResidents = freeResidents();
+  ui.populationBusy.textContent = busyResidents;
+  ui.populationTotal.textContent = residentTotal;
+  ui.populationFree.textContent = availableResidents > 0 ? "•" : "";
+  ui.populationOverviewBtn.classList.toggle("hasFreeResidents", availableResidents > 0);
+  ui.populationOverviewBtn.title = `${busyResidents} beschäftigt · ${availableResidents} frei · ${residentTotal} gesamt`;
+  ui.populationOverviewBtn.setAttribute("aria-label", `Bewohnerübersicht öffnen: ${busyResidents} beschäftigt, ${availableResidents} frei, ${residentTotal} gesamt`);
 
-  ui.hp.textContent = `${Math.ceil(state.hp)}/${state.maxHp}`;
   ui.wave.textContent = state.wave;
   const builtWallSegments = typeof builtMiddleWallSegments === "function"
     ? builtMiddleWallSegments()
@@ -95,9 +97,6 @@ export function renderGameUI({
   const builtOuterGateCount = typeof builtOuterGates === "function"
     ? builtOuterGates()
     : 0;
-  ui.wallInfo.textContent = `Außen ${builtOuterSegments}/${OUTER_WALL_SEGMENT_COUNT} 🚪 ${builtOuterGateCount}/${OUTER_GATE_COUNT} · Mitte ${builtWallSegments}/${MIDDLE_WALL_SEGMENT_COUNT} 🚪 ${builtGates}/${MIDDLE_GATE_COUNT}`;
-  ui.wallInfo.title = "Intakte Segmente und Tore des äußeren und mittleren Verteidigungsrings";
-
   const siege = state.siege;
   const siegeReady = !state.inWave && siege?.active ? Math.max(0, Number(siege.arrived) || 0) : 0;
   const siegeTotal = !state.inWave && siege?.active ? Math.max(0, Number(siege.total) || 0) : waveCount(state.wave);
@@ -117,10 +116,10 @@ export function renderGameUI({
     : `${waveType.label}: Alle bereits versammelten Gegner greifen gemeinsam an; Nachzügler folgen als Verstärkung.`;
   ui.pause.textContent = paused ? "▶ Weiter" : "Ⅱ Pause";
   ui.status.textContent = gameOver
-    ? "Burg gefallen"
+    ? "✖ Festung gefallen"
     : state.inWave
-      ? `${waveType.icon} ${waveType.label} · ${state.enemies.length + state.toSpawn} Gegner`
-      : `${waveType.icon} ${waveType.label} · ${siegeReady}/${siegeTotal} bereit`;
+      ? `⚔ ${state.enemies.length + state.toSpawn} Gegner`
+      : `⛺ ${siegeReady}/${siegeTotal} bereit`;
 
   if (siegeNotice) {
     const showSiegeNotice = !gameOver && !state.inWave && siege?.active;
