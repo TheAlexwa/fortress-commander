@@ -349,6 +349,8 @@ function restoreUnit(savedUnit, BUILD) {
     autoTarget: null,
     attackCd: 0,
     retargetCd: 0,
+    heroAbilityTime: savedUnit?.key === "hero" ? Math.max(0, Number(savedUnit.heroAbilityTime) || 0) : 0,
+    heroAbilityCooldown: savedUnit?.key === "hero" ? Math.max(0, Number(savedUnit.heroAbilityCooldown) || 0) : 0,
     upgradeStats: { ...(savedUnit.upgradeStats || {}) },
   };
 }

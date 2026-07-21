@@ -1,3 +1,14 @@
+## v1.15.40 – Ruf des Helden
+
+- Andreas besitzt jetzt die aktiv einsetzbare Spezialfähigkeit „Ruf des Helden“.
+- Die Fähigkeit wirkt 10 Sekunden und hat 60 Sekunden Abklingzeit.
+- Nahe verbündete Einheiten erhalten während der Wirkung zusätzlich +25 % Schaden, +20 Prozentpunkte Rüstung und +15 % Bewegungstempo.
+- Andreas erhält währenddessen +30 Prozentpunkte Rüstung und bindet nahe Gegner im inneren Festungsbereich an sich.
+- Ein eigener Fähigkeitsschalter zeigt Bereitschaft, aktive Restzeit und Abklingzeit direkt in der Heldenauswahl an.
+- Gold-rote Auraeffekte, verstärkte Einheitenmarkierungen und der Spruch „Für die Festung!“ verdeutlichen die Aktivierung.
+- Der Fähigkeitenzustand wird mit dem Helden gespeichert; ältere Spielstände bleiben kompatibel.
+- Versionsangaben im Spiel wurden auf v1.15.40 aktualisiert.
+
 ## v1.15.39 – Andreas – Heldenauftritt
 
 - Andreas besitzt jetzt eigene transparente Grafiken für Stand und Bewegung im Rot-Gold-Stil.

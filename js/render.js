@@ -965,11 +965,17 @@ function drawBuildings(){
 }
 function drawUnits(){
  const hero=state.units.find(unit=>unit.key==="hero"&&unit.hp>0)||null;
+ const heroAbilityActive=!!hero&&(Number(hero.heroAbilityTime)||0)>0;
  for(const u of state.units){
   ctx.save();ctx.translate(u.x,u.y);const auto=u.controlMode==="auto",ready=(u.pendingUpgrades||0)>0,lv=u.expLevel||1,bob=Math.sin(performance.now()*.004+(u.uid||0))*1.15;ctx.translate(0,bob);
   const heroAura=hero&&u!==hero&&Math.hypot(u.x-hero.x,u.y-hero.y)<=155;
-  if(u.key==="hero"){ctx.save();ctx.globalAlpha=.17+.05*Math.sin(performance.now()*.004);ctx.fillStyle="#ffd35a";ctx.beginPath();ctx.arc(0,0,155,0,TAU);ctx.fill();ctx.globalAlpha=.72;ctx.strokeStyle="#ffe99a";ctx.lineWidth=2;ctx.setLineDash([9,8]);ctx.beginPath();ctx.arc(0,0,155,0,TAU);ctx.stroke();ctx.setLineDash([]);ctx.restore()}
-  if(heroAura){ctx.globalAlpha=.18;ctx.fillStyle="#ffd45c";ctx.beginPath();ctx.arc(0,2,23,0,TAU);ctx.fill();ctx.globalAlpha=1}
+  const heroAbilityBuff=heroAbilityActive&&heroAura;
+  if(u.key==="hero"){
+   ctx.save();const pulse=Math.sin(performance.now()*.006);ctx.globalAlpha=heroAbilityActive ? .29+.08*pulse : .17+.05*Math.sin(performance.now()*.004);ctx.fillStyle=heroAbilityActive?"#ffbd3d":"#ffd35a";ctx.beginPath();ctx.arc(0,0,155,0,TAU);ctx.fill();ctx.globalAlpha=heroAbilityActive ? .95 : .72;ctx.strokeStyle=heroAbilityActive?"#fff4b0":"#ffe99a";ctx.lineWidth=heroAbilityActive?4:2;ctx.setLineDash(heroAbilityActive?[16,7]:[9,8]);ctx.lineDashOffset=-performance.now()*.025;ctx.beginPath();ctx.arc(0,0,155,0,TAU);ctx.stroke();ctx.setLineDash([]);
+   if(heroAbilityActive){ctx.globalAlpha=.72;ctx.strokeStyle="#b72437";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,136+7*pulse,0,TAU);ctx.stroke();for(let i=0;i<12;i++){const a=i*TAU/12+performance.now()*.0012;ctx.save();ctx.rotate(a);ctx.fillStyle=i%2?"#ffe27b":"#b72437";ctx.beginPath();ctx.moveTo(0,-174);ctx.lineTo(6,-157);ctx.lineTo(-6,-157);ctx.closePath();ctx.fill();ctx.restore()}}
+   ctx.restore();
+  }
+  if(heroAura){ctx.globalAlpha=heroAbilityBuff ? .34 : .18;ctx.fillStyle=heroAbilityBuff?"#ffb83f":"#ffd45c";ctx.beginPath();ctx.arc(0,2,heroAbilityBuff?27:23,0,TAU);ctx.fill();if(heroAbilityBuff){ctx.globalAlpha=.9;ctx.strokeStyle="#fff0a0";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,2,25+Math.sin(performance.now()*.009+(u.uid||0))*3,0,TAU);ctx.stroke()}ctx.globalAlpha=1}
   ctx.fillStyle="#06090d99";ctx.beginPath();ctx.ellipse(7,14,21,10,0,0,TAU);ctx.fill();ctx.globalAlpha=.25;ctx.fillStyle=auto?"#4ec982":"#4d9fe8";ctx.beginPath();ctx.arc(0,2,21,0,TAU);ctx.fill();ctx.globalAlpha=1;
   if(ready){ctx.strokeStyle="#63caff";ctx.shadowBlur=22;ctx.shadowColor="#5ac7ff";ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,27+Math.sin(performance.now()*.007)*2,0,TAU);ctx.stroke();ctx.shadowBlur=0}
   if(selected===u){
@@ -995,9 +1001,9 @@ function drawUnits(){
    }
   }
   if(u.key==="hero"){
-   ctx.fillStyle="#2a0c12e8";ctx.strokeStyle="#f1c657";ctx.lineWidth=1.5;ctx.beginPath();ctx.roundRect(-31,34,62,15,6);ctx.fill();ctx.stroke();
-   ctx.fillStyle="#fff1b0";ctx.font="bold 8px Georgia,serif";ctx.textAlign="center";ctx.fillText("ANDREAS",0,44);
-  }else if(heroAura){ctx.fillStyle="#ffe07a";ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.fillText("✦",17,-25)}
+   ctx.fillStyle=heroAbilityActive?"#7b1725ef":"#2a0c12e8";ctx.strokeStyle=heroAbilityActive?"#fff0a0":"#f1c657";ctx.lineWidth=heroAbilityActive?2.3:1.5;ctx.beginPath();ctx.roundRect(-31,34,62,15,6);ctx.fill();ctx.stroke();
+   ctx.fillStyle="#fff1b0";ctx.font="bold 8px Georgia,serif";ctx.textAlign="center";ctx.fillText(heroAbilityActive?"RUF AKTIV":"ANDREAS",0,44);
+  }else if(heroAura){ctx.fillStyle=heroAbilityBuff?"#fff1a0":"#ffe07a";ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.fillText(heroAbilityBuff?"✦✦":"✦",17,-25)}
   const levelBadgeY=u.key==="hero"?25:1;ctx.fillStyle="#f2d36f";ctx.beginPath();ctx.arc(0,levelBadgeY,5,0,TAU);ctx.fill();ctx.fillStyle="#3e2d14";ctx.font="bold 7px sans-serif";ctx.textAlign="center";ctx.fillText(String(lv),0,levelBadgeY+2.5);
   const stats=u.upgradeStats||{},markers=[];if(stats.damage)markers.push("⚔");if(stats.health)markers.push("♥");if(stats.speed)markers.push("➤");if(stats.rate)markers.push("✦");markers.forEach((m,i)=>{const mx=(i-(markers.length-1)/2)*8,my=u.key==="hero"?56:24;ctx.fillStyle="#13263a";ctx.beginPath();ctx.arc(mx,my,5.5,0,TAU);ctx.fill();ctx.fillStyle="#bfe8ff";ctx.font="bold 6px sans-serif";ctx.fillText(m,mx,my+2)});
   const hpY=u.key==="hero"?-51:-33,xpY=u.key==="hero"?-42:-24,barW=u.key==="hero"?50:42,barInner=barW-2;ctx.fillStyle="#130b0b";ctx.fillRect(-barW/2,hpY,barW,7);ctx.fillStyle="#69c468";ctx.fillRect(-barInner/2,hpY+1,barInner*Math.max(0,u.hp/u.maxHp),5);ctx.strokeStyle=u.key==="hero"?"#f3cf6b88":"#e5d9c844";ctx.strokeRect(-barW/2,hpY,barW,7);const xpRatio=Math.max(0,Math.min(1,(u.xp||0)/(u.xpMax||65)));ctx.fillStyle="#07101e";ctx.fillRect(-barW/2,xpY,barW,6);ctx.fillStyle=ready?"#69d0ff":"#348de4";ctx.fillRect(-barInner/2,xpY+1,barInner*xpRatio,4);ctx.strokeStyle=u.key==="hero"?"#ffe39888":"#a7dfff55";ctx.strokeRect(-barW/2,xpY,barW,6);if(ready){ctx.fillStyle="#dff7ff";ctx.font="bold 10px sans-serif";ctx.fillText("▲",0,hpY-3)}ctx.restore();

@@ -234,7 +234,7 @@ export function renderGameUI({
         ? `Automatik · ${selected.zoneMode === "inner" ? "Innenring" : selected.zoneMode === "outer" ? "Außenring" : "Mittelring"}`
         : `Manuell · ${selected.zoneMode === "inner" ? "Innenring" : selected.zoneMode === "outer" ? "Außenring" : "Mittelring"}`;
     const heroInfo = selected.key === "hero"
-      ? "<br>👑 Elitegegner: +35 % Schaden · Sammelruf-Aura: +10 % Schaden, Rüstung und Tempo"
+      ? `<br>👑 Elitegegner: +35 % Schaden · Sammelruf-Aura: +10 % Schaden, Rüstung und Tempo<br>📯 Ruf des Helden: ${(Number(selected.heroAbilityTime) || 0) > 0 ? `aktiv · ${Math.ceil(selected.heroAbilityTime)} Sek.` : (Number(selected.heroAbilityCooldown) || 0) > 0 ? `Abklingzeit · ${Math.ceil(selected.heroAbilityCooldown)} Sek.` : "bereit"}<br>Aktiv: 10 Sek. · +25 % Schaden · +20 % Rüstung · +15 % Tempo · Andreas erhält +30 % Schadensreduktion`
       : "";
 
     ui.selected.innerHTML = `<b>${unitName} · Erfahrungsstufe ${selected.expLevel || 1}</b><br>HP ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · EXP ${Math.floor(selected.xp || 0)}/${Math.floor(selected.xpMax || 65)}<br>Schaden ${Math.round(selected.damage)} · Rüstung ${Math.round((selected.armor || 0) * 100)}% · Tempo ${Math.round(selected.speed)}<br>Modus: ${unitMode}${selected.pendingUpgrades ? ` · <b>${selected.pendingUpgrades} Aufwertung bereit</b>` : ""}${heroInfo}<br>Aufwertung: EXP-Auswahl oder Werkstatt-Forschung`;

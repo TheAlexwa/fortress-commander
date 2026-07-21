@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.39";
-const GAME_RELEASE_NAME="Andreas – Heldenauftritt";
+const GAME_VERSION="1.15.40";
+const GAME_RELEASE_NAME="Ruf des Helden";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -259,6 +259,13 @@ const HERO_OFFERING_TARGET=2000;
 const HERO_AURA_RADIUS=155;
 const STATUE_MORALE_DAMAGE_BONUS=.05;
 const HERO_AURA_BONUS=.10;
+const HERO_ABILITY_DURATION=10;
+const HERO_ABILITY_COOLDOWN=60;
+const HERO_ABILITY_DAMAGE_BONUS=.25;
+const HERO_ABILITY_ARMOR_BONUS=.20;
+const HERO_ABILITY_SPEED_BONUS=.15;
+const HERO_ABILITY_SELF_ARMOR_BONUS=.30;
+const HERO_ABILITY_TAUNT_RADIUS=190;
 
 function isMeleeHeroUnit(unit){return !!unit&&unit.kind==="unit"&&(unit.key==="guard"||unit.key==="hero")}
 function unitDisplayName(unit){return unit?.key==="hero"?"Andreas, der große Held":unit?.key==="guard"?"Burgwache":"Bogenschütze"}
@@ -284,16 +291,31 @@ function canPlaceMoveTarget(unit,x,y){
 function getAndreas(){return state.units.find(unit=>unit.key==="hero"&&unit.hp>0)||null}
 function hasActiveKriegerstatue(){return state.buildings.some(building=>building.key==="statue")}
 function isInsideFortressArea(unit){return Math.hypot(unit.x-CX,unit.y-CY)<=OUTER_WALL_R+12}
+function heroAbilityActive(hero=getAndreas()){return !!hero&&(Number(hero.heroAbilityTime)||0)>0}
 function hasHeroAura(unit){
  const hero=getAndreas();
  return !!hero&&unit!==hero&&unit.hp>0&&Math.hypot(unit.x-hero.x,unit.y-hero.y)<=HERO_AURA_RADIUS;
 }
-function effectiveUnitSpeed(unit){return unit.speed*(hasHeroAura(unit)?1+HERO_AURA_BONUS:1)}
-function effectiveUnitArmor(unit){return Math.min(.75,(unit.armor||0)+(hasHeroAura(unit)?HERO_AURA_BONUS:0))}
+function hasHeroAbilityBuff(unit){
+ const hero=getAndreas();
+ return heroAbilityActive(hero)&&unit!==hero&&unit.hp>0&&Math.hypot(unit.x-hero.x,unit.y-hero.y)<=HERO_AURA_RADIUS;
+}
+function effectiveUnitSpeed(unit){
+ let multiplier=hasHeroAura(unit)?1+HERO_AURA_BONUS:1;
+ if(hasHeroAbilityBuff(unit))multiplier*=1+HERO_ABILITY_SPEED_BONUS;
+ return unit.speed*multiplier;
+}
+function effectiveUnitArmor(unit){
+ let armor=(unit.armor||0)+(hasHeroAura(unit)?HERO_AURA_BONUS:0);
+ if(hasHeroAbilityBuff(unit))armor+=HERO_ABILITY_ARMOR_BONUS;
+ if(unit?.key==="hero"&&heroAbilityActive(unit))armor+=HERO_ABILITY_SELF_ARMOR_BONUS;
+ return Math.min(.75,armor);
+}
 function unitDamageMultiplier(unit,enemy=null){
  let multiplier=1;
  if(hasActiveKriegerstatue()&&isInsideFortressArea(unit))multiplier*=1+STATUE_MORALE_DAMAGE_BONUS;
  if(hasHeroAura(unit))multiplier*=1+HERO_AURA_BONUS;
+ if(hasHeroAbilityBuff(unit))multiplier*=1+HERO_ABILITY_DAMAGE_BONUS;
  if(unit?.key==="hero"&&enemy&&["shield","berserker","boss"].includes(enemy.type))multiplier*=1.35;
  return multiplier;
 }
@@ -509,7 +531,7 @@ function summonAndreas(){
   hp:blueprint.hp,maxHp:blueprint.hp,damage:blueprint.damage,range:blueprint.range,rate:blueprint.rate,speed:blueprint.speed,armor:blueprint.armor,
   stance:"defend",guardZone:"outer",retreating:false,level:1,expLevel:1,xp:0,xpMax:100,pendingUpgrades:0,
   upgradeStats:{damage:0,health:0,speed:0,rate:0,range:0},attackCd:0,retargetCd:0,controlMode:"auto",autoTarget:null,
-  investedGold:0,investedWood:0,investedStone:0
+  heroAbilityTime:0,heroAbilityCooldown:0,investedGold:0,investedWood:0,investedStone:0
  };
  state.units.push(hero);
  state.heroOffering=HERO_OFFERING_TARGET;
@@ -520,6 +542,22 @@ function summonAndreas(){
  showHeroSummonNotice();
  showToast("Andreas, der große Held, kämpft nun für die Festung!");
  return hero;
+}
+function activateHeroAbility(){
+ const hero=selected?.key==="hero"?selected:getAndreas();
+ if(!hero||hero.hp<=0)return showToast("Andreas ist nicht kampfbereit");
+ if(gameOver||paused)return showToast("Der Ruf kann nur im laufenden Kampf eingesetzt werden");
+ if(!state.inWave)return showToast("Ruf des Helden ist nur während eines Angriffs verfügbar");
+ if(heroAbilityActive(hero))return showToast("Ruf des Helden ist bereits aktiv");
+ const cooldown=Math.max(0,Number(hero.heroAbilityCooldown)||0);
+ if(cooldown>0)return showToast(`Ruf des Helden in ${Math.ceil(cooldown)} Sekunden bereit`);
+ hero.heroAbilityTime=HERO_ABILITY_DURATION;
+ hero.heroAbilityCooldown=HERO_ABILITY_COOLDOWN;
+ hero.autoTarget=null;hero.retargetCd=0;
+ burst(hero.x,hero.y,"#ffe173",42);
+ burst(hero.x,hero.y,"#b32638",22);
+ showToast('„Für die Festung!“ – Ruf des Helden ist aktiv');
+ return true;
 }
 function renderStatueOfferingPanel(){
  const progress=Math.max(0,Math.min(HERO_OFFERING_TARGET,Number(state.heroOffering)||0));
@@ -875,8 +913,28 @@ function chooseAutoTarget(unit){
 }
 function towerBehindWall(index){return getTowerBehindWall(wallSlots,index)}
 function nearestCastleTower(enemy){return findNearestCastleTower(state.buildings,enemy)}
+function heroSharesEnemyDefenseZone(enemy,hero){
+ if(!enemy||!hero)return false;
+ const heroRadius=Math.hypot(hero.x-CX,hero.y-CY);
+ if(enemy.phase==="inside")return heroRadius>=FIXED_INNER_WALL_RADIUS+18&&heroRadius<=WALL_R-18;
+ if(enemy.phase==="core")return heroRadius<FIXED_INNER_WALL_RADIUS+18;
+ return false;
+}
 function nearestBlockingUnit(enemy,maxRange=58){
+ const hero=getAndreas();
+ if(heroAbilityActive(hero)&&heroSharesEnemyDefenseZone(enemy,hero)&&Math.hypot(enemy.x-hero.x,enemy.y-hero.y)<=maxRange)return hero;
  return findNearestBlockingUnit(state.units,enemy,{centerX:CX,centerY:CY,wallRadius:WALL_R,maxRange});
+}
+function handleHeroTaunt(enemy,dt){
+ const hero=getAndreas();
+ if(!heroAbilityActive(hero)||hero.hp<=0||!heroSharesEnemyDefenseZone(enemy,hero))return false;
+ const dx=hero.x-enemy.x,dy=hero.y-enemy.y,d=Math.max(1,Math.hypot(dx,dy));
+ if(d>HERO_ABILITY_TAUNT_RADIUS)return false;
+ const reach=Math.max(44,(Number(enemy.radius)||12)+31);
+ if(d<=reach){
+  if(enemy.attackCd<=0){enemy.attackCd=enemy.attackRate;enemy.attackAnim=.22;hero.hp-=enemy.damage*.6*(1-effectiveUnitArmor(hero));burst(hero.x,hero.y,"#b84640",5)}
+ }else{enemy.x+=dx/d*enemy.speed*dt;enemy.y+=dy/d*enemy.speed*dt}
+ return true;
 }
 function shoot(from,target,damage,speed,splash=0,color="#f0d176"){
  return createProjectile(state.projectiles,from,target,damage,speed,splash,color);
@@ -1037,6 +1095,11 @@ function hideRepairDecision(){const p=document.getElementById("repairDecision");
 function update(dt){
  if(gameOver)return;
  if(paused)return;
+ const activeHero=getAndreas();
+ if(activeHero){
+  activeHero.heroAbilityTime=Math.max(0,(Number(activeHero.heroAbilityTime)||0)-dt);
+  activeHero.heroAbilityCooldown=Math.max(0,(Number(activeHero.heroAbilityCooldown)||0)-dt);
+ }
  if(!state.inWave){ensureCurrentSiege();updateSiegePhase(state,dt)}
  if(state.inWave){
   state.supportTimer=(state.supportTimer||0)+dt;
@@ -1229,11 +1292,14 @@ function update(dt){
     else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
    }
   }else if(e.phase==="inside"){
+   const tauntedByHero=handleHeroTaunt(e,dt);
    const tower=towerBehindWall(e.wallIndex);
-   const blockingUnit=nearestBlockingUnit(e,62);
+   const blockingUnit=tauntedByHero?null:nearestBlockingUnit(e,62);
    const innerWall=getInnerWallSegmentForPoint(state,e.x,e.y,{CX,CY});
    e.innerWallIndex=innerWall?.i??null;
-   if(blockingUnit){
+   if(tauntedByHero){
+    // Ruf des Helden lenkt nahe Feinde auf Andreas, ohne Mauern zu überspringen.
+   }else if(blockingUnit){
     if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;blockingUnit.hp-=e.damage*.6*(1-effectiveUnitArmor(blockingUnit));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
    }else if(tower){
     const tdx=tower.slot.x-e.x,tdy=tower.slot.y-e.y,td=Math.max(1,Math.hypot(tdx,tdy));
@@ -1257,9 +1323,12 @@ function update(dt){
     }else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
    }
   }else{
+   const tauntedByHero=handleHeroTaunt(e,dt);
    const castleTower=nearestCastleTower(e);
-   const blockingUnit=nearestBlockingUnit(e,62);
-   if(blockingUnit){
+   const blockingUnit=tauntedByHero?null:nearestBlockingUnit(e,62);
+   if(tauntedByHero){
+    // Andreas bindet nahe Feinde während seiner aktiven Fähigkeit.
+   }else if(blockingUnit){
     if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;blockingUnit.hp-=e.damage*.6*(1-effectiveUnitArmor(blockingUnit));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
    }else if(castleTower){
     const cdx=castleTower.slot.x-e.x,cdy=castleTower.slot.y-e.y,cd=Math.max(1,Math.hypot(cdx,cdy));
@@ -1286,6 +1355,7 @@ function update(dt){
  if(state.hp<=0&&!gameOver){state.hp=0;gameOver=true;state.inWave=false;paused=true;showEndScreen()}
  if(state.inWave&&state.toSpawn===0&&state.enemies.length===0){
   state.inWave=false;state.supportTimer=0;paused=false;last=performance.now();const completedWave=state.wave,gold=30+completedWave*5,rp=Math.min(9,2+Math.ceil(completedWave/4)+(completedWave%8===0?2:0));state.gold+=gold;state.researchPoints=(state.researchPoints||0)+rp;
+  const waveHero=getAndreas();if(waveHero)waveHero.heroAbilityTime=0;
   const autoRepaired=applyAutomaticWaveRepair();
   state.wave++;
   state.repairActive=false;
@@ -1537,6 +1607,7 @@ const selectionMoveBtn=document.getElementById("selectionMoveBtn");
 const selectionAutoBtn=document.getElementById("selectionAutoBtn");
 const selectionModeBtn=document.getElementById("selectionModeBtn");
 const selectionOffenseBtn=document.getElementById("selectionOffenseBtn");
+const selectionHeroAbilityBtn=document.getElementById("selectionHeroAbilityBtn");
 const selectionUpgradeBtn=document.getElementById("selectionUpgradeBtn");
 const selectionDetailsBtn=document.getElementById("selectionDetailsBtn");
 const selectionRangeBtn=document.getElementById("selectionRangeBtn");
@@ -1552,7 +1623,7 @@ function pctDelta(base,current){if(!base)return "—";const p=(current/base-1)*1
 function statRow(label,base,current,next){return `<div class="statRow"><div class="label">${label}</div><div class="base">${base}</div><div class="current">${current}</div><div class="gain">${next}</div></div>`}
 function unitStatsHtml(u){
  const base=u.base,ups=u.upgradeStats||{},rateNext=Math.max(.24,u.rate*.84);
- const heroBanner=u.key==="hero"?`<div class="heroStatsBanner"><img src="assets/ui/andreas-portrait.webp" alt="Andreas"><div><small>LEGENDÄRER FESTUNGSHELD</small><h3>Andreas, der große Held</h3><p>Elitebonus +35 % · Sammelruf stärkt Verbündete im Umkreis mit +10 % Schaden, Rüstung und Tempo.</p></div></div>`:"";
+ const heroBanner=u.key==="hero"?`<div class="heroStatsBanner"><img src="assets/ui/andreas-portrait.webp" alt="Andreas"><div><small>LEGENDÄRER FESTUNGSHELD</small><h3>Andreas, der große Held</h3><p>Elitebonus +35 % · Dauerhafte Sammelruf-Aura +10 % · Aktiver „Ruf des Helden“: 10 Sek. lang +25 % Schaden, +20 % Rüstung und +15 % Tempo für nahe Verbündete.</p></div></div>`:"";
  return `${heroBanner}<div class="statsSummary">
  <div class="statTile"><span>Erfahrungsstufe</span><b>${u.expLevel||1}</b></div>
  <div class="statTile"><span>Offene Punkte</span><b>${u.pendingUpgrades||0}</b></div>
@@ -1915,6 +1986,7 @@ selectionOffenseBtn.addEventListener("click",e=>{
  unitCommandMode=null;
  showToast(`Ausfall: ${unitDisplayName(selected)} greift auch außerhalb an`);
 });
+selectionHeroAbilityBtn.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();activateHeroAbility()});
 if(activeModeCancelBtn)activeModeCancelBtn.addEventListener("click",()=>cancelActiveAction("button"));
 selectionUpgradeBtn.addEventListener("click",e=>{
  e.preventDefault();e.stopPropagation();closeStats();hideRepairDecision();
@@ -1986,7 +2058,8 @@ function updateSelectionHud(){
  const isUnit=selected.kind==="unit";
  if(isUnit){
   icon=selected.key==="hero"?"👑":selected.key==="guard"?"🛡️":"🏹";name=`${unitDisplayName(selected)} · Stufe ${selected.expLevel||1}`;
-  details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${isMeleeHeroUnit(selected)?`🛡️ ${Math.round(effectiveUnitArmor(selected)*100)}% · ${selected.retreating?"Rückzug":unitZoneLabel(selected)} · `:`📍 ${unitZoneLabel(selected)} · `}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP${selected.key==="hero"?" · ✨ Sammelruf-Aura":""}`;
+  const abilityStatus=selected.key==="hero"?(heroAbilityActive(selected)?` · 📯 Ruf aktiv ${Math.ceil(selected.heroAbilityTime)}s`:(Number(selected.heroAbilityCooldown)||0)>0?` · ⏳ Ruf ${Math.ceil(selected.heroAbilityCooldown)}s`:" · 📯 Ruf bereit"):"";
+  details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${isMeleeHeroUnit(selected)?`🛡️ ${Math.round(effectiveUnitArmor(selected)*100)}% · ${selected.retreating?"Rückzug":unitZoneLabel(selected)} · `:`📍 ${unitZoneLabel(selected)} · `}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP${selected.key==="hero"?" · ✨ Sammelruf-Aura":""}${abilityStatus}`;
  }else if(selected.kind==="building"){
   if(selected.key==="statue"){
    const progress=Math.max(0,Math.min(HERO_OFFERING_TARGET,Number(state.heroOffering)||0));
@@ -2026,6 +2099,17 @@ function updateSelectionHud(){
  selectionAutoBtn.classList.toggle("hidden",!isUnit);
  selectionModeBtn.classList.toggle("hidden",!isUnit);
  selectionOffenseBtn.classList.toggle("hidden",!(isUnit&&isMeleeHeroUnit(selected)));
+ selectionHeroAbilityBtn.classList.toggle("hidden",!heroSelected);
+ if(heroSelected){
+  const abilityTime=Math.max(0,Number(selected.heroAbilityTime)||0),cooldown=Math.max(0,Number(selected.heroAbilityCooldown)||0);
+  const active=abilityTime>0,ready=state.inWave&&!paused&&!gameOver&&!active&&cooldown<=0;
+  selectionHeroAbilityBtn.disabled=!ready;
+  selectionHeroAbilityBtn.classList.toggle("abilityActive",active);
+  selectionHeroAbilityBtn.classList.toggle("abilityCooldown",!active&&cooldown>0);
+  selectionHeroAbilityBtn.querySelector("span").textContent=active?"✨":cooldown>0?"⏳":"📯";
+  selectionHeroAbilityBtn.querySelector("small").textContent=active?`Ruf aktiv · ${Math.ceil(abilityTime)}s`:cooldown>0?`Bereit · ${Math.ceil(cooldown)}s`:state.inWave?"Ruf des Helden":"Nur im Angriff";
+  selectionHeroAbilityBtn.title=active?"Ruf des Helden ist aktiv":cooldown>0?`Noch ${Math.ceil(cooldown)} Sekunden Abklingzeit`:"Ruf des Helden aktivieren";
+ }else{selectionHeroAbilityBtn.classList.remove("abilityActive","abilityCooldown");selectionHeroAbilityBtn.disabled=true}
  const canShowRange=isUnit||(selected.kind==="building"&&selected.base.kind==="tower");
  selectionRangeBtn.classList.toggle("hidden",!canShowRange);
  const isNormalBuilding=selected.kind==="building"&&selected.base.kind!=="tower"&&!selected.base.decorative&&hasBuildingUpgradeEffect(selected);

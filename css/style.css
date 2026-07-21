@@ -874,3 +874,12 @@ footer{min-height:0}
 .heroSummonPortrait{position:relative;width:128px;height:128px;margin:0 auto 12px;animation:heroCrownPulse 1.2s ease-in-out infinite}
 .heroSummonPortrait img{width:100%;height:100%;display:block;border-radius:50%;object-fit:cover;filter:drop-shadow(0 0 22px #ffd65a)}
 @media(max-width:650px){#selectionPortrait.heroPortrait{width:48px;height:48px}.heroStatsBanner{grid-template-columns:68px 1fr;padding:10px;gap:10px}.heroStatsBanner img{width:68px;height:68px}.heroStatsBanner h3{font-size:17px}.heroSummonPortrait{width:104px;height:104px}}
+
+
+/* v1.15.40 – Ruf des Helden */
+.selectionAction.heroAbilityAction{background:linear-gradient(#7b2431,#341018);border-color:#f0c963;color:#fff1b0;box-shadow:inset 0 1px #fff2,0 0 12px #d79b3c35}
+.selectionAction.heroAbilityAction:not(:disabled):hover{border-color:#fff0a2;box-shadow:0 0 17px #ffcc5c66,inset 0 1px #fff3}
+.selectionAction.heroAbilityAction.abilityActive{background:linear-gradient(#c17b28,#7d1828);border-color:#fff2a5;color:#fffbe0;animation:heroAbilityButtonPulse .8s ease-in-out infinite alternate}
+.selectionAction.heroAbilityAction.abilityCooldown{background:linear-gradient(#3d3831,#201b18);border-color:#8a765b;color:#c9bca1;box-shadow:none}
+.selectionAction.heroAbilityAction:disabled{opacity:.72;cursor:not-allowed}
+@keyframes heroAbilityButtonPulse{from{box-shadow:0 0 10px #ffc84566,inset 0 1px #fff3}to{box-shadow:0 0 24px #ffcf55bb,inset 0 1px #fff5;transform:translateY(-1px)}}
