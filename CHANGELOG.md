@@ -1,3 +1,10 @@
+## v1.15.35 – Gegner bodennäher
+
+- Die Gegner-Sprites wurden einige Pixel tiefer gesetzt, damit ihre Füße optisch auf dem Boden stehen.
+- Vertikales Wippen und Angriffsbewegungen wurden reduziert, um den Schwebeeffekt zu beseitigen.
+- Schatten sitzen jetzt näher an den Füßen und reagieren nur noch dezent auf die Laufbewegung.
+- Versionsangaben im Spiel wurden auf v1.15.35 aktualisiert.
+
 ## v1.15.34 – Gegneranimationen verbessert
 
 - Gegner-Sprites nutzen jetzt eine deutlich lebendigere Laufanimation mit Schrittbewegung, Wippen und leichter Körperrotation.

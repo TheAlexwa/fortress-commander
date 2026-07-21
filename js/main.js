@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.34";
-const GAME_RELEASE_NAME="Gegneranimationen verbessert";
+const GAME_VERSION="1.15.35";
+const GAME_RELEASE_NAME="Gegner bodennäher";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){

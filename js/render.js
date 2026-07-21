@@ -1089,19 +1089,19 @@ function drawEnemySprite(enemy, now){
  enemy._walkPhase=(enemy._walkPhase||0)+(moving?dt*(7+Math.min(9,moveSpeed*.06)):dt*1.4);
  const step=Math.sin(enemy._walkPhase||0);
  const stepLift=Math.abs(step);
- const bob=(moving?stepLift*3.0:Math.abs(idlePulse)*0.7)+(isBoss?.4:0);
- const sway=(moving?Math.cos((enemy._walkPhase||0)*.5)*1.8:idlePulse*.35);
+ const bob=(moving?stepLift*1.2:Math.abs(idlePulse)*0.25)+(isBoss?.15:0);
+ const sway=(moving?Math.cos((enemy._walkPhase||0)*.5)*1.1:idlePulse*.15);
  if(moving)enemy._facing=Math.atan2(moveDy,moveDx);
  const facing=Number.isFinite(enemy._facing)?enemy._facing:-Math.PI/2;
  const facingX=Math.cos(facing),facingY=Math.sin(facing);
  const attackAnim=Math.max(0,Math.min(1,(enemy.attackAnim||0)/.22));
  const attackEase=attackAnim>0?1-Math.pow(1-attackAnim,2):0;
- const lungeX=facingX*4.5*attackEase;
- const lungeY=facingY*2.8*attackEase;
- const tilt=(moving?step*.045:idlePulse*.012)+(moving?Math.sin(facing)*.015:0)-attackEase*.035;
- const shadowW=Math.max(r*1.55,drawW*.38)*(moving?(1-stepLift*.06):(1-idlePulse*.015));
- const shadowH=Math.max(r*.42,drawH*.09)*(moving?(1-stepLift*.1):(1-idlePulse*.02));
- const shadowY=6+(moving?stepLift*.8:0)+attackEase*.4;
+ const lungeX=facingX*4.0*attackEase;
+ const lungeY=facingY*1.2*attackEase;
+ const tilt=(moving?step*.025:idlePulse*.006)+(moving?Math.sin(facing)*.008:0)-attackEase*.02;
+ const shadowW=Math.max(r*1.45,drawW*.34)*(moving?(1-stepLift*.025):(1-idlePulse*.008));
+ const shadowH=Math.max(r*.30,drawH*.07)*(moving?(1-stepLift*.035):(1-idlePulse*.01));
+ const shadowY=2.5+(moving?stepLift*.2:0);
 
  ctx.save();
  ctx.translate(enemy.x,enemy.y);
@@ -1114,9 +1114,9 @@ function drawEnemySprite(enemy, now){
   ctx.globalAlpha=1;
  }
  ctx.save();
- ctx.translate(sway+lungeX,-bob+lungeY);
+ ctx.translate(sway+lungeX,-bob+2+lungeY);
  ctx.rotate(tilt);
- ctx.drawImage(sprite.image,-drawW/2,-drawH+offsetY,drawW,drawH);
+ ctx.drawImage(sprite.image,-drawW/2,-drawH+offsetY+4,drawW,drawH);
  ctx.restore();
  const barHeight=isBoss?10:isSpecial?8:7;
  const barGap=isBoss?22:isSpecial?20:18;
