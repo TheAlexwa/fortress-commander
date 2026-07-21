@@ -1,3 +1,14 @@
+## v1.15.45 – Taktisches Kontersystem
+
+- Bogentürme verursachen gegen Eisenclan-Plünderer und Clanspäher 35 % zusätzlichen Schaden.
+- Armbrusttürme ignorieren 50 % der gegnerischen Rüstung und priorisieren gepanzerte Eliteziele.
+- Katapulttreffer senken 4 Sekunden lang die Rüstung um 20 Prozentpunkte und das Bewegungstempo um 15 %.
+- Burgwachen erhalten nahe intakter Tore +15 % Schaden und +15 Prozentpunkte Rüstung und können Angreifer direkt am Tor binden.
+- Bogenschützen können zwischen den Zielprioritäten „Nächste Gegner“, „Schnelle Gegner“ und „Stärkste Gegner“ wechseln.
+- Belagerungshinweise empfehlen passende Verteidiger für den angekündigten Wellentyp.
+- Konterinformationen erscheinen in Auswahlfenstern, Detailansichten und Anleitung.
+- Versionsangaben im Spiel wurden auf v1.15.45 aktualisiert.
+
 ## v1.15.44 – Angriffsreihen-Fix
 
 - Gegner in der Kernzone speichern beim ersten Erreichen der Festung einen festen Angriffswinkel.

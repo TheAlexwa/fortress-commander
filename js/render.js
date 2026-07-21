@@ -1239,6 +1239,14 @@ function drawEnemySprite(enemy, now){
   if(isBoss){ctx.fillStyle="#d8ac45";ctx.fillRect(-bw/2,barY-3,bw,2)}
   if(zoom>=.58||isBoss||selected===enemy){ctx.fillStyle="#f2dfba";ctx.font=`bold ${isBoss?11:isSpecial?9:8}px system-ui`;ctx.textAlign="center";ctx.fillText(enemy.name||"Eisenclan",0,barY-5);}
  }
+ if((enemy.armorBreakTime||0)>0||(enemy.slowTime||0)>0){
+  const effectY=-drawH-4-bob;
+  ctx.font="bold 11px system-ui";ctx.textAlign="center";
+  const labels=[];
+  if((enemy.armorBreakTime||0)>0)labels.push("🛡✕");
+  if((enemy.slowTime||0)>0)labels.push("❄");
+  ctx.fillStyle="#fff2c9";ctx.fillText(labels.join(" "),0,effectY);
+ }
  ctx.restore();
  enemy._animLastTime=now;enemy._animLastX=enemy.x;enemy._animLastY=enemy.y;
  return true;

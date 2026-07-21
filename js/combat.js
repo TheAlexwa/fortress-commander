@@ -22,6 +22,57 @@ export function findNearestEnemy(enemies, x, y, range) {
   return best;
 }
 
+export function getEffectiveEnemyArmor(enemy) {
+  const baseArmor = Math.max(0, Number(enemy?.armor) || 0);
+  const breakAmount = (Number(enemy?.armorBreakTime) || 0) > 0
+    ? Math.max(0, Number(enemy?.armorBreakAmount) || 0)
+    : 0;
+  return Math.max(0, baseArmor - breakAmount);
+}
+
+export function getEffectiveEnemySpeed(enemy) {
+  const baseSpeed = Math.max(0, Number(enemy?.speed) || 0);
+  const slowAmount = (Number(enemy?.slowTime) || 0) > 0
+    ? Math.max(0, Math.min(0.75, Number(enemy?.slowAmount) || 0))
+    : 0;
+  return baseSpeed * (1 - slowAmount);
+}
+
+export function findTowerTarget(enemies, tower, range) {
+  let best = null;
+  let bestScore = Infinity;
+  const maxDistanceSquared = range * range;
+
+  for (const enemy of enemies || []) {
+    if (!enemy || enemy.hp <= 0) continue;
+    const distanceSquared = (enemy.x - tower.slot.x) ** 2 + (enemy.y - tower.slot.y) ** 2;
+    if (distanceSquared > maxDistanceSquared) continue;
+
+    const distance = Math.sqrt(distanceSquared);
+    let score = distance;
+    if (tower.key === "archer") {
+      if (enemy.type === "runner" || enemy.type === "raider") score -= 190;
+      if (getEffectiveEnemyArmor(enemy) >= 0.15) score += 85;
+    } else if (tower.key === "crossbow") {
+      score -= getEffectiveEnemyArmor(enemy) * 820;
+      if (["shield", "berserker", "boss"].includes(enemy.type)) score -= 170;
+    } else if (tower.key === "catapult") {
+      const cluster = (enemies || []).reduce((count, candidate) => {
+        if (!candidate || candidate.hp <= 0) return count;
+        return count + (Math.hypot(candidate.x - enemy.x, candidate.y - enemy.y) <= (tower.splash || 62) ? 1 : 0);
+      }, 0);
+      score -= Math.min(7, cluster) * 42;
+    }
+
+    if (score < bestScore) {
+      bestScore = score;
+      best = enemy;
+    }
+  }
+
+  return best;
+}
+
 export function findNearestUnit(units, x, y, range) {
   let best = null;
   let bestDistanceSquared = range * range;
@@ -101,13 +152,20 @@ export function chooseAutomaticTarget(
       0,
       520 - Math.hypot(enemy.x - centerX, enemy.y - centerY)
     ) * 0.9;
+    const priority = unit?.targetPriority || "nearest";
+    const priorityBonus = priority === "fast"
+      ? -(Number(enemy.speed) || 0) * 18
+      : priority === "strong"
+        ? -((Number(enemy.maxHp) || Number(enemy.hp) || 0) * 0.42 + getEffectiveEnemyArmor(enemy) * 720 + (enemy.boss ? 520 : 0))
+        : 0;
     const score =
       (assigned / capacity) * 900 +
       overload * 1800 +
       distance +
       towerPenalty +
       dangerBonus -
-      nearCastleBonus;
+      nearCastleBonus +
+      priorityBonus;
 
     if (score < bestScore) {
       bestScore = score;
@@ -372,7 +430,8 @@ export function createProjectile(
   damage,
   speed,
   splash = 0,
-  color = "#f0d176"
+  color = "#f0d176",
+  effects = null
 ) {
   const x = from.slot ? from.slot.x : from.x;
   const y = from.slot ? from.slot.y : from.y;
@@ -386,6 +445,11 @@ export function createProjectile(
     splash,
     color,
     radius: splash ? 6 : 3,
+    armorPenetration: Math.max(0, Math.min(1, Number(effects?.armorPenetration) || 0)),
+    armorBreakAmount: Math.max(0, Number(effects?.armorBreakAmount) || 0),
+    armorBreakDuration: Math.max(0, Number(effects?.armorBreakDuration) || 0),
+    slowAmount: Math.max(0, Math.min(0.75, Number(effects?.slowAmount) || 0)),
+    slowDuration: Math.max(0, Number(effects?.slowDuration) || 0),
     owner:
       from &&
       (from.kind === "unit" ||

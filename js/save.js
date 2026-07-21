@@ -349,6 +349,9 @@ function restoreUnit(savedUnit, BUILD) {
     autoTarget: null,
     attackCd: 0,
     retargetCd: 0,
+    targetPriority: savedUnit?.key === "soldier" && ["nearest", "fast", "strong"].includes(savedUnit.targetPriority)
+      ? savedUnit.targetPriority
+      : savedUnit?.key === "soldier" ? "nearest" : null,
     heroAbilityTime: savedUnit?.key === "hero" ? Math.max(0, Number(savedUnit.heroAbilityTime) || 0) : 0,
     heroAbilityCooldown: savedUnit?.key === "hero" ? Math.max(0, Number(savedUnit.heroAbilityCooldown) || 0) : 0,
     upgradeStats: { ...(savedUnit.upgradeStats || {}) },

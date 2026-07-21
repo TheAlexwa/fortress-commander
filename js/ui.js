@@ -104,6 +104,14 @@ export function renderGameUI({
   const siegeNoticeTitle = document.getElementById("siegePhaseTitle");
   const siegeNoticeText = document.getElementById("siegePhaseText");
   const waveType = getWaveTypeInfo(state.wave, siege?.waveType);
+  const counterRecommendation = {
+    scoutRaid: "Empfohlen: Bogentürme und Bogenschützen mit Priorität ‚Schnelle Gegner‘.",
+    shieldWall: "Empfohlen: Armbrusttürme und Katapulte gegen schwere Rüstung.",
+    berserkerStorm: "Empfohlen: Armbrusttürme, Torwachen und Andreas an der Schwerpunktfront.",
+    fourFront: "Empfohlen: gemischte Turmverteidigung an allen vier Toren.",
+    bossAssault: "Empfohlen: Armbrusttürme, Katapult-Rüstungsbruch und Andreas gegen die Eskorte.",
+    standard: "Empfohlen: ausgewogene Mischung aus Bogen-, Armbrust- und Katapulttürmen."
+  }[waveType.key] || "";
 
   ui.start.disabled = state.inWave || gameOver;
   ui.start.textContent = state.inWave
@@ -131,8 +139,8 @@ export function renderGameUI({
       const remaining = Math.max(0, siegeTotal - siegeReady);
       const campPreview = getSiegeCampPreview(siege);
       siegeNoticeText.textContent = siegeReady >= siegeTotal
-        ? `${waveType.description} ${campPreview} · Alle Gegner bereit.`
-        : `${waveType.description} ${campPreview} · ${remaining} Nachzügler.`;
+        ? `${waveType.description} ${campPreview} · Alle Gegner bereit. ${counterRecommendation}`
+        : `${waveType.description} ${campPreview} · ${remaining} Nachzügler. ${counterRecommendation}`;
     }
   }
 
@@ -242,7 +250,12 @@ export function renderGameUI({
       ? `<br>👑 Elitegegner: +35 % Schaden · Sammelruf-Aura: +10 % Schaden, Rüstung und Tempo<br>📯 Ruf des Helden: ${(Number(selected.heroAbilityTime) || 0) > 0 ? `aktiv · ${Math.ceil(selected.heroAbilityTime)} Sek.` : (Number(selected.heroAbilityCooldown) || 0) > 0 ? `Abklingzeit · ${Math.ceil(selected.heroAbilityCooldown)} Sek.` : "bereit"}<br>Aktiv: 10 Sek. · +25 % Schaden · +20 % Rüstung · +15 % Tempo · Andreas erhält +30 % Schadensreduktion`
       : "";
 
-    ui.selected.innerHTML = `<b>${unitName} · Erfahrungsstufe ${selected.expLevel || 1}</b><br>HP ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · EXP ${Math.floor(selected.xp || 0)}/${Math.floor(selected.xpMax || 65)}<br>Schaden ${Math.round(selected.damage)} · Rüstung ${Math.round((selected.armor || 0) * 100)}% · Tempo ${Math.round(selected.speed)}<br>Modus: ${unitMode}${selected.pendingUpgrades ? ` · <b>${selected.pendingUpgrades} Aufwertung bereit</b>` : ""}${heroInfo}<br>Aufwertung: EXP-Auswahl oder Werkstatt-Forschung`;
+    const priorityInfo = selected.key === "soldier"
+      ? `<br>🎯 Zielpriorität: ${selected.targetPriority === "fast" ? "Schnelle Gegner" : selected.targetPriority === "strong" ? "Stärkste Gegner" : "Nächste Gegner"}`
+      : selected.key === "guard"
+        ? `<br>🚪 Torwächter: +15 % Schaden und +15 % Rüstung nahe intaktem Tor`
+        : "";
+    ui.selected.innerHTML = `<b>${unitName} · Erfahrungsstufe ${selected.expLevel || 1}</b><br>HP ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · EXP ${Math.floor(selected.xp || 0)}/${Math.floor(selected.xpMax || 65)}<br>Schaden ${Math.round(selected.damage)} · Rüstung ${Math.round((selected.armor || 0) * 100)}% · Tempo ${Math.round(selected.speed)}<br>Modus: ${unitMode}${selected.pendingUpgrades ? ` · <b>${selected.pendingUpgrades} Aufwertung bereit</b>` : ""}${priorityInfo}${heroInfo}<br>Aufwertung: EXP-Auswahl oder Werkstatt-Forschung`;
     ui.upgrade.style.display = "none";
     ui.sell.disabled = selected.key === "hero";
     return;
@@ -280,7 +293,12 @@ export function renderGameUI({
     const placementInfo = supportingWall
       ? `<br>Standort: ${building.slot.type === "outer-wall" ? "äußerer" : "mittlerer"} Mauerturmplatz · ${wallTowerReady ? "einsatzbereit" : "<b>inaktiv – intaktes Mauersegment nötig</b>"}`
       : "<br>Standort: Kernburg";
-    ui.selected.innerHTML = `<b>${building.base.name} · EXP-Stufe ${building.expLevel || 1}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · EXP ${Math.floor(building.xp || 0)}/${Math.floor(building.xpMax || 90)}<br>Schaden ${Math.round(building.damage)} · Reichweite ${Math.round(building.range)}${building.pendingUpgrades ? ` · <b>${building.pendingUpgrades} EXP-Aufwertung bereit</b>` : ""}${placementInfo}<br>Aufwertung: nur über EXP und Forschung`;
+    const counterInfo = building.key === "archer"
+      ? "Stark gegen Plünderer und Clanspäher (+35 %) · schwach gegen Rüstung"
+      : building.key === "crossbow"
+        ? "Durchdringt 50 % Rüstung · stark gegen Eisenschilde, Berserker und Häuptlinge"
+        : "Flächenschaden · 4 Sek. Rüstungsbruch und Verlangsamung";
+    ui.selected.innerHTML = `<b>${building.base.name} · EXP-Stufe ${building.expLevel || 1}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · EXP ${Math.floor(building.xp || 0)}/${Math.floor(building.xpMax || 90)}<br>Schaden ${Math.round(building.damage)} · Reichweite ${Math.round(building.range)}${building.pendingUpgrades ? ` · <b>${building.pendingUpgrades} EXP-Aufwertung bereit</b>` : ""}${placementInfo}<br>⚔ ${counterInfo}<br>Aufwertung: nur über EXP und Forschung`;
     ui.upgrade.style.display = "none";
     ui.sell.disabled = false;
     return;

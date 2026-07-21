@@ -54,6 +54,9 @@ import {
 
 import {
  findNearestEnemy,
+ findTowerTarget,
+ getEffectiveEnemyArmor,
+ getEffectiveEnemySpeed,
  getTowerCoverage,
  chooseAutomaticTarget,
  getTowerBehindWall,
@@ -142,8 +145,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.44";
-const GAME_RELEASE_NAME="Angriffsreihen-Fix";
+const GAME_VERSION="1.15.45";
+const GAME_RELEASE_NAME="Taktisches Kontersystem";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const ACTIVE_ENEMY_LIMIT=(window.matchMedia("(max-width: 900px)").matches||navigator.maxTouchPoints>0)?64:72;
 const ENEMY_PULSE_INTERVAL=.11;
@@ -271,6 +274,11 @@ const HERO_ABILITY_ARMOR_BONUS=.20;
 const HERO_ABILITY_SPEED_BONUS=.15;
 const HERO_ABILITY_SELF_ARMOR_BONUS=.30;
 const HERO_ABILITY_TAUNT_RADIUS=190;
+const GUARD_GATE_ARMOR_BONUS=.15;
+const GUARD_GATE_DAMAGE_BONUS=.15;
+const CATAPULT_ARMOR_BREAK=.20;
+const CATAPULT_SLOW=.15;
+const CATAPULT_DEBUFF_DURATION=4;
 
 function isMeleeHeroUnit(unit){return !!unit&&unit.kind==="unit"&&(unit.key==="guard"||unit.key==="hero")}
 function unitDisplayName(unit){return unit?.key==="hero"?"Andreas, der große Held":unit?.key==="guard"?"Burgwache":"Bogenschütze"}
@@ -310,10 +318,19 @@ function effectiveUnitSpeed(unit){
  if(hasHeroAbilityBuff(unit))multiplier*=1+HERO_ABILITY_SPEED_BONUS;
  return unit.speed*multiplier;
 }
+function unitNearIntactGate(unit){
+ if(!unit||unit.key!=="guard"||unit.hp<=0)return false;
+ const gates=[
+  ...(state.middleGates||[]).map(gate=>({gate,radius:WALL_R})),
+  ...(state.outerGates||[]).map(gate=>({gate,radius:OUTER_WALL_R}))
+ ];
+ return gates.some(({gate,radius})=>gate?.built&&gate.hp>0&&Math.hypot(unit.x-(CX+Math.cos(gate.angle)*radius),unit.y-(CY+Math.sin(gate.angle)*radius))<=92);
+}
 function effectiveUnitArmor(unit){
  let armor=(unit.armor||0)+(hasHeroAura(unit)?HERO_AURA_BONUS:0);
  if(hasHeroAbilityBuff(unit))armor+=HERO_ABILITY_ARMOR_BONUS;
  if(unit?.key==="hero"&&heroAbilityActive(unit))armor+=HERO_ABILITY_SELF_ARMOR_BONUS;
+ if(unitNearIntactGate(unit))armor+=GUARD_GATE_ARMOR_BONUS;
  return Math.min(.75,armor);
 }
 function unitDamageMultiplier(unit,enemy=null){
@@ -322,7 +339,18 @@ function unitDamageMultiplier(unit,enemy=null){
  if(hasHeroAura(unit))multiplier*=1+HERO_AURA_BONUS;
  if(hasHeroAbilityBuff(unit))multiplier*=1+HERO_ABILITY_DAMAGE_BONUS;
  if(unit?.key==="hero"&&enemy&&["shield","berserker","boss"].includes(enemy.type))multiplier*=1.35;
+ if(unitNearIntactGate(unit))multiplier*=1+GUARD_GATE_DAMAGE_BONUS;
  return multiplier;
+}
+function targetPriorityLabel(unit){
+ const value=unit?.targetPriority||"nearest";
+ return value==="fast"?"Schnelle Gegner":value==="strong"?"Stärkste Gegner":"Nächste Gegner";
+}
+function towerCounterText(tower){
+ if(tower?.key==="archer")return "Stark gegen Plünderer und Clanspäher (+35 % Schaden) · schwach gegen schwere Rüstung";
+ if(tower?.key==="crossbow")return "Durchdringt 50 % Rüstung · stark gegen Eisenschilde, Berserker und Häuptlinge";
+ if(tower?.key==="catapult")return "Flächenschaden · 4 Sek. lang −20 % Rüstung und −15 % Tempo";
+ return "";
 }
 
 function currentActionText(){
@@ -342,9 +370,9 @@ let autosaveSuppressed=false,gameSessionStarted=false;
 const BUILD={
  palisade:{name:"Holzpalisade",kind:"fortification",gold:0,wood:5,color:"#81512d"},
  gate:{name:"Holztor",kind:"fortification-gate",gold:0,wood:20,color:"#6f4528"},
- archer:{name:"Bogenturm",kind:"tower",gold:60,wood:20,hp:260,range:215,rate:.72,damage:17,speed:470,color:"#b98a4d"},
- crossbow:{name:"Armbrustturm",kind:"tower",gold:95,wood:30,hp:320,range:265,rate:1.45,damage:46,speed:560,color:"#73513b"},
- catapult:{name:"Katapult",kind:"tower",gold:140,wood:55,hp:390,range:315,rate:2.45,damage:58,speed:330,splash:62,color:"#5b554c"},
+ archer:{name:"Bogenturm",kind:"tower",gold:60,wood:20,hp:260,range:215,rate:.72,damage:17,speed:470,color:"#b98a4d",counter:"Leichte Gegner +35 % · schwach gegen Rüstung"},
+ crossbow:{name:"Armbrustturm",kind:"tower",gold:95,wood:30,hp:320,range:265,rate:1.45,damage:46,speed:560,color:"#73513b",armorPenetration:.5,counter:"50 % Rüstungsdurchdringung · stark gegen Elite"},
+ catapult:{name:"Katapult",kind:"tower",gold:140,wood:55,hp:390,range:315,rate:2.45,damage:58,speed:330,splash:62,color:"#5b554c",armorBreakAmount:.20,slowAmount:.15,debuffDuration:4,counter:"Fläche · Rüstungsbruch und Verlangsamung"},
  soldier:{name:"Bogenschütze",kind:"unit",gold:55,wood:10,hp:145,damage:15,range:120,rate:.85,speed:82,color:"#416a93"},
  guard:{name:"Burgwache",kind:"unit",gold:120,wood:10,hp:180,damage:24,range:30,rate:.78,speed:68,armor:.25,color:"#72583b"},
  house:{name:"Zeltlager",kind:"inside",gold:65,wood:20,color:"#9b7651"},
@@ -533,7 +561,7 @@ function summonAndreas(){
   x,y,targetX:x,targetY:y,homeX:x,homeY:y,
   hp:blueprint.hp,maxHp:blueprint.hp,damage:blueprint.damage,range:blueprint.range,rate:blueprint.rate,speed:blueprint.speed,armor:blueprint.armor,
   stance:"defend",guardZone:"outer",retreating:false,level:1,expLevel:1,xp:0,xpMax:100,pendingUpgrades:0,
-  upgradeStats:{damage:0,health:0,speed:0,rate:0,range:0},attackCd:0,retargetCd:0,controlMode:"auto",autoTarget:null,
+  upgradeStats:{damage:0,health:0,speed:0,rate:0,range:0},attackCd:0,retargetCd:0,controlMode:"auto",targetPriority:null,autoTarget:null,
   heroAbilityTime:0,heroAbilityCooldown:0,investedGold:0,investedWood:0,investedStone:0
  };
  state.units.push(hero);
@@ -889,7 +917,8 @@ function assaultFormationPoint(enemy,angle,targetRadius,key,frontLimit){
 function moveEnemyToward(enemy,x,y,dt){
  const dx=x-enemy.x,dy=y-enemy.y,d=Math.hypot(dx,dy);
  if(d<=.001)return d;
- const speed=enemy.queueWaiting?enemy.speed*.82:enemy.speed;
+ const effectiveSpeed=getEffectiveEnemySpeed(enemy);
+ const speed=enemy.queueWaiting?effectiveSpeed*.82:effectiveSpeed;
  const step=Math.min(d,speed*dt);
  enemy.x+=dx/d*step;enemy.y+=dy/d*step;
  return d;
@@ -975,6 +1004,23 @@ function nearestBlockingUnit(enemy,maxRange=58){
  if(heroAbilityActive(hero)&&heroSharesEnemyDefenseZone(enemy,hero)&&Math.hypot(enemy.x-hero.x,enemy.y-hero.y)<=maxRange)return hero;
  return findNearestBlockingUnit(state.units,enemy,{centerX:CX,centerY:CY,wallRadius:WALL_R,maxRange});
 }
+function nearestGateDefender(enemy,gate,radius){
+ if(!enemy||!gate)return null;
+ const gx=CX+Math.cos(gate.angle)*radius,gy=CY+Math.sin(gate.angle)*radius;
+ let best=null,bestDistance=68;
+ for(const unit of state.units){
+  if(unit?.key!=="guard"||unit.hp<=0)continue;
+  if(Math.hypot(unit.x-gx,unit.y-gy)>96)continue;
+  const distance=Math.hypot(unit.x-enemy.x,unit.y-enemy.y);
+  if(distance<bestDistance){bestDistance=distance;best=unit}
+ }
+ return best;
+}
+function enemyAttackDefender(enemy,defender){
+ if(!defender)return false;
+ if(enemy.attackCd<=0){enemy.attackCd=enemy.attackRate;enemy.attackAnim=.22;defender.hp-=enemy.damage*.6*(1-effectiveUnitArmor(defender));burst(defender.x,defender.y,"#b84640",4)}
+ return true;
+}
 function handleHeroTaunt(enemy,dt){
  const hero=getAndreas();
  if(!heroAbilityActive(hero)||hero.hp<=0||!heroSharesEnemyDefenseZone(enemy,hero))return false;
@@ -983,11 +1029,26 @@ function handleHeroTaunt(enemy,dt){
  const reach=Math.max(44,(Number(enemy.radius)||12)+31);
  if(d<=reach){
   if(enemy.attackCd<=0){enemy.attackCd=enemy.attackRate;enemy.attackAnim=.22;hero.hp-=enemy.damage*.6*(1-effectiveUnitArmor(hero));burst(hero.x,hero.y,"#b84640",5)}
- }else{enemy.x+=dx/d*enemy.speed*dt;enemy.y+=dy/d*enemy.speed*dt}
+ }else{const speed=getEffectiveEnemySpeed(enemy);enemy.x+=dx/d*speed*dt;enemy.y+=dy/d*speed*dt}
  return true;
 }
-function shoot(from,target,damage,speed,splash=0,color="#f0d176"){
- return createProjectile(state.projectiles,from,target,damage,speed,splash,color);
+function shoot(from,target,damage,speed,splash=0,color="#f0d176",effects=null){
+ return createProjectile(state.projectiles,from,target,damage,speed,splash,color,effects);
+}
+function applyProjectileEffects(enemy,projectile){
+ if(!enemy||!projectile)return;
+ if(projectile.armorBreakDuration>0&&projectile.armorBreakAmount>0){
+  enemy.armorBreakAmount=Math.max(Number(enemy.armorBreakAmount)||0,projectile.armorBreakAmount);
+  enemy.armorBreakTime=Math.max(Number(enemy.armorBreakTime)||0,projectile.armorBreakDuration);
+ }
+ if(projectile.slowDuration>0&&projectile.slowAmount>0){
+  enemy.slowAmount=Math.max(Number(enemy.slowAmount)||0,projectile.slowAmount);
+  enemy.slowTime=Math.max(Number(enemy.slowTime)||0,projectile.slowDuration);
+ }
+}
+function projectileDamage(projectile,enemy,multiplier=1){
+ const armor=Math.max(0,getEffectiveEnemyArmor(enemy)*(1-(Number(projectile.armorPenetration)||0)));
+ return Math.max(0,projectile.damage*multiplier*(1-armor));
 }
 function grantCombatXp(owner,amount){return grantCombatExperience(owner,amount,combatCallbacks())}
 function applyTowerExpTalent(tower,type){return applyTowerTalent(tower,type,combatCallbacks())}
@@ -1172,7 +1233,17 @@ function update(dt){
  const bonus=1;
  for(const b of state.buildings){
   if(!isTowerOperational(b))continue;
-  b.cooldown-=dt;const e=nearestEnemy(b.slot.x,b.slot.y,b.range);if(e&&b.cooldown<=0){b.cooldown=b.rate;shoot(b,e,b.damage*bonus,b.speed,b.splash,b.key==="catapult"?"#493d30":"#f0d176")}
+  b.cooldown-=dt;
+  const e=findTowerTarget(state.enemies,b,b.range);
+  if(e&&b.cooldown<=0){
+   b.cooldown=b.rate;
+   let damage=b.damage*bonus;
+   let effects=null;
+   if(b.key==="archer"&&(e.type==="raider"||e.type==="runner"))damage*=1.35;
+   if(b.key==="crossbow")effects={armorPenetration:.5};
+   if(b.key==="catapult")effects={armorBreakAmount:CATAPULT_ARMOR_BREAK,armorBreakDuration:CATAPULT_DEBUFF_DURATION,slowAmount:CATAPULT_SLOW,slowDuration:CATAPULT_DEBUFF_DURATION};
+   shoot(b,e,damage,b.speed,b.splash,b.key==="catapult"?"#493d30":"#f0d176",effects);
+  }
  }
  for(const u of state.units){
   if(u.hp<=0)continue;
@@ -1207,7 +1278,7 @@ function update(dt){
      if(u.attackCd<=0){
       u.attackAngle=Math.atan2(target.y-u.y,target.x-u.x);
       u.attackCd=u.rate;
-      const dealt=u.damage*unitDamageMultiplier(u,target)*(1-(target.armor||0));target.hp-=dealt;target.lastHitEntity=u;
+      const dealt=u.damage*unitDamageMultiplier(u,target)*(1-getEffectiveEnemyArmor(target));target.hp-=dealt;target.lastHitEntity=u;
       grantCombatXp(u,Math.min(7,dealt*.075));burst(target.x,target.y,"#f2cf82",7);
      }
     }else{
@@ -1277,15 +1348,15 @@ function update(dt){
     for(const e of state.enemies){
      const sd=Math.hypot(e.x-p.target.x,e.y-p.target.y);
      if(sd<p.splash){
-      const dealt=Math.max(0,p.damage*(1-sd/(p.splash*1.7))*(1-(e.armor||0)));
-      e.hp-=dealt;
+      const dealt=projectileDamage(p,e,Math.max(0,1-sd/(p.splash*1.7)));
+      e.hp-=dealt;applyProjectileEffects(e,p);
       if(p.owner){e.lastHitEntity=p.owner;grantCombatXp(p.owner,Math.min(5,dealt*.045))}
      }
     }
     burst(p.target.x,p.target.y,"#7e6a50",14);
    }else{
-    const dealt=p.damage*(1-(p.target.armor||0));
-    p.target.hp-=dealt;
+    const dealt=projectileDamage(p,p.target);
+    p.target.hp-=dealt;applyProjectileEffects(p.target,p);
     if(p.owner){p.target.lastHitEntity=p.owner;grantCombatXp(p.owner,Math.min(6,dealt*.06))}
     burst(p.target.x,p.target.y,p.color,3);
    }
@@ -1297,6 +1368,8 @@ function update(dt){
 
  for(const e of state.enemies){
   e.queueWaiting=false;e.assaultKey="";
+  e.armorBreakTime=Math.max(0,(Number(e.armorBreakTime)||0)-dt);
+  e.slowTime=Math.max(0,(Number(e.slowTime)||0)-dt);
   e.attackCd-=dt;
   if(e.attackAnim>0)e.attackAnim=Math.max(0,e.attackAnim-dt);
   const dx=CX-e.x,dy=CY-e.y,dCenter=Math.max(1,Math.hypot(dx,dy));
@@ -1311,10 +1384,13 @@ function update(dt){
     if(!outerGate.built||outerGate.hp<=0){
      const d=moveEnemyToward(e,baseX,baseY,dt);if(d<5)e.phase="outside";
     }else{
-     const assault=assaultFormationPoint(e,outerGate.angle,targetR,`og:${outerGate.i}`,6);
-     const d=moveEnemyToward(e,assault.x,assault.y,dt);
-     if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
-      outerGate.hp=Math.max(0,outerGate.hp-gateDamage);burst(baseX,baseY,"#775039",6);if(outerGate.hp<=0)showToast(`Das ${outerGate.name} wurde durchbrochen!`)}
+     const gateDefender=nearestGateDefender(e,outerGate,OUTER_WALL_R);
+     if(gateDefender){enemyAttackDefender(e,gateDefender)}else{
+      const assault=assaultFormationPoint(e,outerGate.angle,targetR,`og:${outerGate.i}`,6);
+      const d=moveEnemyToward(e,assault.x,assault.y,dt);
+      if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
+       outerGate.hp=Math.max(0,outerGate.hp-gateDamage);burst(baseX,baseY,"#775039",6);if(outerGate.hp<=0)showToast(`Das ${outerGate.name} wurde durchbrochen!`)}
+     }
     }
    }else{
     const wi=getOuterWallSegmentIndexForAngle(Math.atan2(e.y-CY,e.x-CX),state.outerWalls.length);
@@ -1342,10 +1418,13 @@ function update(dt){
     if(!gate.built||gate.hp<=0){
      const d=moveEnemyToward(e,baseX,baseY,dt);if(d<5)e.phase="inside";
     }else{
-     const assault=assaultFormationPoint(e,gate.angle,targetR,`mg:${gate.i}`,6);
-     const d=moveEnemyToward(e,assault.x,assault.y,dt);
-     if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
-      gate.hp=Math.max(0,gate.hp-gateDamage);burst(baseX,baseY,"#8c5734",6);if(gate.hp<=0)showToast(`Das ${gate.name} wurde durchbrochen!`)}
+     const gateDefender=nearestGateDefender(e,gate,WALL_R);
+     if(gateDefender){enemyAttackDefender(e,gateDefender)}else{
+      const assault=assaultFormationPoint(e,gate.angle,targetR,`mg:${gate.i}`,6);
+      const d=moveEnemyToward(e,assault.x,assault.y,dt);
+      if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
+       gate.hp=Math.max(0,gate.hp-gateDamage);burst(baseX,baseY,"#8c5734",6);if(gate.hp<=0)showToast(`Das ${gate.name} wurde durchbrochen!`)}
+     }
     }
    }else{
     const wi=angleIndex(e.x,e.y),wall=state.walls[wi];e.wallIndex=wi;e.middleGateIndex=null;
@@ -1373,7 +1452,7 @@ function update(dt){
     const tdx=tower.slot.x-e.x,tdy=tower.slot.y-e.y,td=Math.max(1,Math.hypot(tdx,tdy));
     if(td<38+e.radius){
      if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;tower.hp-=e.damage;burst(tower.slot.x,tower.slot.y,"#b67a45",6)}
-    }else{e.x+=tdx/td*e.speed*dt;e.y+=tdy/td*e.speed*dt}
+    }else{const speed=getEffectiveEnemySpeed(e);e.x+=tdx/td*speed*dt;e.y+=tdy/td*speed*dt}
    }else if(!innerWall||innerWall.hp<=0){
     e.phase="core";
    }else{
@@ -1401,7 +1480,7 @@ function update(dt){
     const cdx=castleTower.slot.x-e.x,cdy=castleTower.slot.y-e.y,cd=Math.max(1,Math.hypot(cdx,cdy));
     if(cd<38+e.radius){
      if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;castleTower.hp-=e.damage;burst(castleTower.slot.x,castleTower.slot.y,"#b67a45",6)}
-    }else{e.x+=cdx/cd*e.speed*dt;e.y+=cdy/cd*e.speed*dt}
+    }else{const speed=getEffectiveEnemySpeed(e);e.x+=cdx/cd*speed*dt;e.y+=cdy/cd*speed*dt}
    }else{
     // Der Angriffswinkel wird beim ersten Erreichen der Kernzone fixiert.
    // Wuerde er aus der laufend veraenderten Position neu berechnet, wuerde der
@@ -1680,6 +1759,7 @@ const testResourcePanel=document.getElementById("testResourcePanel");
 const testResourceCloseBtn=document.getElementById("testResourceCloseBtn");
 const selectionMoveBtn=document.getElementById("selectionMoveBtn");
 const selectionAutoBtn=document.getElementById("selectionAutoBtn");
+const selectionPriorityBtn=document.getElementById("selectionPriorityBtn");
 const selectionModeBtn=document.getElementById("selectionModeBtn");
 const selectionOffenseBtn=document.getElementById("selectionOffenseBtn");
 const selectionHeroAbilityBtn=document.getElementById("selectionHeroAbilityBtn");
@@ -1710,6 +1790,7 @@ function unitStatsHtml(u){
  ${statRow("Tempo",fmt(base.speed),fmt(u.speed),pctDelta(base.speed,u.speed))}
  ${statRow("Reichweite",fmt(base.range),fmt(u.range),pctDelta(base.range,u.range))}
  ${statRow("Schüsse/Sek.",fmt(1/base.rate,2),fmt(1/u.rate,2),pctDelta(1/base.rate,1/u.rate))}</div>
+ ${u.key==="soldier"?`<div class="statsHint">🎯 Zielpriorität: <b>${targetPriorityLabel(u)}</b>. Wechsel direkt über die Auswahlleiste zwischen nächsten, schnellen und stärksten Gegnern.</div>`:u.key==="guard"?`<div class="statsHint">🚪 Torwächter: In der Nähe eines intakten Tores erhält die Burgwache +15 % Schaden und +15 Prozentpunkte Rüstung und hält anrückende Feinde auf.</div>`:""}
  <div class="statsSection"><h3>Nächste Aufwertung</h3><div class="upgradeGrid">
  <div class="upgradeCard"><b>⚔ Schaden</b><small>${fmt(u.damage)} → ${fmt(u.damage*1.24)}<br>+24% Angriffsschaden</small><div class="level">Bisher: ${ups.damage||0}×</div></div>
  <div class="upgradeCard"><b>♥ Leben</b><small>${fmt(u.maxHp)} → ${fmt(u.maxHp*1.28)}<br>+28% Leben und Heilung</small><div class="level">Bisher: ${ups.health||0}×</div></div>
@@ -1749,7 +1830,7 @@ function buildingStatsHtml(b){
  <div class="statTile"><span>EXP</span><b>${Math.floor(b.xp||0)}/${Math.floor(b.xpMax||90)}</b></div>
  <div class="statTile"><span>Offene Punkte</span><b>${b.pendingUpgrades||0}</b></div></div>
  <div class="statsSection"><h3>Kampfwerte</h3><div class="statRow header"><div>Wert</div><div>Grundwert</div><div>Aktuell</div><div>Änderung</div></div>${rows}</div>
- <div class="statsHint">Türme werden nicht direkt mit Gold oder Holz verbessert. Individuelle Aufwertungen erfolgen über Kampf-EXP; globale Turmforschung folgt in einem eigenen Schritt.</div>`;
+ <div class="statsHint">⚔ ${towerCounterText(b)}</div><div class="statsHint">Türme werden nicht direkt mit Gold oder Holz verbessert. Individuelle Aufwertungen erfolgen über Kampf-EXP; globale Turmforschung folgt in einem eigenen Schritt.</div>`;
  const prod=buildingProductionInfo(b),workerNeeded=["lumber","quarry","repair","market"].includes(b.key),workerText=workerNeeded?(buildingHasWorker(b)?"1 / 1 zugewiesen":"0 / 1 zugewiesen"):b.key==="house"?`${residentCapacityForHouse(b)} Bewohnerplätze`:"Kein Arbeitsplatz";
  const cost=getBuildingUpgradeCost(b),g=cost.gold,w=cost.wood,maxLevel=cost.maxLevel,canUpgrade=!cost.maxed&&state.gold>=g&&state.wood>=w,preview=buildingUpgradePreview(b);
  return `<div class="buildingOverview">
@@ -2035,6 +2116,14 @@ selectionAutoBtn.addEventListener("click",e=>{
  selectionTalentBar.classList.add("hidden");
  showToast(selected.controlMode==="auto"?"Automatik aktiviert":"Automatik deaktiviert");
 });
+selectionPriorityBtn.addEventListener("click",e=>{
+ e.stopPropagation();
+ if(!selected||selected.kind!=="unit"||selected.key!=="soldier")return;
+ const order={nearest:"fast",fast:"strong",strong:"nearest"};
+ selected.targetPriority=order[selected.targetPriority||"nearest"];
+ selected.controlMode="auto";selected.autoTarget=null;selected.retargetCd=0;unitCommandMode=null;
+ showToast(`Zielpriorität: ${targetPriorityLabel(selected)}`);
+});
 selectionModeBtn.addEventListener("click",e=>{
  e.stopPropagation();
  if(!selected||selected.kind!=="unit")return;
@@ -2134,7 +2223,8 @@ function updateSelectionHud(){
  if(isUnit){
   icon=selected.key==="hero"?"👑":selected.key==="guard"?"🛡️":"🏹";name=`${unitDisplayName(selected)} · Stufe ${selected.expLevel||1}`;
   const abilityStatus=selected.key==="hero"?(heroAbilityActive(selected)?` · 📯 Ruf aktiv ${Math.ceil(selected.heroAbilityTime)}s`:(Number(selected.heroAbilityCooldown)||0)>0?` · ⏳ Ruf ${Math.ceil(selected.heroAbilityCooldown)}s`:" · 📯 Ruf bereit"):"";
-  details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${isMeleeHeroUnit(selected)?`🛡️ ${Math.round(effectiveUnitArmor(selected)*100)}% · ${selected.retreating?"Rückzug":unitZoneLabel(selected)} · `:`📍 ${unitZoneLabel(selected)} · `}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP${selected.key==="hero"?" · ✨ Sammelruf-Aura":""}${abilityStatus}`;
+  const tacticalStatus=selected.key==="soldier"?` · 🎯 ${targetPriorityLabel(selected)}`:selected.key==="guard"&&unitNearIntactGate(selected)?" · 🚪 Torbonus aktiv":"";
+  details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${isMeleeHeroUnit(selected)?`🛡️ ${Math.round(effectiveUnitArmor(selected)*100)}% · ${selected.retreating?"Rückzug":unitZoneLabel(selected)} · `:`📍 ${unitZoneLabel(selected)} · `}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP${selected.key==="hero"?" · ✨ Sammelruf-Aura":""}${tacticalStatus}${abilityStatus}`;
  }else if(selected.kind==="building"){
   if(selected.key==="statue"){
    const progress=Math.max(0,Math.min(HERO_OFFERING_TARGET,Number(state.heroOffering)||0));
@@ -2239,6 +2329,14 @@ function updateSelectionHud(){
   selectionModeBtn.classList.toggle("modeActive",isUnit);
   selectionModeBtn.querySelector("span").textContent=selected.zoneMode==="inner"?"◉":selected.zoneMode==="outer"?"◎":"◌";
   selectionModeBtn.querySelector("small").textContent=unitZoneLabel(selected);
+ }
+ const showPriority=isUnit&&selected.key==="soldier";
+ selectionPriorityBtn.classList.toggle("hidden",!showPriority);
+ if(showPriority){
+  const value=selected.targetPriority||"nearest";
+  selectionPriorityBtn.querySelector("span").textContent=value==="fast"?"⚡":value==="strong"?"💪":"🎯";
+  selectionPriorityBtn.querySelector("small").textContent=targetPriorityLabel(selected);
+  selectionPriorityBtn.classList.add("active");
  }
  const rangeLabels=["Aus","Auswahl","Alle"],rangeIcons=["◌","◎","◉"];
  selectionRangeBtn.querySelector("span").textContent=rangeIcons[rangeDisplayMode];

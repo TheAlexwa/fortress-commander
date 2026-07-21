@@ -169,6 +169,7 @@ export function createEntityAt(x, y, key, context) {
       attackCd: 0,
       retargetCd: 0,
       controlMode: "auto",
+      targetPriority: key === "soldier" ? "nearest" : null,
       autoTarget: null,
       investedGold: blueprint.gold,
       investedWood: blueprint.wood,
