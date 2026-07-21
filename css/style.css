@@ -795,3 +795,67 @@ footer{min-height:0}
 .testResourceChoices span{display:block;font-size:26px}.testResourceChoices b{display:block;margin-top:3px;font:900 16px Georgia,serif}.testResourceChoices small{display:block;margin-top:4px;color:#745737;font-size:9px}
 .testResourceFoot{padding:9px 13px;border-top:1px solid #8b623658;background:#5b3b1a12;text-align:center;color:#762f24;font-size:9px;font-weight:950;text-transform:uppercase;letter-spacing:.6px}
 @media(max-width:520px){.testResourceChoices{grid-template-columns:1fr 1fr;gap:7px;padding:10px}.testResourceChoices button{min-height:82px;padding:8px}.testResourceDialog{border-radius:18px}}
+
+/* v1.15.38 – Opfergabe des Helden */
+#statueOfferingPanel.hidden,.heroSummonNotice.hidden{display:none!important;pointer-events:none!important;visibility:hidden!important}
+#statueOfferingPanel{
+ position:fixed;inset:0;z-index:1600;display:grid;place-items:center;
+ padding:18px;background:radial-gradient(circle at center,#6b401f70 0,#090705e8 68%);
+ backdrop-filter:blur(7px);
+}
+.offeringCard{
+ position:relative;width:min(720px,96vw);max-height:min(820px,92vh);overflow:auto;
+ border:2px solid #e1bd6b;border-radius:24px;padding:24px;
+ color:#f7ead0;background:linear-gradient(145deg,#342318f5,#17100cf7 58%,#2b1a10f5);
+ box-shadow:0 30px 90px #000c,0 0 55px #d99a3540,inset 0 0 0 1px #fff2bb22;
+}
+.offeringClose{
+ position:absolute;right:15px;top:14px;width:40px;height:40px;border-radius:50%;
+ border:1px solid #f2d79388;background:#130d09cc;color:#ffeab8;font-size:20px;cursor:pointer;
+}
+.offeringHead{display:flex;gap:17px;align-items:center;padding-right:45px;margin-bottom:18px}
+.offeringHead h2{margin:2px 0 5px;color:#ffe19a;font-family:Georgia,serif;font-size:clamp(25px,5vw,38px)}
+.offeringHead p{margin:0;color:#ddccb0;line-height:1.45}
+.offeringHead small{color:#d89c47;font-weight:900;letter-spacing:.16em}
+.offeringIcon{font-size:56px;filter:drop-shadow(0 0 14px #f5bd54aa)}
+.offeringProgressWrap{padding:15px 17px;border-radius:16px;background:#0d0907aa;border:1px solid #d8b66c55;margin-bottom:17px}
+.offeringProgressText{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:9px;color:#ead8b7}
+.offeringProgressText b{color:#ffe5a4;font-size:18px}
+.offeringProgress{height:18px;border-radius:999px;background:#080604;border:1px solid #e1bd6b77;overflow:hidden;box-shadow:inset 0 2px 7px #000}
+.offeringProgress span{display:block;height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#87451e,#e3a638 58%,#fff0a5);box-shadow:0 0 18px #ffc557aa;transition:width .3s ease}
+.offeringProgressWrap>small{display:block;margin-top:8px;color:#bfae91}
+.offeringResourceGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.offeringResource{
+ border:1px solid #c89d5566;border-radius:16px;padding:14px;
+ background:linear-gradient(180deg,#ffffff0a,#00000026);min-width:0;
+}
+.offeringResourceHead{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.offeringResourceHead span{font-size:28px}.offeringResourceHead b{display:block;color:#ffe0a0}.offeringResourceHead small{display:block;color:#b9aa92}
+.offeringButtons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.offeringButtons button{
+ min-height:42px;border-radius:10px;border:1px solid #d0aa6170;background:#2c1b11;color:#f9e7c2;
+ font-weight:800;cursor:pointer;padding:7px 5px;
+}
+.offeringButtons button:hover:not(:disabled){background:#65401e;border-color:#f0cd82;transform:translateY(-1px)}
+.offeringButtons button:disabled{opacity:.34;cursor:not-allowed}
+.offeringButtons .offeringMax{grid-column:1/-1;background:#6c3618}
+.offeringStatus{margin-top:16px;padding:12px 14px;border-radius:12px;background:#100b08aa;color:#ccb99a;text-align:center;border:1px solid #a9824938}
+.offeringStatus.complete{color:#fff1b8;border-color:#ffe28a88;background:#5a3513aa;font-weight:800}
+.heroSummonNotice{
+ position:fixed;left:50%;top:50%;z-index:1900;transform:translate(-50%,-50%);
+ width:min(680px,92vw);padding:34px 24px;border-radius:26px;text-align:center;overflow:hidden;
+ border:2px solid #ffe08a;background:linear-gradient(145deg,#34210deF,#0d0907f5);
+ color:#fff2c6;box-shadow:0 0 110px #ffc04790,0 30px 90px #000d;
+ animation:heroSummonIn .38s ease-out both;
+}
+.heroSummonNotice strong{position:relative;display:block;color:#ffe28c;font:900 clamp(27px,6vw,46px)/1.1 Georgia,serif;text-shadow:0 2px 16px #ffb630aa}
+.heroSummonNotice span{position:relative;display:block;margin-top:10px;font-size:clamp(16px,3vw,22px)}
+.heroSummonCrown{position:relative;font-size:60px;margin-bottom:8px;animation:heroCrownPulse 1.2s ease-in-out infinite}
+.heroSummonGlow{position:absolute;inset:-80%;background:conic-gradient(from 0deg,transparent,#ffd66a3d,transparent,#fff0a355,transparent);animation:heroGlowSpin 5s linear infinite}
+@keyframes heroSummonIn{from{opacity:0;transform:translate(-50%,-46%) scale(.85)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@keyframes heroCrownPulse{50%{transform:scale(1.12);filter:drop-shadow(0 0 22px #ffd65a)}}
+@keyframes heroGlowSpin{to{transform:rotate(360deg)}}
+@media(max-width:650px){
+ .offeringCard{padding:18px 14px}.offeringHead{align-items:flex-start}.offeringIcon{font-size:42px}
+ .offeringResourceGrid{grid-template-columns:1fr}.offeringResource{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center}.offeringResourceHead{margin:0}
+}

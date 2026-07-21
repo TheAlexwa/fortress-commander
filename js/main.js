@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.37";
-const GAME_RELEASE_NAME="Belagerungslager 2.0";
+const GAME_VERSION="1.15.38";
+const GAME_RELEASE_NAME="Opfergabe des Helden";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -245,7 +245,7 @@ const ui={
  wallInfo:document.getElementById("wallInfo"),wave:document.getElementById("wave"),status:document.getElementById("waveStatus"),
  start:document.getElementById("startWaveBtn"),pause:document.getElementById("pauseBtn"),toast:document.getElementById("toast"),
  selected:document.getElementById("selectedPanel"),levelDock:document.getElementById("levelUpDock"),upgrade:document.getElementById("upgradeBtn"),
- repairWall:document.getElementById("repairWallBtn"),craftsmanToggle:document.getElementById("craftsmanToggleBtn"),marketTrade:document.getElementById("marketTradeBtn"),sell:document.getElementById("sellBtn"),
+ repairWall:document.getElementById("repairWallBtn"),craftsmanToggle:document.getElementById("craftsmanToggleBtn"),marketTrade:document.getElementById("marketTradeBtn"),statueOffering:document.getElementById("statueOfferingBtn"),sell:document.getElementById("sellBtn"),
  zoomOut:document.getElementById("zoomOutBtn"),zoomIn:document.getElementById("zoomInBtn"),zoomCenter:document.getElementById("zoomCenterBtn"),zoomLabel:document.getElementById("zoomLabel"),
  selectionHud:document.getElementById("selectionHud"),selectionText:document.getElementById("selectionText"),selectionPortrait:document.getElementById("selectionPortrait")
 };
@@ -255,10 +255,16 @@ const SIEGE_CAMPS=getSiegeCampPositions({WORLD_W,WORLD_H});
 const WALL_R=355,WALL_SEGMENTS=MIDDLE_WALL_SEGMENT_COUNT,WALL_MAX_HP=MIDDLE_WALL_WOOD_MAX_HP;
 const OUTER_WALL_R=WALL_R+OUTER_WALL_OFFSET;
 const ARCHER_ZONE_RADII={inner:Math.max(110,FIXED_INNER_WALL_RADIUS-18),middle:WALL_R-26,outer:OUTER_WALL_R-26};
+const HERO_OFFERING_TARGET=2000;
+const HERO_AURA_RADIUS=155;
+const STATUE_MORALE_DAMAGE_BONUS=.05;
+const HERO_AURA_BONUS=.10;
 
+function isMeleeHeroUnit(unit){return !!unit&&unit.kind==="unit"&&(unit.key==="guard"||unit.key==="hero")}
+function unitDisplayName(unit){return unit?.key==="hero"?"Andreas, der große Held":unit?.key==="guard"?"Burgwache":"Bogenschütze"}
 function unitZoneLabel(unit){
  if(!unit||unit.kind!=="unit")return "";
- if(unit.key==="guard"){
+ if(isMeleeHeroUnit(unit)){
   if(unit.stance==="offense")return "Ausfall";
   return (unit.guardZone||"middle")==="outer"?"Äußerer Ring":"Burghalten";
  }
@@ -269,14 +275,31 @@ function archerZoneRadius(unit){return ARCHER_ZONE_RADII[(unit&&unit.zoneMode)||
 function canPlaceMoveTarget(unit,x,y){
  const d=Math.hypot(x-CX,y-CY);
  if(!unit||unit.kind!=="unit")return false;
- if(unit.key==="guard"){
+ if(isMeleeHeroUnit(unit)){
   if(unit.stance==="offense")return d<OUTER_WALL_R+250&&d>95;
   return d<(((unit.guardZone||"middle")==="outer"?OUTER_WALL_R:WALL_R)-10)&&d>95;
  }
  return d<archerZoneRadius(unit)&&d>95;
 }
+function getAndreas(){return state.units.find(unit=>unit.key==="hero"&&unit.hp>0)||null}
+function hasActiveKriegerstatue(){return state.buildings.some(building=>building.key==="statue")}
+function isInsideFortressArea(unit){return Math.hypot(unit.x-CX,unit.y-CY)<=OUTER_WALL_R+12}
+function hasHeroAura(unit){
+ const hero=getAndreas();
+ return !!hero&&unit!==hero&&unit.hp>0&&Math.hypot(unit.x-hero.x,unit.y-hero.y)<=HERO_AURA_RADIUS;
+}
+function effectiveUnitSpeed(unit){return unit.speed*(hasHeroAura(unit)?1+HERO_AURA_BONUS:1)}
+function effectiveUnitArmor(unit){return Math.min(.75,(unit.armor||0)+(hasHeroAura(unit)?HERO_AURA_BONUS:0))}
+function unitDamageMultiplier(unit,enemy=null){
+ let multiplier=1;
+ if(hasActiveKriegerstatue()&&isInsideFortressArea(unit))multiplier*=1+STATUE_MORALE_DAMAGE_BONUS;
+ if(hasHeroAura(unit))multiplier*=1+HERO_AURA_BONUS;
+ if(unit?.key==="hero"&&enemy&&["shield","berserker","boss"].includes(enemy.type))multiplier*=1.35;
+ return multiplier;
+}
+
 function currentActionText(){
- if(unitCommandMode==="move"&&selected&&selected.kind==="unit")return `➜ Bewegungsziel für ${selected.key==="guard"?"Burgwache":"Bogenschütze"} wählen`;
+ if(unitCommandMode==="move"&&selected&&selected.kind==="unit")return `➜ Bewegungsziel für ${unitDisplayName(selected)} wählen`;
  if(buildMode){
   const btn=document.querySelector(`.buildBtn[data-build="${buildMode}"] .name`);
   return `🧱 ${btn?btn.textContent:buildMode} bauen · Bauplatz wählen`;
@@ -303,10 +326,11 @@ const BUILD={
  workshop:{name:"Werkstatt",kind:"inside",gold:110,wood:40,color:"#6b6b70"},
  repair:{name:"Handwerkerhaus",kind:"inside",gold:90,wood:35,color:"#8b7063"},
  market:{name:"Marktplatz",kind:"inside",gold:150,wood:60,color:"#8a6b3d"},
- statue:{name:"Kriegerstatue",kind:"inside",gold:45,wood:0,stone:15,color:"#8f7958",slotRole:"statue",decorative:true}
+ statue:{name:"Kriegerstatue",kind:"inside",gold:45,wood:0,stone:15,color:"#8f7958",slotRole:"statue",ritual:true},
+ hero:{name:"Andreas, der große Held",kind:"unit",gold:0,wood:0,hp:650,damage:65,range:34,rate:1.05,speed:66,armor:.35,color:"#d4aa52",hero:true}
 };
 const state={gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,
- enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],outerGates:[],craftsmen:[],residents:[],siege:null,spawnQueue:[],repairActive:false,repairedHp:0,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
+ enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],outerGates:[],craftsmen:[],residents:[],siege:null,spawnQueue:[],repairActive:false,repairedHp:0,heroOffering:0,heroSummoned:false,heroFallen:false,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
 const wallSlots=[],insideSlots=[],castleSlots=[];
 
 function initMap(){
@@ -455,6 +479,100 @@ document.getElementById("workshopCloseBtn").addEventListener("click",()=>closeWo
 document.getElementById("workshopPanel").addEventListener("click",e=>{if(e.target.id==="workshopPanel")closeWorkshopPanel(true)});
 document.getElementById("workshopTabs").addEventListener("click",e=>{const b=e.target.closest("[data-research-tab]");if(!b)return;activeResearchTab=b.dataset.researchTab;renderWorkshop()});
 document.getElementById("techTree").addEventListener("click",e=>{const b=e.target.closest("[data-tech]");if(b)buyResearch(b.dataset.tech)});
+document.getElementById("statueOfferingCloseBtn").addEventListener("click",()=>closeStatueOfferingPanel(true));
+document.getElementById("statueOfferingPanel").addEventListener("click",e=>{
+ const donate=e.target.closest("[data-offering-resource]");
+ if(donate){e.preventDefault();donateToStatue(donate.dataset.offeringResource,donate.dataset.offeringAmount);return}
+ if(e.target.id==="statueOfferingPanel")closeStatueOfferingPanel(true);
+});
+
+
+let statueOfferingPausedBefore=false;
+let heroSummonNoticeTimer=0;
+function showHeroSummonNotice(){
+ const notice=document.getElementById("heroSummonNotice");
+ if(!notice)return;
+ notice.classList.remove("hidden");
+ clearTimeout(heroSummonNoticeTimer);
+ heroSummonNoticeTimer=setTimeout(()=>notice.classList.add("hidden"),4200);
+}
+function summonAndreas(){
+ if(state.heroSummoned)return getAndreas();
+ const statue=state.buildings.find(building=>building.key==="statue");
+ if(!statue)return null;
+ const blueprint=BUILD.hero;
+ const dx=CX-statue.slot.x,dy=CY-statue.slot.y,d=Math.max(1,Math.hypot(dx,dy));
+ const x=statue.slot.x+dx/d*76,y=statue.slot.y+dy/d*76;
+ const hero={
+  kind:"unit",uid:++state.nextUnitId,key:"hero",base:blueprint,name:"Andreas, der große Held",isHero:true,
+  x,y,targetX:x,targetY:y,homeX:x,homeY:y,
+  hp:blueprint.hp,maxHp:blueprint.hp,damage:blueprint.damage,range:blueprint.range,rate:blueprint.rate,speed:blueprint.speed,armor:blueprint.armor,
+  stance:"defend",guardZone:"outer",retreating:false,level:1,expLevel:1,xp:0,xpMax:100,pendingUpgrades:0,
+  upgradeStats:{damage:0,health:0,speed:0,rate:0,range:0},attackCd:0,retargetCd:0,controlMode:"auto",autoTarget:null,
+  investedGold:0,investedWood:0,investedStone:0
+ };
+ state.units.push(hero);
+ state.heroOffering=HERO_OFFERING_TARGET;
+ state.heroSummoned=true;
+ state.heroFallen=false;
+ selected=hero;buildMode=null;unitCommandMode=null;
+ burst(x,y,"#ffd76e",36);
+ showHeroSummonNotice();
+ showToast("Andreas, der große Held, kämpft nun für die Festung!");
+ return hero;
+}
+function renderStatueOfferingPanel(){
+ const progress=Math.max(0,Math.min(HERO_OFFERING_TARGET,Number(state.heroOffering)||0));
+ const remaining=Math.max(0,HERO_OFFERING_TARGET-progress);
+ const value=document.getElementById("offeringProgressValue"),fill=document.getElementById("offeringProgressFill"),remainingText=document.getElementById("offeringRemainingText"),grid=document.getElementById("offeringResourceGrid"),status=document.getElementById("offeringStatus");
+ if(value)value.textContent=progress.toLocaleString("de-DE");
+ if(fill)fill.style.width=`${progress/HERO_OFFERING_TARGET*100}%`;
+ if(remainingText)remainingText.textContent=remaining?`Noch ${remaining.toLocaleString("de-DE")} Opferpunkte benötigt.`:"Das Ritual wurde vollendet.";
+ const resources=[
+  {key:"gold",icon:"🪙",name:"Gold",value:Math.floor(state.gold)},
+  {key:"wood",icon:"🪵",name:"Holz",value:Math.floor(state.wood)},
+  {key:"stone",icon:"🪨",name:"Stein",value:Math.floor(state.stone)}
+ ];
+ if(grid)grid.innerHTML=resources.map(resource=>{
+  const locked=state.heroSummoned||remaining<=0||resource.value<=0;
+  const buttons=[50,100,250].map(amount=>`<button type="button" data-offering-resource="${resource.key}" data-offering-amount="${amount}" ${locked||resource.value<amount?"disabled":""}>+${amount}</button>`).join("");
+  return `<article class="offeringResource"><div class="offeringResourceHead"><span>${resource.icon}</span><div><b>${resource.name}</b><small>Vorrat: ${resource.value.toLocaleString("de-DE")}</small></div></div><div class="offeringButtons">${buttons}<button class="offeringMax" type="button" data-offering-resource="${resource.key}" data-offering-amount="max" ${locked?"disabled":""}>Maximum spenden</button></div></article>`;
+ }).join("");
+ if(status){
+  status.classList.toggle("complete",state.heroSummoned);
+  status.textContent=state.heroSummoned
+   ?state.heroFallen?"Andreas wurde bereits beschworen und ist im Kampf gefallen.":"Andreas, der große Held, wurde beschworen und kämpft für die Festung."
+   :"Die Opfergaben sind unwiderruflich. 1 Gold, 1 Holz oder 1 Stein entsprechen jeweils 1 Opferpunkt.";
+ }
+}
+function openStatueOfferingPanel(){
+ if(!state.buildings.some(building=>building.key==="statue"))return showToast("Zuerst die Kriegerstatue errichten");
+ const panel=document.getElementById("statueOfferingPanel");if(!panel)return;
+ statueOfferingPausedBefore=paused;paused=true;last=performance.now();
+ renderStatueOfferingPanel();panel.classList.remove("hidden");panel.style.display="grid";panel.style.visibility="visible";panel.style.pointerEvents="auto";
+ updateUI();
+}
+function closeStatueOfferingPanel(resume=true){
+ const panel=document.getElementById("statueOfferingPanel");if(panel){panel.classList.add("hidden");panel.style.display="none";panel.style.visibility="hidden";panel.style.pointerEvents="none"}
+ if(resume&&!gameOver){paused=statueOfferingPausedBefore;last=performance.now()}
+ updateUI();
+}
+function donateToStatue(resource,requestedAmount){
+ if(state.heroSummoned)return showToast("Andreas wurde bereits beschworen");
+ if(!["gold","wood","stone"].includes(resource))return false;
+ const remaining=Math.max(0,HERO_OFFERING_TARGET-(Number(state.heroOffering)||0));
+ const available=Math.max(0,Math.floor(Number(state[resource])||0));
+ const requested=requestedAmount==="max"?available:Math.max(0,Math.floor(Number(requestedAmount)||0));
+ const amount=Math.min(remaining,available,requested);
+ if(amount<=0){showToast("Keine passende Opfergabe verfügbar");return false}
+ state[resource]-=amount;state.heroOffering=(Number(state.heroOffering)||0)+amount;
+ burst(CX+205,CY+180,"#f4bd55",Math.min(24,6+Math.ceil(amount/50)));
+ if(state.heroOffering>=HERO_OFFERING_TARGET)summonAndreas();
+ else showToast(`${amount} ${resource==="gold"?"Gold":resource==="wood"?"Holz":"Stein"} geopfert`);
+ renderStatueOfferingPanel();updateUI();
+ if(!state.inWave)saveGame(true);
+ return true;
+}
 
 
 function formatSaveDate(value){
@@ -598,7 +716,7 @@ function updateUI(){
   waveCount,buildRequirement,residentCapacityForHouse,buildingHasWorker,
   supportProductionPerSecond,repairHpPerTick,workshopLevels,
   globalResearchIncreaseRate,marketLossPercent,buildingUpgradePreview,
-  getBuildingUpgradeCost,getBuildingMaxLevel,hasBuildingUpgradeEffect
+  getBuildingUpgradeCost,getBuildingMaxLevel,hasBuildingUpgradeEffect,HERO_OFFERING_TARGET
  });
 }
 
@@ -606,12 +724,13 @@ function buildRequirement(key){return getBuildRequirement(state,key)}
 
 function isPanelVisible(id){const el=document.getElementById(id);return !!(el&&!el.classList.contains("hidden"));}
 function isBlockingPanelOpen(){
- return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision"].some(isPanelVisible);
+ return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision"].some(isPanelVisible);
 }
 function closeTopBlockingPanel(){
  if(isPanelVisible("testResourcePanel")){closeTestResourcePanel();return "Testfenster geschlossen"}
  if(isPanelVisible("enemyInfoOverlay")){closeEnemyInfo(true);return "Fenster geschlossen"}
  if(isPanelVisible("marketPanel")){closeMarketPanel();return "Fenster geschlossen"}
+ if(isPanelVisible("statueOfferingPanel")){closeStatueOfferingPanel(true);return "Opfergaben geschlossen"}
  if(isPanelVisible("workshopPanel")){closeWorkshopPanel(true);return "Fenster geschlossen"}
  if(isPanelVisible("statsScreen")){closeStats();return "Fenster geschlossen"}
  if(isPanelVisible("pauseMenu")){hidePauseMenu(true);return "Pause geschlossen"}
@@ -621,7 +740,7 @@ function closeTopBlockingPanel(){
 }
 function closeAllBlockingPanels(){
  hideRepairDecision();
- ["statsScreen","workshopPanel","marketPanel","enemyInfoOverlay","pauseMenu"].forEach(id=>{
+ ["statsScreen","workshopPanel","marketPanel","statueOfferingPanel","enemyInfoOverlay","pauseMenu"].forEach(id=>{
   const el=document.getElementById(id);
   if(el&&el.classList.contains("hidden")){el.style.display="none";el.style.pointerEvents="none";el.style.visibility="hidden"}
  });
@@ -638,10 +757,10 @@ function cancelActiveAction(source=""){
 }
 function cycleUnitZone(unit){
  if(!unit||unit.kind!=="unit")return;
- if(unit.key==="guard"){
+ if(isMeleeHeroUnit(unit)){
   unit.retreating=false;unit.autoTarget=null;unit.stance="defend";
   unit.guardZone=(unit.guardZone||"middle")==="middle"?"outer":"middle";
-  showToast(unit.guardZone==="outer"?"Burgwache hält bis zum äußeren Ring":"Burgwache hält bis zur mittleren Mauer");
+  showToast(unit.guardZone==="outer"?`${unitDisplayName(unit)} hält bis zum äußeren Ring`:`${unitDisplayName(unit)} hält bis zur mittleren Mauer`);
   return;
  }
  const next={inner:"middle",middle:"outer",outer:"inner"};
@@ -706,6 +825,8 @@ function upgradeSelected(){
  return upgradeEntity(selected,{state,syncResidents,showToast,globalResearchIncreaseRate});
 }
 function sellSelected(){
+ if(selected?.kind==="unit"&&selected.key==="hero")return showToast("Andreas kann nicht verkauft werden");
+ if(selected?.kind==="building"&&selected.key==="statue"&&((state.heroOffering||0)>0||state.heroSummoned))return showToast("Die Kriegerstatue ist durch das Ritual gebunden");
  return sellEntity(selected,{
   state,syncResidents,showToast,
   setSelected:value=>{selected=value}
@@ -931,13 +1052,13 @@ function update(dt){
  for(const u of state.units){
   if(u.hp<=0)continue;
   u.attackCd-=dt;u.retargetCd=(u.retargetCd||0)-dt;
-  if(u.key==="guard"){
+  if(isMeleeHeroUnit(u)){
    // Burgwachen halten ein gültiges Nahkampfziel fest, rücken bis zur
    // Kontaktreichweite vor und suchen nach einem besiegten Ziel sofort neu.
    if(u.retreating){
     u.autoTarget=null;
     const dx=u.homeX-u.x,dy=u.homeY-u.y,d=Math.hypot(dx,dy);
-    if(d>4){const step=Math.min(d,u.speed*dt);u.x+=dx/d*step;u.y+=dy/d*step}
+    if(d>4){const step=Math.min(d,effectiveUnitSpeed(u)*dt);u.x+=dx/d*step;u.y+=dy/d*step}
     else{
      u.x=u.homeX;u.y=u.homeY;
      u.retreatTimer=Math.max(0,(u.retreatTimer||0)-dt);
@@ -961,13 +1082,13 @@ function update(dt){
      if(u.attackCd<=0){
       u.attackAngle=Math.atan2(target.y-u.y,target.x-u.x);
       u.attackCd=u.rate;
-      const dealt=u.damage*(1-(target.armor||0));target.hp-=dealt;target.lastHitEntity=u;
+      const dealt=u.damage*unitDamageMultiplier(u,target)*(1-(target.armor||0));target.hp-=dealt;target.lastHitEntity=u;
       grantCombatXp(u,Math.min(7,dealt*.075));burst(target.x,target.y,"#f2cf82",7);
      }
     }else{
      const stopDistance=Math.max(10,meleeReach-4);
      const travel=Math.max(0,d-stopDistance);
-     const step=Math.min(travel,u.speed*dt);let nx=u.x+dx/d*step,ny=u.y+dy/d*step;
+     const step=Math.min(travel,effectiveUnitSpeed(u)*dt);let nx=u.x+dx/d*step,ny=u.y+dy/d*step;
      const nr=Math.hypot(nx-CX,ny-CY);
      const defendLimit=getGuardRadiusLimit(u,WALL_R);
      if(u.stance!=="offense"&&nr>defendLimit){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(defendLimit-2);ny=CY+Math.sin(a)*(defendLimit-2)}
@@ -976,7 +1097,7 @@ function update(dt){
     }
    }else{
     const tx=u.stance==="defend"?u.homeX:u.targetX,ty=u.stance==="defend"?u.homeY:u.targetY;
-    const dx=tx-u.x,dy=ty-u.y,d=Math.hypot(dx,dy);if(d>4){const step=Math.min(d,u.speed*dt);u.x+=dx/d*step;u.y+=dy/d*step}
+    const dx=tx-u.x,dy=ty-u.y,d=Math.hypot(dx,dy);if(d>4){const step=Math.min(d,effectiveUnitSpeed(u)*dt);u.x+=dx/d*step;u.y+=dy/d*step}
    }
    continue;
   }
@@ -991,10 +1112,10 @@ function update(dt){
    if(t){
     const distance=Math.hypot(t.x-u.x,t.y-u.y);
     if(distance<=u.range){
-     if(u.attackCd<=0){u.attackAngle=Math.atan2(t.y-u.y,t.x-u.x);u.attackCd=u.rate;shoot(u,t,u.damage*bonus,480,0,"#bfe0ff")}
+     if(u.attackCd<=0){u.attackAngle=Math.atan2(t.y-u.y,t.x-u.x);u.attackCd=u.rate;shoot(u,t,u.damage*unitDamageMultiplier(u,t)*bonus,480,0,"#bfe0ff")}
     }else{
      const dx=t.x-u.x,dy=t.y-u.y,d=Math.max(1,distance);
-     const desiredX=u.x+dx/d*u.speed*dt,desiredY=u.y+dy/d*u.speed*dt;
+     const moveSpeed=effectiveUnitSpeed(u);const desiredX=u.x+dx/d*moveSpeed*dt,desiredY=u.y+dy/d*moveSpeed*dt;
      const dc=Math.hypot(desiredX-CX,desiredY-CY);
      const zoneR=archerZoneRadius(u);
      if(dc<zoneR&&dc>92){u.x=desiredX;u.y=desiredY}
@@ -1002,7 +1123,7 @@ function update(dt){
       const a=Math.atan2(t.y-CY,t.x-CX),r=zoneR-4;
       u.targetX=CX+Math.cos(a)*r;u.targetY=CY+Math.sin(a)*r;
       const mdx=u.targetX-u.x,mdy=u.targetY-u.y,md=Math.hypot(mdx,mdy);
-      if(md>4){const step=Math.min(md,u.speed*dt);u.x+=mdx/md*step;u.y+=mdy/md*step}
+      if(md>4){const step=Math.min(md,effectiveUnitSpeed(u)*dt);u.x+=mdx/md*step;u.y+=mdy/md*step}
      }
     }
    }
@@ -1010,11 +1131,11 @@ function update(dt){
    u.autoTarget=null;
    const e=nearestEnemy(u.x,u.y,u.range);
    if(e){
-    if(u.attackCd<=0){u.attackAngle=Math.atan2(e.y-u.y,e.x-u.x);u.attackCd=u.rate;shoot(u,e,u.damage*bonus,480,0,"#bfe0ff")}
+    if(u.attackCd<=0){u.attackAngle=Math.atan2(e.y-u.y,e.x-u.x);u.attackCd=u.rate;shoot(u,e,u.damage*unitDamageMultiplier(u,e)*bonus,480,0,"#bfe0ff")}
    }else{
     const dx=u.targetX-u.x,dy=u.targetY-u.y,d=Math.hypot(dx,dy);
     if(d>4){
-      const step=Math.min(d,u.speed*dt);
+      const step=Math.min(d,effectiveUnitSpeed(u)*dt);
       let nx=u.x+dx/d*step,ny=u.y+dy/d*step;
       const zoneR=archerZoneRadius(u);
       const nd=Math.hypot(nx-CX,ny-CY);
@@ -1113,7 +1234,7 @@ function update(dt){
    const innerWall=getInnerWallSegmentForPoint(state,e.x,e.y,{CX,CY});
    e.innerWallIndex=innerWall?.i??null;
    if(blockingUnit){
-    if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;blockingUnit.hp-=e.damage*.6*(1-(blockingUnit.armor||0));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
+    if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;blockingUnit.hp-=e.damage*.6*(1-effectiveUnitArmor(blockingUnit));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
    }else if(tower){
     const tdx=tower.slot.x-e.x,tdy=tower.slot.y-e.y,td=Math.max(1,Math.hypot(tdx,tdy));
     if(td<38+e.radius){
@@ -1139,7 +1260,7 @@ function update(dt){
    const castleTower=nearestCastleTower(e);
    const blockingUnit=nearestBlockingUnit(e,62);
    if(blockingUnit){
-    if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;blockingUnit.hp-=e.damage*.6*(1-(blockingUnit.armor||0));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
+    if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;blockingUnit.hp-=e.damage*.6*(1-effectiveUnitArmor(blockingUnit));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
    }else if(castleTower){
     const cdx=castleTower.slot.x-e.x,cdy=castleTower.slot.y-e.y,cd=Math.max(1,Math.hypot(cdx,cdy));
     if(cd<38+e.radius){
@@ -1161,7 +1282,7 @@ function update(dt){
   }
   return true;
  });
- state.units=state.units.filter(u=>{if(u.hp<=0){burst(u.x,u.y,"#47739c",10);if(selected===u)selected=null;return false}return true});
+ state.units=state.units.filter(u=>{if(u.hp<=0){burst(u.x,u.y,u.key==="hero"?"#ffd76e":"#47739c",u.key==="hero"?24:10);if(u.key==="hero"&&!state.heroFallen){state.heroFallen=true;showToast("Andreas, der große Held, ist im Kampf gefallen")};if(selected===u)selected=null;return false}return true});
  if(state.hp<=0&&!gameOver){state.hp=0;gameOver=true;state.inWave=false;paused=true;showEndScreen()}
  if(state.inWave&&state.toSpawn===0&&state.enemies.length===0){
   state.inWave=false;state.supportTimer=0;paused=false;last=performance.now();const completedWave=state.wave,gold=30+completedWave*5,rp=Math.min(9,2+Math.ceil(completedWave/4)+(completedWave%8===0?2:0));state.gold+=gold;state.researchPoints=(state.researchPoints||0)+rp;
@@ -1195,7 +1316,7 @@ function renderLevelUpDock(){
  lastDockSignature=signature;
  ui.levelDock.innerHTML=[
   ...readyUnits.map(u=>`<button class="levelCard" data-kind="unit" data-id="${u.uid}" title="Einheiten-Aufwertung">
-   <span class="spark"></span><span class="portrait">${u.key==="guard"?"🛡️":"🏹"}</span><span class="badge">${u.pendingUpgrades}</span><span class="lvl">Stufe ${u.expLevel}</span>
+   <span class="spark"></span><span class="portrait">${u.key==="hero"?"👑":u.key==="guard"?"🛡️":"🏹"}</span><span class="badge">${u.pendingUpgrades}</span><span class="lvl">Stufe ${u.expLevel}</span>
   </button>`),
   ...readyTowers.map(b=>{const slots=b.slot.type==="castle"?castleSlots:wallSlots;return `<button class="levelCard" data-kind="tower" data-slot-type="${b.slot.type}" data-slot="${slots.indexOf(b.slot)}" title="${b.base.name}-Aufwertung">
    <span class="spark"></span><span class="portrait">🏰</span><span class="badge">${b.pendingUpgrades}</span><span class="lvl">Stufe ${b.expLevel}</span>
@@ -1219,7 +1340,7 @@ function focusUpgradeEntity(card){
  selected=entity;buildMode=null;unitCommandMode=null;
  updateSelectionHud();
  selectionTalentBar.classList.remove("hidden");
- const name=entity.kind==="unit"?(entity.key==="guard"?"Burgwache":"Bogenschütze"):entity.base.name;
+ const name=entity.kind==="unit"?unitDisplayName(entity):entity.base.name;
  showToast(`${name}: Aufwertung auswählen`);
 }
 
@@ -1305,7 +1426,7 @@ function worldTap(x,y){
    selected.controlMode="manual";selected.autoTarget=null;selected.targetX=x;selected.targetY=y;selected.moveMarkerUntil=performance.now()+5000;unitCommandMode=null;
    showToast("Bewegungsbefehl gesetzt");return;
   }
-  showToast(selected.key==="guard"?"Ziel liegt außerhalb des erlaubten Einsatzbereichs":"Ziel liegt außerhalb des gewählten Bereichs");return;
+  showToast(isMeleeHeroUnit(selected)?"Ziel liegt außerhalb des erlaubten Einsatzbereichs":"Ziel liegt außerhalb des gewählten Bereichs");return;
  }
  const picked=pickAt(x,y);
  if(picked&&picked.kind==="enemy"){openEnemyInfo(picked);selected=null;unitCommandMode=null;return}
@@ -1339,7 +1460,7 @@ function showEndScreen(){
 }
 function hideEndScreen(){const screen=document.getElementById("endScreen");if(screen){screen.classList.add("hidden");screen.style.pointerEvents="none"}}
 function reset(){
- state.gold=210;state.wood=105;state.stone=0;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;
+ state.gold=210;state.wood=105;state.stone=0;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.heroOffering=0;state.heroSummoned=false;state.heroFallen=false;
  state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeOuterWallSegments(state.outerWalls,{built:false});initializeOuterGates(state.outerGates,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
  selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();showToast("Neue Belagerung beginnt");
 }
@@ -1350,6 +1471,7 @@ document.getElementById("enemyInfoOverlay").addEventListener("click",e=>{if(e.ta
 renderBestiary();refreshSaveStatus();
 window.setInterval(()=>saveGame(true),AUTOSAVE_INTERVAL_MS);
 document.getElementById("marketTradeBtn").addEventListener("click",openMarketPanel);
+document.getElementById("statueOfferingBtn").addEventListener("click",openStatueOfferingPanel);
 document.getElementById("marketCloseBtn").addEventListener("click",closeMarketPanel);
 document.getElementById("marketTradeGrid").addEventListener("click",e=>{const b=e.target.closest("[data-trade]");if(b)executeMarketTrade(b.dataset.trade,Number(b.dataset.amount))});
 
@@ -1462,7 +1584,12 @@ function buildingProductionInfo(b){
 }
 function buildingStatsHtml(b){
  const base=b.base,isTower=base.kind==="tower",level=b.level||1;
- if(base.decorative)return `<div class="buildingOverview"><div class="statTile"><span>Bauwerk</span><b>${buildingDisplayName(b)}</b></div><div class="statTile"><span>Funktion</span><b>Noch ohne Aufgabe</b></div><div class="statTile"><span>Standort</span><b>Eigener Ehrenplatz</b></div></div><div class="statsHint">Die Kriegerstatue ist derzeit ein reines Zierbauwerk. Eine spätere Ausbauphase gibt ihr eine eigene spielerische Funktion.</div>`;
+ if(b.key==="statue"){
+  const progress=Math.max(0,Math.min(HERO_OFFERING_TARGET,Number(state.heroOffering)||0)),remaining=Math.max(0,HERO_OFFERING_TARGET-progress);
+  const heroStatus=state.heroSummoned?(state.heroFallen?"Andreas ist gefallen":"Andreas kämpft für die Festung"):`Noch ${remaining.toLocaleString("de-DE")} Opferpunkte`;
+  return `<div class="buildingOverview"><div class="statTile"><span>Bauwerk</span><b>Kriegerstatue</b></div><div class="statTile"><span>Festungsmoral</span><b>+5 % Einheitenschaden</b></div><div class="statTile"><span>Opfergaben</span><b>${progress.toLocaleString("de-DE")} / ${HERO_OFFERING_TARGET.toLocaleString("de-DE")}</b></div><div class="statTile"><span>Heldenstatus</span><b>${heroStatus}</b></div></div><div class="statsHint">Gold, Holz und Stein zählen jeweils 1:1 als Opferpunkte. Bei 2.000 Punkten wird Andreas einmalig beschworen. Seine Sammelruf-Aura stärkt verbündete Einheiten in der Nähe.</div><div class="buildingActionBar"><button type="button" data-building-offering="${b.bid}" class="primary wide">🔥 Opfergaben öffnen</button></div>`;
+ }
+ if(base.decorative)return `<div class="buildingOverview"><div class="statTile"><span>Bauwerk</span><b>${buildingDisplayName(b)}</b></div><div class="statTile"><span>Funktion</span><b>Noch ohne Aufgabe</b></div><div class="statTile"><span>Standort</span><b>Eigener Ehrenplatz</b></div></div>`;
  let rows=isTower?
  `${statRow("Schaden",fmt(base.damage),fmt(b.damage),pctDelta(base.damage,b.damage))}
  ${statRow("Reichweite",fmt(base.range),fmt(b.range),pctDelta(base.range,b.range))}
@@ -1516,7 +1643,7 @@ function overviewStatsHtml(){
  <div class="rosterItem"><div class="rosterIcon">⭐</div><div><b>Durchschnittsstufe</b><small>Lebende Bodeneinheiten</small></div><div class="rosterBadge">${avg.toFixed(1)}</div></div>
  <div class="rosterItem"><div class="rosterIcon">☠️</div><div><b>Besiegte Gegner</b><small>Gesamter Spielstand</small></div><div class="rosterBadge">${state.kills}</div></div>
  <div class="rosterItem"><div class="rosterIcon">🌊</div><div><b>Aktuelle Welle</b><small>${state.inWave?"Angriff läuft":"Belagerungsphase"}</small></div><div class="rosterBadge">${state.wave}</div></div></div>
- <div class="statsSection"><h3>Einheitenübersicht</h3>${units.length?units.map(u=>`<div class="rosterItem" data-unit-stat="${u.uid}"><div class="rosterIcon">🏹</div><div><b>Bogenschütze Stufe ${u.expLevel||1}</b><small>Schaden ${Math.round(u.damage)} · Leben ${Math.ceil(u.hp)}/${Math.ceil(u.maxHp)} · EXP ${Math.floor(u.xp)}/${u.xpMax}</small></div><div class="rosterBadge">${u.pendingUpgrades||0} P</div></div>`).join(""):'<div class="statsHint">Noch keine Bodeneinheiten gebaut.</div>'}</div>
+ <div class="statsSection"><h3>Einheitenübersicht</h3>${units.length?units.map(u=>`<div class="rosterItem" data-unit-stat="${u.uid}"><div class="rosterIcon">${u.key==="hero"?"👑":u.key==="guard"?"🛡️":"🏹"}</div><div><b>${unitDisplayName(u)} Stufe ${u.expLevel||1}</b><small>Schaden ${Math.round(u.damage)} · Leben ${Math.ceil(u.hp)}/${Math.ceil(u.maxHp)} · EXP ${Math.floor(u.xp)}/${u.xpMax}</small></div><div class="rosterBadge">${u.pendingUpgrades||0} P</div></div>`).join(""):'<div class="statsHint">Noch keine Bodeneinheiten gebaut.</div>'}</div>
  <div class="statsSection"><h3>Turmübersicht</h3>${towers.length?towers.map(b=>`<div class="rosterItem"><div class="rosterIcon">🏰</div><div><b>${b.base.name} · EXP-Stufe ${b.expLevel||1}</b><small>Schaden ${Math.round(b.damage)} · Reichweite ${Math.round(b.range)} · EXP ${Math.floor(b.xp||0)}/${b.xpMax||90}</small></div><div class="rosterBadge">${b.pendingUpgrades||0} P</div></div>`).join(""):'<div class="statsHint">Noch keine Verteidigungstürme gebaut.</div>'}</div>`;
 }
 
@@ -1642,18 +1769,22 @@ function upgradeEntityCost(entity){
  }
  return {gold:0,wood:0,maxed:true,max:1};
 }
-function upgradeEntityName(entity){return entity.kind==="unit"?(entity.key==="guard"?"Burgwache":"Bogenschütze"):buildingDisplayName(entity)}
-function upgradeEntityIcon(entity){if(entity.kind==="unit")return entity.key==="guard"?"🛡️":"🏹";return {archer:"🏹",crossbow:"🎯",catapult:"🪨",house:entity.level>=2?"🏠":"⛺",lumber:"🪵",quarry:"🪨",statue:"🗿",workshop:"⚒️",repair:"👷",market:"🏪"}[entity.key]||"🏰"}
+function upgradeEntityName(entity){return entity.kind==="unit"?unitDisplayName(entity):buildingDisplayName(entity)}
+function upgradeEntityIcon(entity){if(entity.kind==="unit")return entity.key==="hero"?"👑":entity.key==="guard"?"🛡️":"🏹";return {archer:"🏹",crossbow:"🎯",catapult:"🪨",house:entity.level>=2?"🏠":"⛺",lumber:"🪵",quarry:"🪨",statue:"🗿",workshop:"⚒️",repair:"👷",market:"🏪"}[entity.key]||"🏰"}
 function allResearchTechs(){return getAllResearchTechs()}
 function activeGlobalBonuses(){
  const bonuses=[];
  const guardHp=researchLevel("guard_hp")*8,guardArmor=researchLevel("guard_armor")*2.5,archerDamage=researchLevel("archer_damage")*7,archerRange=researchLevel("archer_range")*6,archerRate=researchLevel("archer_rate")*5,towerDamage=researchLevel("tower_damage")*8,towerRate=researchLevel("tower_rate")*5,towerHp=researchLevel("tower_hp")*10,craftRepair=researchLevel("craft_repair")*12,craftWood=researchLevel("craft_wood")*7,craftSpeed=researchLevel("craft_speed")*8;
  if(guardHp)bonuses.push(`🛡 Wachen-Leben +${guardHp}%`);if(guardArmor)bonuses.push(`🛡 Wachen-Rüstung +${guardArmor}%`);if(archerDamage)bonuses.push(`🏹 Schützen-Schaden +${archerDamage}%`);if(archerRange)bonuses.push(`◎ Schützen-Reichweite +${archerRange}%`);if(archerRate)bonuses.push(`✦ Schützen-Tempo +${archerRate}%`);if(towerDamage)bonuses.push(`🎯 Turm-Schaden +${towerDamage}%`);if(towerRate)bonuses.push(`⚙ Turm-Nachladezeit −${towerRate}%`);if(towerHp)bonuses.push(`🧱 Turm-Leben +${towerHp}%`);if(craftRepair)bonuses.push(`🔨 Reparatur +${craftRepair}%`);if(craftWood)bonuses.push(`🪵 Holzbedarf −${craftWood}%`);if(craftSpeed)bonuses.push(`➤ Handwerker-Tempo +${craftSpeed}%`);
  const auto=researchLevel("fortress_autoRepair");if(auto)bonuses.push(`🏰 Wellenreparatur ${[10,15,20,25,30][auto-1]}%`);
+ if(hasActiveKriegerstatue())bonuses.push("🗿 Festungsmoral +5% Einheitenschaden");
+ if(getAndreas())bonuses.push("👑 Andreas-Aura +10% Schaden, Rüstung und Tempo");
  return bonuses;
 }
 function upgradeRecommendation(){
  const workshop=state.buildings.find(b=>b.key==="workshop");
+ const statue=state.buildings.find(b=>b.key==="statue");
+ if(statue&&!state.heroSummoned)return `Die Kriegerstatue benötigt noch ${Math.max(0,HERO_OFFERING_TARGET-(state.heroOffering||0)).toLocaleString("de-DE")} Opferpunkte, um Andreas zu beschwören.`;
  if(!workshop)return "Baue eine Werkstatt, um globale Technologien und die Forschungskosten-Skalierung freizuschalten.";
  if(workshop.level<5&&workshopLevels()>=3)return `Werkstatt auf Stufe ${workshop.level+1} ausbauen: Der globale Forschungsaufschlag sinkt danach auf ${[30,25,20,15,10][workshop.level]} % je fremder Forschungsstufe.`;
  if(freeResidents()===0)return "Deine Bevölkerung ist vollständig beschäftigt. Baue ein weiteres Zeltlager oder verbessere eines zum Holzhaus.";
@@ -1664,7 +1795,7 @@ function upgradeRecommendation(){
 }
 function upgradeCenterHtml(){
  const workshop=state.buildings.find(b=>b.key==="workshop"),upgradable=state.buildings.filter(e=>!upgradeEntityCost(e).maxed),affordable=upgradable.filter(e=>{const c=upgradeEntityCost(e);return state.gold>=c.gold&&state.wood>=c.wood});
- const buildingRows=state.buildings.length?state.buildings.map(b=>{const isTower=b.base.kind==="tower",c=upgradeEntityCost(b),can=!c.maxed&&state.gold>=c.gold&&state.wood>=c.wood;if(b.base.decorative)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)}</b><small>Zierbauwerk auf eigenem Ehrenplatz · Funktion folgt später.</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" disabled>Keine Aufwertung</button></div></div>`;if(isTower)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · EXP-Stufe ${b.expLevel||1}</b><small>EXP ${Math.floor(b.xp||0)}/${Math.floor(b.xpMax||90)} · Schaden ${Math.round(b.damage)} · Reichweite ${Math.round(b.range)}${b.pendingUpgrades?` · ${b.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung über EXP oder Forschung"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">${b.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${b.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`;const preview=buildingUpgradePreview(b);return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · Stufe ${b.level||1}</b><small>${preview?(preview.maxed?preview.summary:preview.summary):"Keine wirksame Gebäudeaufwertung verfügbar."}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" data-upgrade-buy="building:${b.bid}" ${can?"":"disabled"}>${c.maxed?"✓ MAX":`⬆ ${c.gold} 🪙${c.wood?` · ${c.wood} 🪵`:""}`}</button></div></div>`}).join(""):'<div class="statsHint">Noch keine Gebäude errichtet.</div>';
+ const buildingRows=state.buildings.length?state.buildings.map(b=>{const isTower=b.base.kind==="tower",c=upgradeEntityCost(b),can=!c.maxed&&state.gold>=c.gold&&state.wood>=c.wood;if(b.key==="statue"){const progress=Math.max(0,Math.min(HERO_OFFERING_TARGET,Number(state.heroOffering)||0));return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">🗿</div><div><b>Kriegerstatue</b><small>Festungsmoral +5 % Schaden · Opfergaben ${progress.toLocaleString("de-DE")} / ${HERO_OFFERING_TARGET.toLocaleString("de-DE")}${state.heroSummoned?" · Andreas wurde beschworen":""}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" data-building-offering="${b.bid}">🔥 Opfergaben</button></div></div>`}if(b.base.decorative)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)}</b><small>Zierbauwerk auf eigenem Ehrenplatz.</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" disabled>Keine Aufwertung</button></div></div>`;if(isTower)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · EXP-Stufe ${b.expLevel||1}</b><small>EXP ${Math.floor(b.xp||0)}/${Math.floor(b.xpMax||90)} · Schaden ${Math.round(b.damage)} · Reichweite ${Math.round(b.range)}${b.pendingUpgrades?` · ${b.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung über EXP oder Forschung"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">${b.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${b.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`;const preview=buildingUpgradePreview(b);return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · Stufe ${b.level||1}</b><small>${preview?(preview.maxed?preview.summary:preview.summary):"Keine wirksame Gebäudeaufwertung verfügbar."}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" data-upgrade-buy="building:${b.bid}" ${can?"":"disabled"}>${c.maxed?"✓ MAX":`⬆ ${c.gold} 🪙${c.wood?` · ${c.wood} 🪵`:""}`}</button></div></div>`}).join(""):'<div class="statsHint">Noch keine Gebäude errichtet.</div>';
  const unitRows=state.units.length?state.units.map(u=>`<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(u)}</div><div><b>${upgradeEntityName(u)} · Erfahrungsstufe ${u.expLevel||1}</b><small>EXP ${Math.floor(u.xp||0)}/${Math.floor(u.xpMax||65)} · Schaden ${Math.round(u.damage)} · Leben ${Math.round(u.maxHp)}${u.pendingUpgrades?` · ${u.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung nur durch EXP oder Forschung"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="unit:${u.uid}">${u.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${u.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`).join(""):'<div class="statsHint">Noch keine mobilen Einheiten ausgebildet.</div>';
  const research=allResearchTechs().map(t=>`<div class="researchCenterItem"><b>${t.icon} ${t.name}</b><small>${t.desc}</small><div class="level">Stufe ${researchLevel(t.id)}/${t.max}${researchLevel(t.id)<t.max?` · nächste Kosten ${researchCost(t)} 🔬`:" · MAX"}</div></div>`).join("");
  const bonuses=activeGlobalBonuses();
@@ -1721,6 +1852,8 @@ statsContent.addEventListener("click",e=>{
  if(worker){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(worker.dataset.buildingWorker));if(b){selected=b;setBuildingResident(b);openStats(b);updateUI()}return}
  const repair=e.target.closest("[data-building-repair]");
  if(repair){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(repair.dataset.buildingRepair));if(b){selected=b;toggleCraftsmanWork();openStats(b)}return}
+ const offering=e.target.closest("[data-building-offering]");
+ if(offering){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(offering.dataset.buildingOffering));if(b){selected=b;closeStats();openStatueOfferingPanel()}return}
  const market=e.target.closest("[data-building-market]");
  if(market){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(market.dataset.buildingMarket));if(b){selected=b;closeStats();openMarketPanel()}return}
  const upgrade=e.target.closest("[data-building-upgrade]");
@@ -1740,14 +1873,14 @@ selectionMoveBtn.addEventListener("click",e=>{
 selectionAutoBtn.addEventListener("click",e=>{
  e.stopPropagation();
  if(!selected||selected.kind!=="unit")return;
- if(selected.key==="guard"){
+ if(isMeleeHeroUnit(selected)){
   selected.stance="defend";
   selected.guardZone="middle";
   selected.retreating=false;
   selected.controlMode="auto";
   selected.autoTarget=null;
   unitCommandMode=null;
-  showToast("Burgwache hält bis zur mittleren Mauer");
+  showToast(`${unitDisplayName(selected)} hält bis zur mittleren Mauer`);
   return;
  }
  selected.controlMode=selected.controlMode==="auto"?"manual":"auto";
@@ -1758,14 +1891,14 @@ selectionAutoBtn.addEventListener("click",e=>{
 selectionModeBtn.addEventListener("click",e=>{
  e.stopPropagation();
  if(!selected||selected.kind!=="unit")return;
- if(selected.key==="guard"){
+ if(isMeleeHeroUnit(selected)){
   selected.stance="defend";
   selected.guardZone="outer";
   selected.retreating=false;
   selected.controlMode="auto";
   selected.autoTarget=null;
   unitCommandMode=null;
-  showToast("Burgwache hält bis zum äußeren Ring");
+  showToast(`${unitDisplayName(selected)} hält bis zum äußeren Ring`);
   return;
  }
  cycleUnitZone(selected);
@@ -1773,13 +1906,13 @@ selectionModeBtn.addEventListener("click",e=>{
 });
 selectionOffenseBtn.addEventListener("click",e=>{
  e.stopPropagation();
- if(!selected||selected.kind!=="unit"||selected.key!=="guard")return;
+ if(!selected||!isMeleeHeroUnit(selected))return;
  selected.stance="offense";
  selected.retreating=false;
  selected.controlMode="auto";
  selected.autoTarget=null;
  unitCommandMode=null;
- showToast("Ausfall: Burgwache greift auch außerhalb an");
+ showToast(`Ausfall: ${unitDisplayName(selected)} greift auch außerhalb an`);
 });
 if(activeModeCancelBtn)activeModeCancelBtn.addEventListener("click",()=>cancelActiveAction("button"));
 selectionUpgradeBtn.addEventListener("click",e=>{
@@ -1851,24 +1984,30 @@ function updateSelectionHud(){
  let icon="🏰",name="Auswahl",details="";
  const isUnit=selected.kind==="unit";
  if(isUnit){
-  icon=selected.key==="guard"?"🛡️":"🏹";name=`${selected.key==="guard"?"Burgwache":"Bogenschütze"} · Stufe ${selected.expLevel||1}`;
-  details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${selected.key==="guard"?`🛡️ ${Math.round((selected.armor||0)*100)}% · ${selected.retreating?"Rückzug":unitZoneLabel(selected)} · `:`📍 ${unitZoneLabel(selected)} · `}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP`;
+  icon=selected.key==="hero"?"👑":selected.key==="guard"?"🛡️":"🏹";name=`${unitDisplayName(selected)} · Stufe ${selected.expLevel||1}`;
+  details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${isMeleeHeroUnit(selected)?`🛡️ ${Math.round(effectiveUnitArmor(selected)*100)}% · ${selected.retreating?"Rückzug":unitZoneLabel(selected)} · `:`📍 ${unitZoneLabel(selected)} · `}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP`;
  }else if(selected.kind==="building"){
-  icon=selected.base.kind==="tower"?"🏰":selected.base.decorative?"🗿":"🏠";
-  name=selected.base.decorative
-   ?(selected.base.name||selected.key)
-   :selected.base.kind==="tower"
-    ?`${selected.base.name||selected.key} · EXP-Stufe ${selected.expLevel||1}`
-    :`${selected.key==="house"?(selected.level>=2?"Holzhaus":"Zeltlager"):(selected.base.name||selected.key)} · Stufe ${selected.level||1}`;
-  details=selected.base.decorative
-   ?"Zierbauwerk · Funktion folgt später"
-   :selected.base.kind==="tower"
-   ?`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · 🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||90)} EXP`
-   :selected.key==="house"?`👥 ${residentCapacityForHouse(selected)} Bewohner · 🪙 +${(residentCapacityForHouse(selected)*.18).toFixed(2)}/Sek.`
-   :selected.key==="lumber"?`👤 ${buildingHasWorker(selected)?"besetzt":"frei"} · 🪵 ${supportProductionPerSecond(selected).toFixed(2)}/Sek.`
-   :selected.key==="repair"?`👤 ${buildingHasWorker(selected)?"besetzt":"frei"} · 👷 ${selected.repairEnabled===false?"gestoppt":"aktiv"}`
-   :selected.key==="workshop"?`⚒️ Forschung · 🔬 ${Math.floor(state.researchPoints||0)} · ${workshopLevels()} Stufen`
-   :"Versorgungsgebäude";
+  if(selected.key==="statue"){
+   const progress=Math.max(0,Math.min(HERO_OFFERING_TARGET,Number(state.heroOffering)||0));
+   icon="🗿";name="Kriegerstatue";
+   details=`🔥 ${progress.toLocaleString("de-DE")} / ${HERO_OFFERING_TARGET.toLocaleString("de-DE")} Opferpunkte · ${state.heroSummoned?(state.heroFallen?"Andreas gefallen":"Andreas im Kampf"):"+5 % Festungsmoral"}`;
+  }else{
+   icon=selected.base.kind==="tower"?"🏰":selected.base.decorative?"🗿":"🏠";
+   name=selected.base.decorative
+    ?(selected.base.name||selected.key)
+    :selected.base.kind==="tower"
+     ?`${selected.base.name||selected.key} · EXP-Stufe ${selected.expLevel||1}`
+     :`${selected.key==="house"?(selected.level>=2?"Holzhaus":"Zeltlager"):(selected.base.name||selected.key)} · Stufe ${selected.level||1}`;
+   details=selected.base.decorative
+    ?"Zierbauwerk"
+    :selected.base.kind==="tower"
+    ?`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · 🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||90)} EXP`
+    :selected.key==="house"?`👥 ${residentCapacityForHouse(selected)} Bewohner · 🪙 +${(residentCapacityForHouse(selected)*.18).toFixed(2)}/Sek.`
+    :selected.key==="lumber"?`👤 ${buildingHasWorker(selected)?"besetzt":"frei"} · 🪵 ${supportProductionPerSecond(selected).toFixed(2)}/Sek.`
+    :selected.key==="repair"?`👤 ${buildingHasWorker(selected)?"besetzt":"frei"} · 👷 ${selected.repairEnabled===false?"gestoppt":"aktiv"}`
+    :selected.key==="workshop"?`⚒️ Forschung · 🔬 ${Math.floor(state.researchPoints||0)} · ${workshopLevels()} Stufen`
+    :"Versorgungsgebäude";
+  }
  }else if(selected.kind==="gate"){
   const stone=selected.material==="stone";
   icon=stone?"🏛️":"🚪";name=`${stone?"Steintor":"Holztor"} · ${selected.name||"Tor"}`;details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${selected.hp<=0?"zerstört":selected.ring==="middle"?"mittlerer Ring":"äußerer Ring"}`;
@@ -1881,7 +2020,7 @@ function updateSelectionHud(){
  selectionMoveBtn.classList.toggle("hidden",!isUnit);
  selectionAutoBtn.classList.toggle("hidden",!isUnit);
  selectionModeBtn.classList.toggle("hidden",!isUnit);
- selectionOffenseBtn.classList.toggle("hidden",!(isUnit&&selected.key==="guard"));
+ selectionOffenseBtn.classList.toggle("hidden",!(isUnit&&isMeleeHeroUnit(selected)));
  const canShowRange=isUnit||(selected.kind==="building"&&selected.base.kind==="tower");
  selectionRangeBtn.classList.toggle("hidden",!canShowRange);
  const isNormalBuilding=selected.kind==="building"&&selected.base.kind!=="tower"&&!selected.base.decorative&&hasBuildingUpgradeEffect(selected);
@@ -1907,7 +2046,7 @@ function updateSelectionHud(){
  }
  selectionMoveBtn.classList.toggle("moveActive",isUnit&&unitCommandMode==="move");
  selectionMoveBtn.classList.toggle("cancelActive",isUnit&&unitCommandMode==="move");
- const isGuard=isUnit&&selected.key==="guard";
+ const isGuard=isUnit&&isMeleeHeroUnit(selected);
  selectionMoveBtn.querySelector("span").textContent="➜";
  selectionMoveBtn.querySelector("small").textContent="Bewegen";
  if(isGuard){

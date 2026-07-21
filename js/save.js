@@ -232,6 +232,9 @@ function createSnapshot({
       wave: state.wave,
       kills: state.kills,
       repairedHp: state.repairedHp,
+      heroOffering: Math.max(0, Number(state.heroOffering) || 0),
+      heroSummoned: state.heroSummoned === true,
+      heroFallen: state.heroFallen === true,
       nextUnitId: state.nextUnitId,
       nextBuildingId: state.nextBuildingId,
       nextResidentId: state.nextResidentId,
@@ -428,6 +431,9 @@ export function loadGameState({
     wave: Math.max(1, Number(savedState.wave) || 1),
     kills: Math.max(0, Number(savedState.kills) || 0),
     repairedHp: Math.max(0, Number(savedState.repairedHp) || 0),
+    heroOffering: Math.max(0, Number(savedState.heroOffering) || 0),
+    heroSummoned: savedState.heroSummoned === true || units.some((unit) => unit.key === "hero"),
+    heroFallen: savedState.heroFallen === true,
     nextUnitId: Math.max(0, Number(savedState.nextUnitId) || 0),
     nextBuildingId: Math.max(0, Number(savedState.nextBuildingId) || 0),
     nextResidentId: Math.max(0, Number(savedState.nextResidentId) || 0),
@@ -536,6 +542,10 @@ export function loadGameState({
 
   for (const building of buildings) {
     building.slot.building = building;
+  }
+
+  if (state.heroSummoned && !state.units.some((unit) => unit.key === "hero" && unit.hp > 0)) {
+    state.heroFallen = true;
   }
 
   return {

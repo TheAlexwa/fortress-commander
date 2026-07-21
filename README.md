@@ -1,3 +1,16 @@
+## v1.15.38 – Opfergabe des Helden
+
+- Die Kriegerstatue stärkt verbündete Einheiten innerhalb der Festung mit +5 % Schaden.
+- Gold, Holz und Stein können im neuen Opfergabenfenster im Verhältnis 1:1 gespendet werden.
+- Der globale Ritualfortschritt wird bis 2.000 Opferpunkte angezeigt und bleibt beim Speichern erhalten.
+- Bei 2.000 Opferpunkten wird einmalig „Andreas, der große Held“ beschworen.
+- Andreas besitzt 650 Leben, 35 % Rüstung, erhöhten Schaden gegen Elitegegner und verwendet die Befehle der Burgwache.
+- Seine Sammelruf-Aura gewährt nahen verbündeten Einheiten +10 % Schaden, Rüstung und Bewegungstempo.
+- Nach der Beschwörung erscheint der Hinweis: „Andreas, der große Held, wurde beschworen, um für die Festung zu kämpfen!“
+- Andreas und eine bereits für das Ritual verwendete Kriegerstatue können nicht verkauft werden.
+- Bestehende Spielstände aus v1.15.x bleiben kompatibel; alte Spielstände starten mit 0 Opferpunkten.
+- Versionsangaben im Spiel wurden auf v1.15.38 aktualisiert.
+
 ## v1.15.37 – Belagerungslager 2.0
 
 - Die Belagerungsphase verwendet jetzt vier feste Lager: Nord, Ost, Süd und West.

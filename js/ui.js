@@ -48,7 +48,8 @@ export function renderGameUI({
   buildingUpgradePreview,
   getBuildingUpgradeCost,
   getBuildingMaxLevel,
-  hasBuildingUpgradeEffect
+  hasBuildingUpgradeEffect,
+  HERO_OFFERING_TARGET = 2000
 }) {
   closeAllBlockingPanels();
 
@@ -166,6 +167,7 @@ export function renderGameUI({
   ui.repairWall.textContent = "Bewohner";
   ui.craftsmanToggle.style.display = "none";
   ui.marketTrade.style.display = "none";
+  if (ui.statueOffering) ui.statueOffering.style.display = "none";
 
   const workshopResearchButton = document.getElementById("workshopResearchBtn");
   if (workshopResearchButton) workshopResearchButton.style.display = "none";
@@ -216,8 +218,11 @@ export function renderGameUI({
   }
 
   if (selected.kind === "unit") {
-    const unitName = selected.key === "guard" ? "Burgwache" : "Bogenschütze";
-    const unitMode = selected.key === "guard"
+    const melee = selected.key === "guard" || selected.key === "hero";
+    const unitName = selected.key === "hero"
+      ? "Andreas, der große Held"
+      : selected.key === "guard" ? "Burgwache" : "Bogenschütze";
+    const unitMode = melee
       ? selected.retreating
         ? "Rückzug"
         : selected.stance === "offense"
@@ -228,19 +233,32 @@ export function renderGameUI({
       : selected.controlMode === "auto"
         ? `Automatik · ${selected.zoneMode === "inner" ? "Innenring" : selected.zoneMode === "outer" ? "Außenring" : "Mittelring"}`
         : `Manuell · ${selected.zoneMode === "inner" ? "Innenring" : selected.zoneMode === "outer" ? "Außenring" : "Mittelring"}`;
+    const heroInfo = selected.key === "hero"
+      ? "<br>👑 Elitegegner: +35 % Schaden · Sammelruf-Aura: +10 % Schaden, Rüstung und Tempo"
+      : "";
 
-    ui.selected.innerHTML = `<b>${unitName} · Erfahrungsstufe ${selected.expLevel || 1}</b><br>HP ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · EXP ${Math.floor(selected.xp || 0)}/${Math.floor(selected.xpMax || 65)}<br>Schaden ${Math.round(selected.damage)} · Rüstung ${Math.round((selected.armor || 0) * 100)}% · Tempo ${Math.round(selected.speed)}<br>Modus: ${unitMode}${selected.pendingUpgrades ? ` · <b>${selected.pendingUpgrades} Aufwertung bereit</b>` : ""}<br>Aufwertung: EXP-Auswahl oder Werkstatt-Forschung`;
+    ui.selected.innerHTML = `<b>${unitName} · Erfahrungsstufe ${selected.expLevel || 1}</b><br>HP ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · EXP ${Math.floor(selected.xp || 0)}/${Math.floor(selected.xpMax || 65)}<br>Schaden ${Math.round(selected.damage)} · Rüstung ${Math.round((selected.armor || 0) * 100)}% · Tempo ${Math.round(selected.speed)}<br>Modus: ${unitMode}${selected.pendingUpgrades ? ` · <b>${selected.pendingUpgrades} Aufwertung bereit</b>` : ""}${heroInfo}<br>Aufwertung: EXP-Auswahl oder Werkstatt-Forschung`;
     ui.upgrade.style.display = "none";
-    ui.sell.disabled = false;
+    ui.sell.disabled = selected.key === "hero";
     return;
   }
 
   const building = selected;
 
-  if (building.base.decorative) {
-    ui.selected.innerHTML = `<b>${building.base.name}</b><br>Reines Zierbauwerk · derzeit ohne Funktion<br>Ein späteres Update gibt der Statue eine eigene Aufgabe.`;
+  if (building.key === "statue") {
+    const progress = Math.max(0, Math.min(HERO_OFFERING_TARGET, Number(state.heroOffering) || 0));
+    const remaining = Math.max(0, HERO_OFFERING_TARGET - progress);
+    const heroState = state.heroSummoned
+      ? state.heroFallen ? "Andreas ist im Kampf gefallen." : "Andreas kämpft für die Festung."
+      : `Noch ${remaining.toLocaleString("de-DE")} Opferpunkte bis zur Beschwörung.`;
+    ui.selected.innerHTML = `<b>Kriegerstatue</b><br>Festungsmoral: +5 % Einheitenschaden innerhalb der Festung<br>Opfergaben: ${progress.toLocaleString("de-DE")} / ${HERO_OFFERING_TARGET.toLocaleString("de-DE")}<br>${heroState}`;
     ui.upgrade.style.display = "none";
-    ui.sell.disabled = false;
+    if (ui.statueOffering) {
+      ui.statueOffering.style.display = "inline-block";
+      ui.statueOffering.textContent = state.heroSummoned ? "👑 Held gerufen" : "🔥 Opfergabe";
+      ui.statueOffering.disabled = false;
+    }
+    ui.sell.disabled = progress > 0 || state.heroSummoned;
     return;
   }
 
