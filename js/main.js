@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.38";
-const GAME_RELEASE_NAME="Opfergabe des Helden";
+const GAME_VERSION="1.15.39";
+const GAME_RELEASE_NAME="Andreas – Heldenauftritt";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -1316,7 +1316,7 @@ function renderLevelUpDock(){
  lastDockSignature=signature;
  ui.levelDock.innerHTML=[
   ...readyUnits.map(u=>`<button class="levelCard" data-kind="unit" data-id="${u.uid}" title="Einheiten-Aufwertung">
-   <span class="spark"></span><span class="portrait">${u.key==="hero"?"👑":u.key==="guard"?"🛡️":"🏹"}</span><span class="badge">${u.pendingUpgrades}</span><span class="lvl">Stufe ${u.expLevel}</span>
+   <span class="spark"></span><span class="portrait">${u.key==="hero"?'<img src="assets/ui/andreas-portrait.webp" alt="">':u.key==="guard"?"🛡️":"🏹"}</span><span class="badge">${u.pendingUpgrades}</span><span class="lvl">Stufe ${u.expLevel}</span>
   </button>`),
   ...readyTowers.map(b=>{const slots=b.slot.type==="castle"?castleSlots:wallSlots;return `<button class="levelCard" data-kind="tower" data-slot-type="${b.slot.type}" data-slot="${slots.indexOf(b.slot)}" title="${b.base.name}-Aufwertung">
    <span class="spark"></span><span class="portrait">🏰</span><span class="badge">${b.pendingUpgrades}</span><span class="lvl">Stufe ${b.expLevel}</span>
@@ -1552,7 +1552,8 @@ function pctDelta(base,current){if(!base)return "—";const p=(current/base-1)*1
 function statRow(label,base,current,next){return `<div class="statRow"><div class="label">${label}</div><div class="base">${base}</div><div class="current">${current}</div><div class="gain">${next}</div></div>`}
 function unitStatsHtml(u){
  const base=u.base,ups=u.upgradeStats||{},rateNext=Math.max(.24,u.rate*.84);
- return `<div class="statsSummary">
+ const heroBanner=u.key==="hero"?`<div class="heroStatsBanner"><img src="assets/ui/andreas-portrait.webp" alt="Andreas"><div><small>LEGENDÄRER FESTUNGSHELD</small><h3>Andreas, der große Held</h3><p>Elitebonus +35 % · Sammelruf stärkt Verbündete im Umkreis mit +10 % Schaden, Rüstung und Tempo.</p></div></div>`:"";
+ return `${heroBanner}<div class="statsSummary">
  <div class="statTile"><span>Erfahrungsstufe</span><b>${u.expLevel||1}</b></div>
  <div class="statTile"><span>Offene Punkte</span><b>${u.pendingUpgrades||0}</b></div>
  <div class="statTile"><span>Erfahrung</span><b>${Math.floor(u.xp||0)}/${Math.floor(u.xpMax||65)}</b></div></div>
@@ -1643,7 +1644,7 @@ function overviewStatsHtml(){
  <div class="rosterItem"><div class="rosterIcon">⭐</div><div><b>Durchschnittsstufe</b><small>Lebende Bodeneinheiten</small></div><div class="rosterBadge">${avg.toFixed(1)}</div></div>
  <div class="rosterItem"><div class="rosterIcon">☠️</div><div><b>Besiegte Gegner</b><small>Gesamter Spielstand</small></div><div class="rosterBadge">${state.kills}</div></div>
  <div class="rosterItem"><div class="rosterIcon">🌊</div><div><b>Aktuelle Welle</b><small>${state.inWave?"Angriff läuft":"Belagerungsphase"}</small></div><div class="rosterBadge">${state.wave}</div></div></div>
- <div class="statsSection"><h3>Einheitenübersicht</h3>${units.length?units.map(u=>`<div class="rosterItem" data-unit-stat="${u.uid}"><div class="rosterIcon">${u.key==="hero"?"👑":u.key==="guard"?"🛡️":"🏹"}</div><div><b>${unitDisplayName(u)} Stufe ${u.expLevel||1}</b><small>Schaden ${Math.round(u.damage)} · Leben ${Math.ceil(u.hp)}/${Math.ceil(u.maxHp)} · EXP ${Math.floor(u.xp)}/${u.xpMax}</small></div><div class="rosterBadge">${u.pendingUpgrades||0} P</div></div>`).join(""):'<div class="statsHint">Noch keine Bodeneinheiten gebaut.</div>'}</div>
+ <div class="statsSection"><h3>Einheitenübersicht</h3>${units.length?units.map(u=>`<div class="rosterItem ${u.key==="hero"?"heroRosterItem":""}" data-unit-stat="${u.uid}"><div class="rosterIcon">${u.key==="hero"?'<img class="heroMiniPortrait" src="assets/ui/andreas-portrait.webp" alt="">':u.key==="guard"?"🛡️":"🏹"}</div><div><b>${unitDisplayName(u)} Stufe ${u.expLevel||1}</b><small>Schaden ${Math.round(u.damage)} · Leben ${Math.ceil(u.hp)}/${Math.ceil(u.maxHp)} · EXP ${Math.floor(u.xp)}/${u.xpMax}</small></div><div class="rosterBadge">${u.pendingUpgrades||0} P</div></div>`).join(""):'<div class="statsHint">Noch keine Bodeneinheiten gebaut.</div>'}</div>
  <div class="statsSection"><h3>Turmübersicht</h3>${towers.length?towers.map(b=>`<div class="rosterItem"><div class="rosterIcon">🏰</div><div><b>${b.base.name} · EXP-Stufe ${b.expLevel||1}</b><small>Schaden ${Math.round(b.damage)} · Reichweite ${Math.round(b.range)} · EXP ${Math.floor(b.xp||0)}/${b.xpMax||90}</small></div><div class="rosterBadge">${b.pendingUpgrades||0} P</div></div>`).join(""):'<div class="statsHint">Noch keine Verteidigungstürme gebaut.</div>'}</div>`;
 }
 
@@ -1770,7 +1771,7 @@ function upgradeEntityCost(entity){
  return {gold:0,wood:0,maxed:true,max:1};
 }
 function upgradeEntityName(entity){return entity.kind==="unit"?unitDisplayName(entity):buildingDisplayName(entity)}
-function upgradeEntityIcon(entity){if(entity.kind==="unit")return entity.key==="hero"?"👑":entity.key==="guard"?"🛡️":"🏹";return {archer:"🏹",crossbow:"🎯",catapult:"🪨",house:entity.level>=2?"🏠":"⛺",lumber:"🪵",quarry:"🪨",statue:"🗿",workshop:"⚒️",repair:"👷",market:"🏪"}[entity.key]||"🏰"}
+function upgradeEntityIcon(entity){if(entity.kind==="unit")return entity.key==="hero"?'<img class="heroMiniPortrait" src="assets/ui/andreas-portrait.webp" alt="">':entity.key==="guard"?"🛡️":"🏹";return {archer:"🏹",crossbow:"🎯",catapult:"🪨",house:entity.level>=2?"🏠":"⛺",lumber:"🪵",quarry:"🪨",statue:"🗿",workshop:"⚒️",repair:"👷",market:"🏪"}[entity.key]||"🏰"}
 function allResearchTechs(){return getAllResearchTechs()}
 function activeGlobalBonuses(){
  const bonuses=[];
@@ -1985,7 +1986,7 @@ function updateSelectionHud(){
  const isUnit=selected.kind==="unit";
  if(isUnit){
   icon=selected.key==="hero"?"👑":selected.key==="guard"?"🛡️":"🏹";name=`${unitDisplayName(selected)} · Stufe ${selected.expLevel||1}`;
-  details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${isMeleeHeroUnit(selected)?`🛡️ ${Math.round(effectiveUnitArmor(selected)*100)}% · ${selected.retreating?"Rückzug":unitZoneLabel(selected)} · `:`📍 ${unitZoneLabel(selected)} · `}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP`;
+  details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${isMeleeHeroUnit(selected)?`🛡️ ${Math.round(effectiveUnitArmor(selected)*100)}% · ${selected.retreating?"Rückzug":unitZoneLabel(selected)} · `:`📍 ${unitZoneLabel(selected)} · `}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP${selected.key==="hero"?" · ✨ Sammelruf-Aura":""}`;
  }else if(selected.kind==="building"){
   if(selected.key==="statue"){
    const progress=Math.max(0,Math.min(HERO_OFFERING_TARGET,Number(state.heroOffering)||0));
@@ -2015,7 +2016,11 @@ function updateSelectionHud(){
   const inner=selected.ring==="inner",stone=selected.material==="stone";
   icon=stone?"🏛️":"🧱";name=inner?`Innerer Mauerring · ${selected.name||`Segment ${(selected.i||0)+1}`}`:`${stone?"Steinmauer":"Palisade"} ${selected.name||""}`.trim();details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${selected.hp<=0||selected.destroyed?"zerstört":stone?"Stein":"Holz"}`;
  }
- ui.selectionPortrait.textContent=icon;
+ const heroSelected=isUnit&&selected.key==="hero";
+ ui.selectionHud.classList.toggle("heroSelection",heroSelected);
+ ui.selectionPortrait.classList.toggle("heroPortrait",heroSelected);
+ if(heroSelected)ui.selectionPortrait.innerHTML='<img src="assets/ui/andreas-portrait.webp" alt="">';
+ else ui.selectionPortrait.textContent=icon;
  ui.selectionText.innerHTML=`<b>${name}</b><br>${details}`;
  selectionMoveBtn.classList.toggle("hidden",!isUnit);
  selectionAutoBtn.classList.toggle("hidden",!isUnit);

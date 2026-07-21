@@ -859,3 +859,18 @@ footer{min-height:0}
  .offeringCard{padding:18px 14px}.offeringHead{align-items:flex-start}.offeringIcon{font-size:42px}
  .offeringResourceGrid{grid-template-columns:1fr}.offeringResource{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center}.offeringResourceHead{margin:0}
 }
+
+/* v1.15.39 – Andreas – Heldenauftritt */
+#selectionHud.heroSelection{background:linear-gradient(145deg,#351018f2,#110b0cf2);border-color:#f0ca63;box-shadow:0 7px 24px #000d,0 0 24px #d99a3c45,inset 0 1px #fff2}
+#selectionPortrait.heroPortrait{width:60px;height:60px;padding:0;overflow:hidden;border-radius:50%;background:#1c0c10;border:2px solid #f1cc69;box-shadow:0 0 18px #d79b3c66}
+#selectionPortrait.heroPortrait img{width:100%;height:100%;display:block;object-fit:cover}
+#selectionHud.heroSelection #selectionText b{color:#ffe79d;font:900 14px Georgia,serif;text-shadow:0 1px 7px #d69036}
+.levelCard .portrait img{width:45px;height:45px;border-radius:50%;display:block;object-fit:cover;filter:drop-shadow(0 2px 2px #000)}
+.heroMiniPortrait{width:38px;height:38px;border-radius:50%;display:block;object-fit:cover;border:2px solid #e8c65f;box-shadow:0 0 10px #c9893266}
+.heroRosterItem{background:linear-gradient(90deg,#8e23331a,#e3b9531c)}
+.heroStatsBanner{display:grid;grid-template-columns:92px 1fr;gap:14px;align-items:center;padding:14px;margin-bottom:12px;border:1px solid #b47b2f88;border-radius:17px;background:linear-gradient(135deg,#3b1018,#17100c);color:#f6e9c0;box-shadow:inset 0 1px #fff2,0 8px 20px #0003}
+.heroStatsBanner img{width:92px;height:92px;border-radius:50%;object-fit:cover;filter:drop-shadow(0 4px 10px #0008)}
+.heroStatsBanner small{color:#e3b750;font-size:9px;font-weight:950;letter-spacing:1.2px}.heroStatsBanner h3{margin:3px 0 5px;color:#ffe6a0;font:900 21px Georgia,serif}.heroStatsBanner p{margin:0;font-size:11px;line-height:1.45;color:#eadcb7}
+.heroSummonPortrait{position:relative;width:128px;height:128px;margin:0 auto 12px;animation:heroCrownPulse 1.2s ease-in-out infinite}
+.heroSummonPortrait img{width:100%;height:100%;display:block;border-radius:50%;object-fit:cover;filter:drop-shadow(0 0 22px #ffd65a)}
+@media(max-width:650px){#selectionPortrait.heroPortrait{width:48px;height:48px}.heroStatsBanner{grid-template-columns:68px 1fr;padding:10px;gap:10px}.heroStatsBanner img{width:68px;height:68px}.heroStatsBanner h3{font-size:17px}.heroSummonPortrait{width:104px;height:104px}}

@@ -1,3 +1,12 @@
+## v1.15.39 – Andreas – Heldenauftritt
+
+- Andreas besitzt jetzt eigene transparente Grafiken für Stand und Bewegung im Rot-Gold-Stil.
+- Die bisher verwendeten Grafiken der Burgwache werden für Andreas nicht mehr genutzt.
+- Ein eigenes Andreas-Porträt wurde in Auswahl-HUD, Aufwertungsanzeigen, Einheitenübersicht und Beschwörungsmeldung integriert.
+- Die Auswahlmarkierung des Helden verwendet einen animierten doppelten Gold-Rot-Ring mit vier Heldenmarken.
+- Lebens- und Erfahrungsbalken, Namensschild und Detailanzeige wurden auf die größere Heldenfigur abgestimmt.
+- Versionsangaben im Spiel wurden auf v1.15.39 aktualisiert.
+
 ## v1.15.38 – Opfergabe des Helden
 
 - Die Kriegerstatue stärkt verbündete Einheiten innerhalb der Festung mit +5 % Schaden.
