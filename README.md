@@ -1,3 +1,9 @@
+## v1.15.36 – Forschungsfenster-Fix
+
+- Der Forschungsbutton öffnet den Forschungsbaum wieder zuverlässig.
+- Beim Öffnen werden `display`, `visibility` und `pointer-events` des Forschungsfensters explizit reaktiviert.
+- Versionsangaben im Spiel wurden auf v1.15.36 aktualisiert.
+
 ## v1.15.35 – Gegner bodennäher
 
 - Die Gegner-Sprites wurden einige Pixel tiefer gesetzt, damit ihre Füße optisch auf dem Boden stehen.

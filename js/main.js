@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.35";
-const GAME_RELEASE_NAME="Gegner bodennäher";
+const GAME_VERSION="1.15.36";
+const GAME_RELEASE_NAME="Forschungsfenster-Fix";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -417,7 +417,12 @@ function researchCost(tech){return getResearchCost(tech,state.research,globalRes
 function openWorkshopPanel(){
  if(!state.buildings.some(b=>b.key==="workshop"))return showToast("Zuerst eine Werkstatt bauen");
  hideRepairDecision();paused=true;last=performance.now();
- document.getElementById("workshopPanel").classList.remove("hidden");renderWorkshop();
+ const panel=document.getElementById("workshopPanel");
+ panel.classList.remove("hidden");
+ panel.style.display="grid";
+ panel.style.pointerEvents="auto";
+ panel.style.visibility="visible";
+ renderWorkshop();
 }
 function closeWorkshopPanel(resume=true){document.getElementById("workshopPanel").classList.add("hidden");if(resume&&!gameOver){paused=false;last=performance.now()}updateUI()}
 function renderWorkshop(){
