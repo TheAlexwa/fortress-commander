@@ -1,3 +1,19 @@
+## v1.15.43 – Belagerungsdichte
+
+- Ab Welle 4 steigt die sichtbare Zahl normaler Gegner stufenweise an: +35 % bis Welle 8, +60 % bis Welle 16 und +80 % ab Welle 17.
+- Zusätzliche Gegner bestehen ausschließlich aus Plünderern, Spähern und Speerjägern; Eisenschilde, Berserker und Häuptlinge werden nicht künstlich vervielfacht.
+- Ein Bedrohungsbudget senkt Leben und Schaden der normalen Massenkämpfer proportional, sodass ihre gemeinsame Kampfstärke trotz höherer Stückzahl nahezu gleich bleibt.
+- Goldbelohnung und Kampf-EXP der Massenkämpfer werden ebenfalls proportional verteilt, damit die Wirtschaft und Einheitenentwicklung nicht beschleunigt werden.
+- Gegner besitzen eine weiche, typabhängige Kollision und werden sanft voneinander getrennt, statt auf demselben Punkt zu stehen.
+- Eine räumlich begrenzte Kollisionsprüfung arbeitet nur mit nahen Gegnern und wird in reduzierter Frequenz ausgeführt, um mobile Geräte zu schonen.
+- Ein Schutz gegen Festhängen lockert die Kollision kurzzeitig und gibt blockierten Gegnern einen kleinen seitlichen Impuls.
+- Tore besitzen sechs direkte Angriffsplätze, Mauersegmente vier bis fünf und die Festung acht; weitere Gegner bilden sichtbare zweite und dritte Reihen.
+- Angriffswellen rücken in Gruppen von acht bis zwölf Gegnern mit kurzen Pausen zwischen den Pulsen vor.
+- Gleichzeitig aktive Gegner sind auf 64 bei Mobilgeräten und 72 auf größeren Geräten begrenzt; weitere Gegner bleiben als sichtbare Reserve an den Lagern.
+- Lagerreserven werden während der laufenden Welle weiterhin mit Zelt, Silhouetten, Spezialgegner-Symbolen und Restzahl dargestellt.
+- Bestehende Spielstände aus v1.15.x bleiben kompatibel; eine bereits vorbereitete alte Belagerung wird unverändert beendet und die neue Dichte gilt ab der folgenden Welle.
+- Versionsangaben im Spiel wurden auf v1.15.43 aktualisiert.
+
 ## v1.15.42 – HUD-Bereinigung
 
 - Die doppelte Festungs-Lebensanzeige wurde aus der oberen Leiste entfernt.

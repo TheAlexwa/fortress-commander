@@ -439,6 +439,7 @@ export function loadGameState({
     nextUnitId: Math.max(0, Number(savedState.nextUnitId) || 0),
     nextBuildingId: Math.max(0, Number(savedState.nextBuildingId) || 0),
     nextResidentId: Math.max(0, Number(savedState.nextResidentId) || 0),
+    nextEnemyId: 0,
     research: { ...(savedState.research || {}) },
     buildings,
     units,

@@ -230,18 +230,35 @@ function drawWorldDetails(){
  }
  ctx.restore();
 }
+function getReserveCampOverview(){
+ const overview=Array.from({length:4},()=>({arrived:0,total:0,threat:0,special:{shield:0,berserker:0,boss:0},dangerous:false}));
+ for(const entry of state.spawnQueue||[]){
+  const campIndex=Math.max(0,Math.min(3,Number(entry?.camp)||0));
+  const camp=overview[campIndex];
+  const type=String(entry?.type||"raider");
+  camp.arrived++;camp.total++;
+  camp.threat+=({runner:.8,raider:1,spear:1.2,shield:2.4,berserker:3,boss:8}[type]||1)*(Number(entry?.powerScale)||1);
+  if(Object.hasOwn(camp.special,type))camp.special[type]++;
+ }
+ const highest=Math.max(0,...overview.map(camp=>camp.threat));
+ const dangerous=highest>0?overview.findIndex(camp=>camp.threat===highest):-1;
+ if(dangerous>=0)overview[dangerous].dangerous=true;
+ return overview;
+}
 function drawSiegeCamps(){
  const siege=state.siege;
- if(state.inWave||!siege?.active)return;
+ const reserveMode=state.inWave&&(state.spawnQueue?.length||0)>0;
+ if(!reserveMode&&!siege?.active)return;
  const camps=getSiegeCampPositions({WORLD_W,WORLD_H});
- const overview=getSiegeCampOverview(siege);
- const waveType=getWaveTypeInfo(state.wave,siege.waveType);
+ const overview=reserveMode?getReserveCampOverview():getSiegeCampOverview(siege);
+ const waveType=getWaveTypeInfo(state.wave,siege?.waveType);
  const now=performance.now();
 
  camps.forEach((camp,index)=>{
   const campInfo=overview[index]||{arrived:0,total:0,special:{shield:0,berserker:0,boss:0},dangerous:false};
   const count=campInfo.arrived||0;
   const total=campInfo.total||0;
+  if(reserveMode&&count<=0)return;
   const tentCount=Math.min(3,1+Math.floor(count/5));
   ctx.save();ctx.translate(camp.x,camp.y);
 
@@ -271,8 +288,8 @@ function drawSiegeCamps(){
   ctx.fillStyle="#e08a33";ctx.beginPath();ctx.moveTo(-8,48);ctx.quadraticCurveTo(-2,24-flame,2,42);ctx.quadraticCurveTo(8,26+flame,9,49);ctx.closePath();ctx.fill();
   ctx.fillStyle="#ffd06a";ctx.beginPath();ctx.moveTo(-3,47);ctx.quadraticCurveTo(1,34-flame,4,47);ctx.closePath();ctx.fill();
 
-  // Kleine Silhouetten zeigen die wachsende Armee ohne aktive Gegnerobjekte.
-  const visible=Math.min(8,count);
+  // Kleine Silhouetten zeigen die wachsende Armee beziehungsweise die noch wartende Reserve.
+  const visible=Math.min(reserveMode?10:8,count);
   for(let i=0;i<visible;i++){
    const a=(i/Math.max(1,visible))*TAU+index*.6;
    const rr=48+(i%2)*19;
@@ -285,7 +302,7 @@ function drawSiegeCamps(){
 
   ctx.fillStyle="#16110de8";ctx.strokeStyle="#d5b46b";ctx.lineWidth=2;
   ctx.beginPath();ctx.roundRect(-36,-78,72,28,8);ctx.fill();ctx.stroke();
-  ctx.fillStyle="#fff0bd";ctx.textAlign="center";ctx.font="bold 13px system-ui";ctx.fillText(`${campInfo.dangerous?waveType.icon+" ":""}${count}/${total}`,0,-59);
+  ctx.fillStyle="#fff0bd";ctx.textAlign="center";ctx.font="bold 13px system-ui";ctx.fillText(reserveMode?`Reserve ${count}`:`${campInfo.dangerous?waveType.icon+" ":""}${count}/${total}`,0,-59);
   const specialLabels=[];
   if(campInfo.special.shield)specialLabels.push(`🛡${campInfo.special.shield}`);
   if(campInfo.special.berserker)specialLabels.push(`⚔${campInfo.special.berserker}`);
@@ -296,7 +313,7 @@ function drawSiegeCamps(){
    ctx.beginPath();ctx.roundRect(-labelWidth/2,68,labelWidth,23,7);ctx.fill();ctx.stroke();
    ctx.fillStyle="#ffe3a0";ctx.font="bold 11px system-ui";ctx.fillText(specialLabels.join("  "),0,84);
   }
-  ctx.fillStyle="#e6d4ad";ctx.font="bold 10px system-ui";ctx.fillText(`${camp.label} · ${camp.gateLabel}`,0,108);
+  ctx.fillStyle="#e6d4ad";ctx.font="bold 10px system-ui";ctx.fillText(reserveMode?`${camp.label} · Nachschub`:`${camp.label} · ${camp.gateLabel}`,0,108);
   ctx.restore();
  });
 }

@@ -283,6 +283,88 @@ export function findNearestBlockingUnit(
   return best;
 }
 
+export function resolveEnemySeparation(
+  enemies,
+  dt,
+  { interval = 0.075, cellSize = 52, maxPush = 3.6 } = {}
+) {
+  const active = (enemies || []).filter((enemy) => enemy && enemy.hp > 0);
+  if (active.length < 2) return 0;
+
+  const elapsed = Math.max(0, Number(dt) || 0);
+  const owner = active[0];
+  owner._separationClock = (Number(owner._separationClock) || 0) + elapsed;
+  if (owner._separationClock < interval) return 0;
+  const stepTime = Math.min(0.2, owner._separationClock);
+  owner._separationClock = 0;
+
+  const grid = new Map();
+  const keyFor = (x, y) => `${Math.floor(x / cellSize)},${Math.floor(y / cellSize)}`;
+  for (const enemy of active) {
+    enemy._ghostTime = Math.max(0, (Number(enemy._ghostTime) || 0) - stepTime);
+    const key = keyFor(enemy.x, enemy.y);
+    if (!grid.has(key)) grid.set(key, []);
+    grid.get(key).push(enemy);
+  }
+
+  let pairs = 0;
+  for (const enemy of active) {
+    const gx = Math.floor(enemy.x / cellSize);
+    const gy = Math.floor(enemy.y / cellSize);
+    for (let ox = -1; ox <= 1; ox++) {
+      for (let oy = -1; oy <= 1; oy++) {
+        const neighbours = grid.get(`${gx + ox},${gy + oy}`) || [];
+        for (const other of neighbours) {
+          if ((Number(other.eid) || 0) <= (Number(enemy.eid) || 0)) continue;
+          let dx = other.x - enemy.x;
+          let dy = other.y - enemy.y;
+          let distance = Math.hypot(dx, dy);
+          const ghostFactor = enemy._ghostTime > 0 || other._ghostTime > 0 ? 0.48 : 1;
+          const minimum = Math.max(14, ((Number(enemy.radius) || 12) + (Number(other.radius) || 12)) * 0.82 * ghostFactor);
+          if (distance >= minimum) continue;
+          if (distance < 0.001) {
+            const angle = (((Number(enemy.eid) || 1) * 2.399963) % (Math.PI * 2));
+            dx = Math.cos(angle);
+            dy = Math.sin(angle);
+            distance = 1;
+          }
+          const overlap = Math.min(maxPush, (minimum - distance) * 0.34);
+          const nx = dx / distance;
+          const ny = dy / distance;
+          const enemyWeight = enemy.type === "boss" ? 0.18 : enemy.type === "shield" ? 0.38 : 0.5;
+          const otherWeight = other.type === "boss" ? 0.18 : other.type === "shield" ? 0.38 : 0.5;
+          enemy.x -= nx * overlap * enemyWeight;
+          enemy.y -= ny * overlap * enemyWeight;
+          other.x += nx * overlap * otherWeight;
+          other.y += ny * overlap * otherWeight;
+          pairs++;
+        }
+      }
+    }
+  }
+
+  for (const enemy of active) {
+    const previousX = Number.isFinite(enemy._progressX) ? enemy._progressX : enemy.x;
+    const previousY = Number.isFinite(enemy._progressY) ? enemy._progressY : enemy.y;
+    const moved = Math.hypot(enemy.x - previousX, enemy.y - previousY);
+    const intentionallyWaiting = enemy.queueWaiting === true || (Number(enemy.attackAnim) || 0) > 0;
+    enemy._stuckTime = intentionallyWaiting || moved > 0.9
+      ? 0
+      : (Number(enemy._stuckTime) || 0) + stepTime;
+    if (enemy._stuckTime > 1.7) {
+      enemy._ghostTime = 0.9;
+      enemy._stuckTime = 0;
+      const angle = (((Number(enemy.eid) || 1) * 1.618034) % (Math.PI * 2));
+      enemy.x += Math.cos(angle) * 4;
+      enemy.y += Math.sin(angle) * 4;
+    }
+    enemy._progressX = enemy.x;
+    enemy._progressY = enemy.y;
+  }
+
+  return pairs;
+}
+
 export function createProjectile(
   projectiles,
   from,

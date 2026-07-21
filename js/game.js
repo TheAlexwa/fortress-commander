@@ -68,8 +68,23 @@ export function getWaveTypeInfo(wave, forcedKey = null) {
   return WAVE_TYPE_DEFINITIONS[key];
 }
 
+export function getBaseWaveEnemyCount(wave) {
+  const value = Math.max(1, Math.floor(Number(wave) || 1));
+  return Math.floor(4 + value * 2.15 + Math.pow(value, 1.25));
+}
+
+export function getWaveDensityMultiplier(wave) {
+  const value = Math.max(1, Math.floor(Number(wave) || 1));
+  if (value <= 3) return 1;
+  if (value <= 8) return 1.35;
+  if (value <= 16) return 1.6;
+  return 1.8;
+}
+
 export function getWaveEnemyCount(wave) {
-  return Math.floor(4 + wave * 2.15 + Math.pow(wave, 1.25));
+  return Math.max(1, Math.round(
+    getBaseWaveEnemyCount(wave) * getWaveDensityMultiplier(wave)
+  ));
 }
 
 export function getWallHealthSum(state) {
@@ -229,6 +244,7 @@ export function createWaveEnemy(
     random = Math.random,
     forcedType = null,
     spawnPoint = null,
+    modifiers = null,
   }
 ) {
   const side = Math.floor(random() * 4);
@@ -256,21 +272,27 @@ export function createWaveEnemy(
   const wave = state.wave;
   const type = forcedType || selectWaveEnemyType(wave, state.toSpawn, random);
   const stats = enemyStatsFor(type, wave);
+  const powerScale = Math.max(0.2, Math.min(1, Number(modifiers?.powerScale) || 1));
+  const rewardScale = Math.max(0.15, Math.min(1, Number(modifiers?.rewardScale) || powerScale));
   const enemy = {
     kind: "enemy",
+    eid: Math.max(0, Number(state.nextEnemyId) || 0),
     x,
     y,
     type,
     name: stats.name,
     clan: "Eisenclans",
-    hp: stats.hp,
-    maxHp: stats.hp,
+    hp: Math.max(8, stats.hp * powerScale),
+    maxHp: Math.max(8, stats.hp * powerScale),
     speed: stats.speed,
     radius: Number.isFinite(stats.radius) ? stats.radius : 14,
     visualClass: stats.visualClass || "normal",
     visualScale: Number.isFinite(stats.visualScale) ? stats.visualScale : 1,
-    reward: stats.reward,
-    damage: stats.damage,
+    reward: stats.reward * rewardScale,
+    damage: stats.damage * powerScale,
+    powerScale,
+    rewardScale,
+    xpScale: rewardScale,
     attackRate: stats.attackRate,
     attackCd: random(),
     armor: stats.armor || 0,
@@ -280,6 +302,7 @@ export function createWaveEnemy(
     animSeed: random() * TAU,
   };
 
+  state.nextEnemyId = enemy.eid + 1;
   state.enemies.push(enemy);
   discoverEnemy(type);
   return enemy;

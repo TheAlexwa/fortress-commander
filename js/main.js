@@ -65,6 +65,7 @@ import {
  getGuardRadiusLimit,
  resolveGuardEnemyOverlap,
  isGuardTargetAllowed,
+ resolveEnemySeparation,
  createProjectile,
  grantCombatExperience,
  applyTowerTalent,
@@ -73,6 +74,7 @@ import {
 
 import {
  getWaveEnemyCount,
+ getBaseWaveEnemyCount,
  getWaveTypeInfo,
  selectWaveEnemyType,
  createWaveEnemy,
@@ -140,9 +142,12 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.42";
-const GAME_RELEASE_NAME="HUD-Bereinigung";
+const GAME_VERSION="1.15.43";
+const GAME_RELEASE_NAME="Belagerungsdichte";
 const AUTOSAVE_INTERVAL_MS=60_000;
+const ACTIVE_ENEMY_LIMIT=(window.matchMedia("(max-width: 900px)").matches||navigator.maxTouchPoints>0)?64:72;
+const ENEMY_PULSE_INTERVAL=.11;
+const ENEMY_PULSE_PAUSE=1.25;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
  if(!ENEMY_CODEX[type]||discoveredEnemies.has(type))return;
@@ -351,7 +356,7 @@ const BUILD={
  statue:{name:"Kriegerstatue",kind:"inside",gold:45,wood:0,stone:15,color:"#8f7958",slotRole:"statue",ritual:true},
  hero:{name:"Andreas, der große Held",kind:"unit",gold:0,wood:0,hp:650,damage:65,range:34,rate:1.05,speed:66,armor:.35,color:"#d4aa52",hero:true}
 };
-const state={gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,
+const state={gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,nextEnemyId:0,
  enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],outerGates:[],craftsmen:[],residents:[],siege:null,spawnQueue:[],repairActive:false,repairedHp:0,heroOffering:0,heroSummoned:false,heroFallen:false,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
 const wallSlots=[],insideSlots=[],castleSlots=[];
 
@@ -805,7 +810,7 @@ function cycleUnitZone(unit){
  showToast(`Bogenschütze hält jetzt den ${unitZoneLabel(unit)}`);
 }
 
-function siegeContext(){return {getWaveEnemyCount,selectWaveEnemyType}}
+function siegeContext(){return {getWaveEnemyCount,getBaseWaveEnemyCount,selectWaveEnemyType}}
 function ensureCurrentSiege(){return ensureSiegePhase(state,siegeContext())}
 function startWave(){
  ensureCurrentSiege();
@@ -816,17 +821,10 @@ function startWave(){
   setSelected:value=>{selected=value}
  });
  if(!release)return false;
- const campOrders=[0,0,0,0];
- for(const entry of release.arrived){
-  const campIndex=Math.max(0,Math.min(SIEGE_CAMPS.length-1,Number(entry.camp)||0));
-  const camp=SIEGE_CAMPS[campIndex];
-  const point=getSiegeReleasePoint(entry,campOrders[campIndex]++,SIEGE_CAMPS);
-  spawnEnemy(entry.type,point,camp?.gateIndex);
- }
  return true;
 }
-function spawnEnemy(forcedType=null,spawnPoint=null,approachGateIndex=null){
- const enemy=createWaveEnemy(state,{WORLD_W,WORLD_H,TAU,enemyStatsFor,discoverEnemy,forcedType,spawnPoint});
+function spawnEnemy(forcedType=null,spawnPoint=null,approachGateIndex=null,modifiers=null){
+ const enemy=createWaveEnemy(state,{WORLD_W,WORLD_H,TAU,enemyStatsFor,discoverEnemy,forcedType,spawnPoint,modifiers});
  if(enemy&&spawnPoint){
   enemy.approachGateIndex=Number.isInteger(approachGateIndex)
    ?approachGateIndex
@@ -840,7 +838,61 @@ function spawnQueuedEnemy(entry){
  const campIndex=Math.max(0,Math.min(SIEGE_CAMPS.length-1,Number(entry.camp)||0));
  const camp=SIEGE_CAMPS[campIndex];
  const point=getSiegeReleasePoint(entry,Math.max(0,Number(entry.orderInCamp)||0),SIEGE_CAMPS);
- return spawnEnemy(String(entry.type||"raider"),point,camp?.gateIndex);
+ return spawnEnemy(String(entry.type||"raider"),point,camp?.gateIndex,{
+  powerScale:entry.powerScale,
+  rewardScale:entry.rewardScale
+ });
+}
+function getSpawnDelay(entry,nextEntry){
+ if(!nextEntry)return ENEMY_PULSE_INTERVAL;
+ return Number(nextEntry.pulseIndex)!==Number(entry?.pulseIndex)
+  ?ENEMY_PULSE_PAUSE
+  :ENEMY_PULSE_INTERVAL+Math.random()*.035;
+}
+function enemyAssaultKey(enemy){
+ if(!enemy)return "";
+ if(enemy.phase==="outer"){
+  if(Number.isInteger(enemy.approachGateIndex))return `og:${enemy.approachGateIndex}`;
+  if(Number.isInteger(enemy.outerWallIndex))return `ow:${enemy.outerWallIndex}`;
+ }
+ if(enemy.phase==="outside"){
+  if(Number.isInteger(enemy.approachGateIndex))return `mg:${enemy.approachGateIndex}`;
+  if(Number.isInteger(enemy.wallIndex))return `mw:${enemy.wallIndex}`;
+ }
+ if(enemy.phase==="inside"||enemy.phase==="core")return enemy.assaultKey||"";
+ return enemy.assaultKey||"";
+}
+function assaultFormationPoint(enemy,angle,targetRadius,key,frontLimit){
+ enemy.assaultKey=key;
+ const peers=state.enemies
+  .filter(candidate=>candidate.hp>0&&(candidate===enemy||enemyAssaultKey(candidate)===key))
+  .sort((a,b)=>(Number(a.eid)||0)-(Number(b.eid)||0));
+ const rank=Math.max(0,peers.indexOf(enemy));
+ const limit=Math.max(1,frontLimit);
+ const inFront=rank<limit;
+ const queueIndex=inFront?rank:rank-limit;
+ const row=inFront?0:1+Math.floor(queueIndex/limit);
+ const slot=inFront?rank:queueIndex%limit;
+ const spacing=Math.max(14,Math.min(20,(Number(enemy.radius)||12)*1.05));
+ const tangentOffset=(slot-(limit-1)/2)*spacing;
+ const radialOffset=row*Math.max(22,(Number(enemy.radius)||12)*1.55);
+ const rx=Math.cos(angle),ry=Math.sin(angle),tx=-ry,ty=rx;
+ enemy.queueWaiting=!inFront;
+ return {
+  x:CX+rx*(targetRadius+radialOffset)+tx*tangentOffset,
+  y:CY+ry*(targetRadius+radialOffset)+ty*tangentOffset,
+  canAttack:inFront,
+  row,
+  rank
+ };
+}
+function moveEnemyToward(enemy,x,y,dt){
+ const dx=x-enemy.x,dy=y-enemy.y,d=Math.hypot(dx,dy);
+ if(d<=.001)return d;
+ const speed=enemy.queueWaiting?enemy.speed*.82:enemy.speed;
+ const step=Math.min(d,speed*dt);
+ enemy.x+=dx/d*step;enemy.y+=dy/d*step;
+ return d;
 }
 function createAt(x,y,key){
  return createEntityAt(x,y,key,{
@@ -1104,7 +1156,19 @@ function update(dt){
   while(state.supportTimer>=1){state.supportTimer-=1;runSupportTick()}
  }else state.supportTimer=0;
  updateCraftsmen(dt)
- if(state.inWave){state.spawnTimer-=dt;if(state.toSpawn>0&&state.spawnTimer<=0){const queuedEnemy=state.spawnQueue.shift()||null;spawnQueuedEnemy(queuedEnemy);state.toSpawn=Math.max(0,state.spawnQueue.length);state.spawnTimer=Math.max(.18,.88-state.wave*.024)}}
+ if(state.inWave){
+  state.spawnTimer-=dt;
+  if(state.toSpawn>0&&state.spawnTimer<=0){
+   if(state.enemies.length>=ACTIVE_ENEMY_LIMIT){
+    state.spawnTimer=.28;
+   }else{
+    const queuedEnemy=state.spawnQueue.shift()||null;
+    spawnQueuedEnemy(queuedEnemy);
+    state.toSpawn=Math.max(0,state.spawnQueue.length);
+    state.spawnTimer=getSpawnDelay(queuedEnemy,state.spawnQueue[0]||null);
+   }
+  }
+ }
  const bonus=1;
  for(const b of state.buildings){
   if(!isTowerOperational(b))continue;
@@ -1232,6 +1296,7 @@ function update(dt){
  state.projectiles=state.projectiles.filter(p=>!p.dead);
 
  for(const e of state.enemies){
+  e.queueWaiting=false;e.assaultKey="";
   e.attackCd-=dt;
   if(e.attackAnim>0)e.attackAnim=Math.max(0,e.attackAnim-dt);
   const dx=CX-e.x,dy=CY-e.y,dCenter=Math.max(1,Math.hypot(dx,dy));
@@ -1242,28 +1307,29 @@ function update(dt){
    const targetR=OUTER_WALL_R+e.radius+4;
    if(outerGate){
     e.outerGateIndex=outerGate.i;e.outerWallIndex=null;
-    const tx=CX+Math.cos(outerGate.angle)*targetR,ty=CY+Math.sin(outerGate.angle)*targetR;
-    const d=Math.hypot(tx-e.x,ty-e.y);
+    const baseX=CX+Math.cos(outerGate.angle)*targetR,baseY=CY+Math.sin(outerGate.angle)*targetR;
     if(!outerGate.built||outerGate.hp<=0){
-     if(d<5)e.phase="outside";
-     else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
-    }else if(d<5){
-     if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
-      outerGate.hp=Math.max(0,outerGate.hp-gateDamage);burst(tx,ty,"#775039",6);if(outerGate.hp<=0)showToast(`Das ${outerGate.name} wurde durchbrochen!`)}
-    }else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+     const d=moveEnemyToward(e,baseX,baseY,dt);if(d<5)e.phase="outside";
+    }else{
+     const assault=assaultFormationPoint(e,outerGate.angle,targetR,`og:${outerGate.i}`,6);
+     const d=moveEnemyToward(e,assault.x,assault.y,dt);
+     if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
+      outerGate.hp=Math.max(0,outerGate.hp-gateDamage);burst(baseX,baseY,"#775039",6);if(outerGate.hp<=0)showToast(`Das ${outerGate.name} wurde durchbrochen!`)}
+    }
    }else{
     const wi=getOuterWallSegmentIndexForAngle(Math.atan2(e.y-CY,e.x-CX),state.outerWalls.length);
     const wall=getOuterWallSegmentStatus(state,wi);
     e.outerWallIndex=wi;e.outerGateIndex=null;
-    const tx=CX+(e.x-CX)/dCenter*targetR,ty=CY+(e.y-CY)/dCenter*targetR;
-    const d=Math.hypot(tx-e.x,ty-e.y);
+    const wallAngle=Number.isFinite(wall?.am)?wall.am:Math.atan2(e.y-CY,e.x-CX);
+    const baseX=CX+Math.cos(wallAngle)*targetR,baseY=CY+Math.sin(wallAngle)*targetR;
     if(!wall||!wall.built||wall.hp<=0){
-     if(d<5)e.phase="outside";
-     else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
-    }else if(d<5){
-     if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
-      wall.hp=Math.max(0,wall.hp-wallDamage);burst(tx,ty,"#8a5d3c",5);if(wall.hp<=0)showToast(`Bresche in äußerer Palisade: ${wall.name||getOuterWallSegmentName(wi,state.outerWalls.length)}!`)}
-    }else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+     const d=moveEnemyToward(e,baseX,baseY,dt);if(d<5)e.phase="outside";
+    }else{
+     const assault=assaultFormationPoint(e,wallAngle,targetR,`ow:${wi}`,4);
+     const d=moveEnemyToward(e,assault.x,assault.y,dt);
+     if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
+      wall.hp=Math.max(0,wall.hp-wallDamage);burst(baseX,baseY,"#8a5d3c",5);if(wall.hp<=0)showToast(`Bresche in äußerer Palisade: ${wall.name||getOuterWallSegmentName(wi,state.outerWalls.length)}!`)}
+    }
    }
   }else if(e.phase==="outside"){
    const gate=Number.isInteger(e.approachGateIndex)
@@ -1272,22 +1338,26 @@ function update(dt){
    const targetR=WALL_R+e.radius+4;
    if(gate){
     e.middleGateIndex=gate.i;e.wallIndex=null;
-    const tx=CX+Math.cos(gate.angle)*targetR,ty=CY+Math.sin(gate.angle)*targetR;
-    const d=Math.hypot(tx-e.x,ty-e.y);
+    const baseX=CX+Math.cos(gate.angle)*targetR,baseY=CY+Math.sin(gate.angle)*targetR;
     if(!gate.built||gate.hp<=0){
-     if(d<5)e.phase="inside";
-     else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
-    }else if(d<5){if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
-     gate.hp=Math.max(0,gate.hp-gateDamage);burst(tx,ty,"#8c5734",6);if(gate.hp<=0)showToast(`Das ${gate.name} wurde durchbrochen!`)}}
-    else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+     const d=moveEnemyToward(e,baseX,baseY,dt);if(d<5)e.phase="inside";
+    }else{
+     const assault=assaultFormationPoint(e,gate.angle,targetR,`mg:${gate.i}`,6);
+     const d=moveEnemyToward(e,assault.x,assault.y,dt);
+     if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
+      gate.hp=Math.max(0,gate.hp-gateDamage);burst(baseX,baseY,"#8c5734",6);if(gate.hp<=0)showToast(`Das ${gate.name} wurde durchbrochen!`)}
+    }
    }else{
     const wi=angleIndex(e.x,e.y),wall=state.walls[wi];e.wallIndex=wi;e.middleGateIndex=null;
-    const tx=CX+(e.x-CX)/dCenter*targetR,ty=CY+(e.y-CY)/dCenter*targetR;
-    const d=Math.hypot(tx-e.x,ty-e.y);
+    const wallAngle=Number.isFinite(wall?.am)?wall.am:Math.atan2(e.y-CY,e.x-CX);
+    const baseX=CX+Math.cos(wallAngle)*targetR,baseY=CY+Math.sin(wallAngle)*targetR;
     if(!wall.built||wall.hp<=0){e.phase="inside"}
-    else if(d<5){if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
-     wall.hp=Math.max(0,wall.hp-wallDamage);burst(tx,ty,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in mittlerer Palisade: ${wall.name||getMiddleWallSegmentName(wi,state.walls.length)}!`)}}
-    else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+    else{
+     const assault=assaultFormationPoint(e,wallAngle,targetR,`mw:${wi}`,4);
+     const d=moveEnemyToward(e,assault.x,assault.y,dt);
+     if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
+      wall.hp=Math.max(0,wall.hp-wallDamage);burst(baseX,baseY,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in mittlerer Palisade: ${wall.name||getMiddleWallSegmentName(wi,state.walls.length)}!`)}
+    }
    }
   }else if(e.phase==="inside"){
    const tauntedByHero=handleHeroTaunt(e,dt);
@@ -1308,17 +1378,16 @@ function update(dt){
     e.phase="core";
    }else{
     const targetR=FIXED_INNER_WALL_RADIUS+e.radius+5;
-    const tx=CX+Math.cos(innerWall.am)*targetR,ty=CY+Math.sin(innerWall.am)*targetR;
-    const d=Math.hypot(tx-e.x,ty-e.y);
-    if(d<5){
-     if(e.attackCd<=0){
-      e.attackCd=e.attackRate;e.attackAnim=.22;
-      const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.3);
-      innerWall.hp=Math.max(0,innerWall.hp-wallDamage);
-      burst(tx,ty,"#9b8b70",5);
-      if(innerWall.hp<=0)showToast(`Bresche im inneren Mauerring: ${innerWall.name}!`);
-     }
-    }else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
+    const assault=assaultFormationPoint(e,innerWall.am,targetR,`iw:${innerWall.i}`,5);
+    const d=moveEnemyToward(e,assault.x,assault.y,dt);
+    if(d<5&&assault.canAttack&&e.attackCd<=0){
+     e.attackCd=e.attackRate;e.attackAnim=.22;
+     const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.3);
+     innerWall.hp=Math.max(0,innerWall.hp-wallDamage);
+     const tx=CX+Math.cos(innerWall.am)*targetR,ty=CY+Math.sin(innerWall.am)*targetR;
+     burst(tx,ty,"#9b8b70",5);
+     if(innerWall.hp<=0)showToast(`Bresche im inneren Mauerring: ${innerWall.name}!`);
+    }
    }
   }else{
    const tauntedByHero=handleHeroTaunt(e,dt);
@@ -1333,12 +1402,16 @@ function update(dt){
     if(cd<38+e.radius){
      if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;castleTower.hp-=e.damage;burst(castleTower.slot.x,castleTower.slot.y,"#b67a45",6)}
     }else{e.x+=cdx/cd*e.speed*dt;e.y+=cdy/cd*e.speed*dt}
-   }else if(dCenter<46){
-    if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;state.hp-=e.damage;burst(CX,CY,e.color,8)}
-   }else{e.x+=dx/dCenter*e.speed*dt;e.y+=dy/dCenter*e.speed*dt}
+   }else{
+    const coreAngle=Math.atan2(e.y-CY,e.x-CX);
+    const assault=assaultFormationPoint(e,coreAngle,44,"core",8);
+    const d=moveEnemyToward(e,assault.x,assault.y,dt);
+    if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;state.hp-=e.damage;burst(CX,CY,e.color,8)}
+   }
   }
  }
- for(const e of state.enemies)if(e.hp<=0&&!e.dead){e.dead=true;state.gold+=e.reward;state.kills++;if(e.lastHitEntity)grantCombatXp(e.lastHitEntity,e.type==="boss"?55:e.type==="shield"?22:e.type==="runner"?13:16);burst(e.x,e.y,e.color,8)}
+ resolveEnemySeparation(state.enemies,dt);
+ for(const e of state.enemies)if(e.hp<=0&&!e.dead){e.dead=true;state.gold+=e.reward;state.kills++;if(e.lastHitEntity){const baseXp=e.type==="boss"?55:e.type==="shield"?22:e.type==="runner"?13:16;grantCombatXp(e.lastHitEntity,baseXp*Math.max(.15,Number(e.xpScale)||1))}burst(e.x,e.y,e.color,8)}
  state.enemies=state.enemies.filter(e=>!e.dead);
  state.buildings=state.buildings.filter(b=>{
   if(b.base.kind==="tower"&&b.hp<=0){
@@ -1529,7 +1602,7 @@ function showEndScreen(){
 }
 function hideEndScreen(){const screen=document.getElementById("endScreen");if(screen){screen.classList.add("hidden");screen.style.pointerEvents="none"}}
 function reset(){
- state.gold=210;state.wood=105;state.stone=0;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.heroOffering=0;state.heroSummoned=false;state.heroFallen=false;
+ state.gold=210;state.wood=105;state.stone=0;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.nextEnemyId=0;state.heroOffering=0;state.heroSummoned=false;state.heroFallen=false;
  state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeOuterWallSegments(state.outerWalls,{built:false});initializeOuterGates(state.outerGates,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
  selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();showToast("Neue Belagerung beginnt");
 }
