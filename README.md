@@ -1,3 +1,12 @@
+## v1.15.44 – Angriffsreihen-Fix
+
+- Gegner in der Kernzone speichern beim ersten Erreichen der Festung einen festen Angriffswinkel.
+- Der seitliche Reihenversatz dreht das Angriffsziel dadurch nicht mehr fortlaufend mit.
+- Die vordersten Gegner erreichen wieder zuverlässig ihre Angriffsplätze und beschädigen die zentrale Festung.
+- Wartende zweite und dritte Reihen rücken nach wie vorgesehen.
+- Bestehende Spielstände aus v1.15.43 bleiben kompatibel; fehlende Angriffswinkel werden automatisch ergänzt.
+- Versionsangaben im Spiel wurden auf v1.15.44 aktualisiert.
+
 ## v1.15.43 – Belagerungsdichte
 
 - Ab Welle 4 steigt die sichtbare Zahl normaler Gegner stufenweise an: +35 % bis Welle 8, +60 % bis Welle 16 und +80 % ab Welle 17.

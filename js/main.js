@@ -142,8 +142,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.43";
-const GAME_RELEASE_NAME="Belagerungsdichte";
+const GAME_VERSION="1.15.44";
+const GAME_RELEASE_NAME="Angriffsreihen-Fix";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const ACTIVE_ENEMY_LIMIT=(window.matchMedia("(max-width: 900px)").matches||navigator.maxTouchPoints>0)?64:72;
 const ENEMY_PULSE_INTERVAL=.11;
@@ -1403,8 +1403,12 @@ function update(dt){
      if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;castleTower.hp-=e.damage;burst(castleTower.slot.x,castleTower.slot.y,"#b67a45",6)}
     }else{e.x+=cdx/cd*e.speed*dt;e.y+=cdy/cd*e.speed*dt}
    }else{
-    const coreAngle=Math.atan2(e.y-CY,e.x-CX);
-    const assault=assaultFormationPoint(e,coreAngle,44,"core",8);
+    // Der Angriffswinkel wird beim ersten Erreichen der Kernzone fixiert.
+   // Wuerde er aus der laufend veraenderten Position neu berechnet, wuerde der
+   // seitliche Formationsversatz das Angriffsziel staendig mitdrehen und die
+   // Gegner koennten die Festung endlos umkreisen, ohne zuzuschlagen.
+   if(!Number.isFinite(e.coreAssaultAngle))e.coreAssaultAngle=Math.atan2(e.y-CY,e.x-CX);
+   const assault=assaultFormationPoint(e,e.coreAssaultAngle,44,"core",8);
     const d=moveEnemyToward(e,assault.x,assault.y,dt);
     if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;state.hp-=e.damage;burst(CX,CY,e.color,8)}
    }
