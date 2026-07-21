@@ -27,7 +27,6 @@ import {
  getSupportProductionPerSecond,
  getTotalGoldPerSecond,
  getMarketLossPercent,
- getMarketOutput,
  getRepairBuildingBaseHpPerTick,
  runEconomySupportTick
 } from "./economy.js";
@@ -97,6 +96,17 @@ import {
   prepareSiegePhase,
   updateSiegePhase
 } from "./siege.js";
+import {
+  WAR_COUNCIL_COMMANDS,
+  activateWarCouncilCommand,
+  createWarCouncilState,
+  ensureWarCouncilState,
+  getWarCouncilAnalysis,
+  getWarCouncilCommand,
+  getWarCouncilModifiers,
+  resetWarCouncilForWave,
+  selectWarCouncilCommand
+} from "./war-council.js";
 import { FIXED_INNER_WALL_RADIUS, OUTER_WALL_OFFSET } from "./map-layout.js";
 import {
   MIDDLE_WALL_SECTION_COUNT,
@@ -145,8 +155,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.46";
-const GAME_RELEASE_NAME="Gegnerfähigkeiten & Kampfinfos";
+const GAME_VERSION="1.15.47";
+const GAME_RELEASE_NAME="Kriegsrat vor der Welle";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const ACTIVE_ENEMY_LIMIT=(window.matchMedia("(max-width: 900px)").matches||navigator.maxTouchPoints>0)?64:72;
 const ENEMY_PULSE_INTERVAL=.11;
@@ -253,6 +263,7 @@ const ui={
  resourceOverviewBtn:document.getElementById("resourceOverviewBtn"),populationOverviewBtn:document.getElementById("populationOverviewBtn"),populationBusy:document.getElementById("populationBusy"),populationTotal:document.getElementById("populationTotal"),populationFree:document.getElementById("populationFree"),
  wave:document.getElementById("wave"),status:document.getElementById("waveStatus"),
  start:document.getElementById("startWaveBtn"),pause:document.getElementById("pauseBtn"),toast:document.getElementById("toast"),
+ warCouncilBtn:document.getElementById("warCouncilBtn"),warCouncilIcon:document.getElementById("warCouncilIcon"),warCouncilLabel:document.getElementById("warCouncilLabel"),
  selected:document.getElementById("selectedPanel"),levelDock:document.getElementById("levelUpDock"),upgrade:document.getElementById("upgradeBtn"),
  repairWall:document.getElementById("repairWallBtn"),craftsmanToggle:document.getElementById("craftsmanToggleBtn"),marketTrade:document.getElementById("marketTradeBtn"),statueOffering:document.getElementById("statueOfferingBtn"),sell:document.getElementById("sellBtn"),
  selectionHud:document.getElementById("selectionHud"),selectionText:document.getElementById("selectionText"),selectionPortrait:document.getElementById("selectionPortrait")
@@ -279,6 +290,18 @@ const GUARD_GATE_DAMAGE_BONUS=.15;
 const CATAPULT_ARMOR_BREAK=.20;
 const CATAPULT_SLOW=.15;
 const CATAPULT_DEBUFF_DURATION=4;
+let warCouncilResumeAfterClose=false;
+function warCouncilState(){return ensureWarCouncilState(state)}
+function warCouncilActiveCommand(){return getWarCouncilCommand(warCouncilState().active)}
+function warCouncilModifiers(){return getWarCouncilModifiers(state)}
+function activeWaveModifier(key,fallback=1){
+ if(!state.inWave)return fallback;
+ const value=warCouncilModifiers()[key];
+ return value===undefined?fallback:value;
+}
+function fortificationDamageMultiplier(){return activeWaveModifier("fortificationDamageTaken",1)}
+function effectiveTowerRange(tower){return tower.range*activeWaveModifier("towerRange",1)}
+function effectiveUnitRange(unit){return unit.range*(unit?.key==="soldier"?activeWaveModifier("archerRange",1):1)}
 
 function isMeleeHeroUnit(unit){return !!unit&&unit.kind==="unit"&&(unit.key==="guard"||unit.key==="hero")}
 function unitDisplayName(unit){return unit?.key==="hero"?"Andreas, der große Held":unit?.key==="guard"?"Burgwache":"Bogenschütze"}
@@ -316,6 +339,7 @@ function hasHeroAbilityBuff(unit){
 function effectiveUnitSpeed(unit){
  let multiplier=hasHeroAura(unit)?1+HERO_AURA_BONUS:1;
  if(hasHeroAbilityBuff(unit))multiplier*=1+HERO_ABILITY_SPEED_BONUS;
+ multiplier*=activeWaveModifier("unitSpeed",1);
  return unit.speed*multiplier;
 }
 function unitNearIntactGate(unit){
@@ -331,7 +355,8 @@ function effectiveUnitArmor(unit){
  if(hasHeroAbilityBuff(unit))armor+=HERO_ABILITY_ARMOR_BONUS;
  if(unit?.key==="hero"&&heroAbilityActive(unit))armor+=HERO_ABILITY_SELF_ARMOR_BONUS;
  if(unitNearIntactGate(unit))armor+=GUARD_GATE_ARMOR_BONUS;
- return Math.min(.75,armor);
+ if(unit?.key==="guard")armor+=activeWaveModifier("guardArmorDelta",0);
+ return Math.max(0,Math.min(.75,armor));
 }
 function unitDamageMultiplier(unit,enemy=null){
  let multiplier=1;
@@ -340,6 +365,9 @@ function unitDamageMultiplier(unit,enemy=null){
  if(hasHeroAbilityBuff(unit))multiplier*=1+HERO_ABILITY_DAMAGE_BONUS;
  if(unit?.key==="hero"&&enemy&&["shield","berserker","boss"].includes(enemy.type))multiplier*=1.35;
  if(unitNearIntactGate(unit))multiplier*=1+GUARD_GATE_DAMAGE_BONUS;
+ const unitDamageModifier=activeWaveModifier("unitDamage",1);
+ if(!(unit?.key==="hero"&&warCouncilActiveCommand().key==="repairs"))multiplier*=unitDamageModifier;
+ if(unit?.key==="soldier")multiplier*=activeWaveModifier("archerDamage",1);
  return multiplier;
 }
 function targetPriorityLabel(unit){
@@ -400,7 +428,7 @@ const BUILD={
  hero:{name:"Andreas, der große Held",kind:"unit",gold:0,wood:0,hp:650,damage:65,range:34,rate:1.05,speed:66,armor:.35,color:"#d4aa52",hero:true}
 };
 const state={gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,nextEnemyId:0,
- enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],outerGates:[],craftsmen:[],residents:[],siege:null,spawnQueue:[],repairActive:false,repairedHp:0,heroOffering:0,heroSummoned:false,heroFallen:false,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
+ enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],outerGates:[],craftsmen:[],residents:[],siege:null,warCouncil:createWarCouncilState(1),spawnQueue:[],repairActive:false,repairedHp:0,heroOffering:0,heroSummoned:false,heroFallen:false,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
 const wallSlots=[],insideSlots=[],castleSlots=[];
 
 function initMap(){
@@ -490,8 +518,8 @@ function buildingHasWorker(building){return hasBuildingWorker(building)}
 const REPAIR_TICK_SECONDS=1;
 const BASE_REPAIR_WOOD_PER_TICK=0.5;
 function researchLevel(id){return getResearchLevel(state.research,id)}
-function repairHpPerTick(building){return getRepairHpPerTick(state.research,getRepairBuildingBaseHpPerTick(building))}
-function repairWoodPerTick(){return getRepairWoodPerTick(state.research,BASE_REPAIR_WOOD_PER_TICK)}
+function repairHpPerTick(building){return getRepairHpPerTick(state.research,getRepairBuildingBaseHpPerTick(building))*activeWaveModifier("repairSpeed",1)}
+function repairWoodPerTick(){return getRepairWoodPerTick(state.research,BASE_REPAIR_WOOD_PER_TICK)*activeWaveModifier("repairCost",1)}
 function craftsmanMoveSpeed(){return getCraftsmanMoveSpeed(state.research)}
 function fortressAutoRepairPercent(){return getFortressAutoRepairPercent(state.research)}
 function researchedUnitStats(key){return getResearchedUnitStats(key,BUILD,state.research)}
@@ -499,7 +527,7 @@ function researchedTowerStats(key){return getResearchedTowerStats(key,BUILD,stat
 function applyResearchToExistingUnits(techId,oldLevel,newLevel){return applyResearchToUnits(state.units,techId,oldLevel,newLevel)}
 function applyResearchToExistingTowers(techId,oldLevel,newLevel){return applyResearchToTowers(state.buildings,techId,oldLevel,newLevel)}
 
-function applyAutomaticWaveRepair(){return applyWaveAutoRepair(state,fortressAutoRepairPercent())}
+function applyAutomaticWaveRepair(){return warCouncilModifiers().autoRepairAllowed===false?0:applyWaveAutoRepair(state,fortressAutoRepairPercent())}
 function totalRepairDamage(){return getTotalRepairDamage(state)}
 
 let activeResearchTab="fortress";
@@ -788,8 +816,55 @@ function deleteSave(){
 
 
 
+function updateWarCouncilHud(){
+ const button=ui.warCouncilBtn;if(!button)return;
+ const council=warCouncilState();
+ const key=state.inWave?council.active:council.selected;
+ const command=getWarCouncilCommand(key);
+ button.classList.toggle("isActive",key!=="none");
+ button.classList.toggle("isLocked",state.inWave||council.locked);
+ button.hidden=gameOver;
+ if(ui.warCouncilIcon)ui.warCouncilIcon.textContent=command.icon;
+ if(ui.warCouncilLabel)ui.warCouncilLabel.textContent=state.inWave?command.shortLabel:key==="none"?"Kriegsrat":command.shortLabel;
+ button.title=state.inWave?`${command.label} ist für diese Welle aktiv`:`Kriegsrat öffnen · aktuell ${command.label}`;
+}
+function warCouncilCommandHtml(command,council,analysis){
+ const selected=council.selected===command.key;
+ const recommended=analysis.recommended.includes(command.key);
+ const locked=state.inWave||council.locked;
+ return `<button type="button" class="warCommand${selected?" selected":""}${recommended?" recommended":""}" data-war-command="${command.key}" ${locked?"disabled":""}>
+  <span class="warCommandIcon">${command.icon}</span><span class="warCommandText"><b>${command.label}</b><small class="warBenefit">${command.benefit}</small><small class="warDrawback">${command.drawback}</small><em>${command.use}</em></span>${recommended?'<span class="warRecommended">EMPFOHLEN</span>':""}${selected?'<span class="warSelected">GEWÄHLT</span>':""}
+ </button>`;
+}
+function renderWarCouncilPanel(){
+ const panel=document.getElementById("warCouncilPanel");if(!panel)return;
+ const council=warCouncilState(),analysis=getWarCouncilAnalysis(state),command=getWarCouncilCommand(state.inWave?council.active:council.selected);
+ document.getElementById("warCouncilWave").textContent=`Welle ${state.wave} · ${analysis.waveType.icon} ${analysis.waveType.label}`;
+ document.getElementById("warCouncilEnemySummary").textContent=analysis.enemies;
+ document.getElementById("warCouncilFront").textContent=analysis.front;
+ document.getElementById("warCouncilRecommendation").textContent=`Empfehlung: ${analysis.recommendationText}`;
+ document.getElementById("warCouncilCommandGrid").innerHTML=Object.values(WAR_COUNCIL_COMMANDS).map(item=>warCouncilCommandHtml(item,council,analysis)).join("");
+ const status=document.getElementById("warCouncilStatus");
+ status.textContent=state.inWave||council.locked?`${command.icon} ${command.label} ist für diese Welle festgelegt.`:`${command.icon} Gewählt: ${command.label}. Die Auswahl kann bis zum Angriff geändert werden.`;
+ status.classList.toggle("locked",state.inWave||council.locked);
+}
+function openWarCouncilPanel(){
+ const panel=document.getElementById("warCouncilPanel");if(!panel||gameOver)return;
+ ensureCurrentSiege();warCouncilResumeAfterClose=!paused&&!gameOver;paused=true;state.supportTimer=0;
+ renderWarCouncilPanel();panel.classList.remove("hidden");panel.style.display="grid";panel.style.visibility="visible";panel.style.pointerEvents="auto";updateWarCouncilHud();
+}
+function closeWarCouncilPanel(resume=true){
+ const panel=document.getElementById("warCouncilPanel");if(panel){panel.classList.add("hidden");panel.style.display="none";panel.style.visibility="hidden";panel.style.pointerEvents="none"}
+ if(resume&&warCouncilResumeAfterClose&&!gameOver){paused=false;last=performance.now()}
+ warCouncilResumeAfterClose=false;updateWarCouncilHud();
+}
+function chooseWarCouncilCommand(key){
+ if(!selectWarCouncilCommand(state,key)){showToast("Der Festungsbefehl ist für diese Welle bereits festgelegt");return}
+ const command=getWarCouncilCommand(key);renderWarCouncilPanel();updateWarCouncilHud();showToast(`${command.icon} ${command.label} für Welle ${state.wave} gewählt`);saveGame(true);
+}
+
 function updateUI(){
- return renderGameUI({
+ const result=renderGameUI({
   state,ui,BUILD,WALL_SEGMENTS,MIDDLE_WALL_SEGMENT_COUNT,MIDDLE_GATE_COUNT,OUTER_WALL_SEGMENT_COUNT,OUTER_GATE_COUNT,selected,buildMode,paused,gameOver,
   builtMiddleWallSegments:()=>getBuiltMiddleWallSegmentCount(state),
   builtMiddleGates:()=>getBuiltMiddleGateCount(state),
@@ -802,19 +877,22 @@ function updateUI(){
   globalResearchIncreaseRate,marketLossPercent,buildingUpgradePreview,
   getBuildingUpgradeCost,getBuildingMaxLevel,hasBuildingUpgradeEffect,HERO_OFFERING_TARGET
  });
+ updateWarCouncilHud();
+ return result;
 }
 
 function buildRequirement(key){return getBuildRequirement(state,key)}
 
 function isPanelVisible(id){const el=document.getElementById(id);return !!(el&&!el.classList.contains("hidden"));}
 function isBlockingPanelOpen(){
- return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision"].some(isPanelVisible);
+ return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision"].some(isPanelVisible);
 }
 function closeTopBlockingPanel(){
  if(isPanelVisible("testResourcePanel")){closeTestResourcePanel();return "Testfenster geschlossen"}
  if(isPanelVisible("enemyInfoOverlay")){closeEnemyInfo(true);return "Fenster geschlossen"}
  if(isPanelVisible("marketPanel")){closeMarketPanel();return "Fenster geschlossen"}
  if(isPanelVisible("statueOfferingPanel")){closeStatueOfferingPanel(true);return "Opfergaben geschlossen"}
+ if(isPanelVisible("warCouncilPanel")){closeWarCouncilPanel(true);return "Kriegsrat geschlossen"}
  if(isPanelVisible("workshopPanel")){closeWorkshopPanel(true);return "Fenster geschlossen"}
  if(isPanelVisible("statsScreen")){closeStats();return "Fenster geschlossen"}
  if(isPanelVisible("pauseMenu")){hidePauseMenu(true);return "Pause geschlossen"}
@@ -824,7 +902,7 @@ function closeTopBlockingPanel(){
 }
 function closeAllBlockingPanels(){
  hideRepairDecision();
- ["statsScreen","workshopPanel","marketPanel","statueOfferingPanel","enemyInfoOverlay","pauseMenu"].forEach(id=>{
+ ["statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","enemyInfoOverlay","pauseMenu"].forEach(id=>{
   const el=document.getElementById(id);
   if(el&&el.classList.contains("hidden")){el.style.display="none";el.style.pointerEvents="none";el.style.visibility="hidden"}
  });
@@ -854,16 +932,19 @@ function cycleUnitZone(unit){
 }
 
 function siegeContext(){return {getWaveEnemyCount,getBaseWaveEnemyCount,selectWaveEnemyType}}
-function ensureCurrentSiege(){return ensureSiegePhase(state,siegeContext())}
+function ensureCurrentSiege(){ensureWarCouncilState(state);return ensureSiegePhase(state,siegeContext())}
 function startWave(){
  ensureCurrentSiege();
+ const command=activateWarCouncilCommand(state);
  const release=beginSiegeAttack(state,{
   gameOver,assignCraftsmen,hideRepairDecision,showToast,
   setPaused:value=>{paused=value},
   setBuildMode:value=>{buildMode=value},
   setSelected:value=>{selected=value}
  });
- if(!release)return false;
+ if(!release){state.warCouncil.locked=false;state.warCouncil.active="none";return false}
+ closeWarCouncilPanel(false);
+ if(command.key!=="none")showToast(`${command.icon} ${command.label} ist für Welle ${state.wave} aktiv`);
  return true;
 }
 function spawnEnemy(forcedType=null,spawnPoint=null,approachGateIndex=null,modifiers=null){
@@ -1118,7 +1199,7 @@ function burst(x,y,color,n){for(let i=0;i<n;i++){const a=Math.random()*TAU,s=20+
 
 
 function supportProductionPerSecond(building){
- return getSupportProductionPerSecond(building,buildingHasWorker);
+ return getSupportProductionPerSecond(building,buildingHasWorker)*activeWaveModifier("production",1);
 }
 function supportProductionAtLevel(building,level){
  return getSupportProductionPerSecond({...building,level},()=>true);
@@ -1161,12 +1242,12 @@ function buildingUpgradePreview(building){
  return null;
 }
 function totalGoldPerSecond(){
- return getTotalGoldPerSecond(state,{syncResidents,residentCapacityForHouse,buildingHasWorker});
+ return getTotalGoldPerSecond(state,{syncResidents,residentCapacityForHouse,buildingHasWorker})*activeWaveModifier("production",1);
 }
-function marketLossPercent(building){return getMarketLossPercent(building)}
-function marketOutput(amount,building){return getMarketOutput(amount,building)}
+function marketLossPercent(building){return Math.max(5,getMarketLossPercent(building)+activeWaveModifier("marketLossDelta",0))}
+function marketOutput(amount,building){return Math.floor(amount*(1-marketLossPercent(building)/100))}
 function runSupportTick(){
- return runEconomySupportTick(state,{paused,gameOver,syncResidents,residentCapacityForHouse,buildingHasWorker});
+ return runEconomySupportTick(state,{paused,gameOver,syncResidents,residentCapacityForHouse,buildingHasWorker,productionMultiplier:activeWaveModifier("production",1)});
 }
 function repairTargetInfo(target){
  if(!target)throw new Error("Ungültiges Reparaturziel");
@@ -1292,10 +1373,10 @@ function update(dt){
  for(const b of state.buildings){
   if(!isTowerOperational(b))continue;
   b.cooldown-=dt;
-  const e=findTowerTarget(state.enemies,b,b.range);
+  const e=findTowerTarget(state.enemies,b,effectiveTowerRange(b));
   if(e&&b.cooldown<=0){
-   b.cooldown=b.rate;
-   let damage=b.damage*bonus;
+   b.cooldown=b.rate*activeWaveModifier("towerCooldown",1);
+   let damage=b.damage*bonus*activeWaveModifier("towerDamage",1);
    let effects=null;
    if(b.key==="archer"&&(e.type==="raider"||e.type==="runner"))damage*=1.35;
    if(b.key==="crossbow")effects={armorPenetration:.5};
@@ -1365,7 +1446,7 @@ function update(dt){
    const t=u.autoTarget;
    if(t){
     const distance=Math.hypot(t.x-u.x,t.y-u.y);
-    if(distance<=u.range){
+    if(distance<=effectiveUnitRange(u)){
      if(u.attackCd<=0){u.attackAngle=Math.atan2(t.y-u.y,t.x-u.x);u.attackCd=u.rate;shoot(u,t,u.damage*unitDamageMultiplier(u,t)*bonus,480,0,"#bfe0ff")}
     }else{
      const dx=t.x-u.x,dy=t.y-u.y,d=Math.max(1,distance);
@@ -1383,7 +1464,7 @@ function update(dt){
    }
   }else{
    u.autoTarget=null;
-   const e=nearestEnemy(u.x,u.y,u.range);
+   const e=nearestEnemy(u.x,u.y,effectiveUnitRange(u));
    if(e){
     if(u.attackCd<=0){u.attackAngle=Math.atan2(e.y-u.y,e.x-u.x);u.attackCd=u.rate;shoot(u,e,u.damage*unitDamageMultiplier(u,e)*bonus,480,0,"#bfe0ff")}
    }else{
@@ -1448,7 +1529,7 @@ function update(dt){
       const assault=assaultFormationPoint(e,outerGate.angle,targetR,`og:${outerGate.i}`,6);
       const d=moveEnemyToward(e,assault.x,assault.y,dt);
       if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const gateDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.35);
-       outerGate.hp=Math.max(0,outerGate.hp-gateDamage);burst(baseX,baseY,"#775039",6);if(outerGate.hp<=0)showToast(`Das ${outerGate.name} wurde durchbrochen!`)}
+       outerGate.hp=Math.max(0,outerGate.hp-gateDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#775039",6);if(outerGate.hp<=0)showToast(`Das ${outerGate.name} wurde durchbrochen!`)}
      }
     }
    }else{
@@ -1463,7 +1544,7 @@ function update(dt){
      const assault=assaultFormationPoint(e,wallAngle,targetR,`ow:${wi}`,4);
      const d=moveEnemyToward(e,assault.x,assault.y,dt);
      if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const wallDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.25);
-      wall.hp=Math.max(0,wall.hp-wallDamage);burst(baseX,baseY,"#8a5d3c",5);if(wall.hp<=0)showToast(`Bresche in äußerer Palisade: ${wall.name||getOuterWallSegmentName(wi,state.outerWalls.length)}!`)}
+      wall.hp=Math.max(0,wall.hp-wallDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#8a5d3c",5);if(wall.hp<=0)showToast(`Bresche in äußerer Palisade: ${wall.name||getOuterWallSegmentName(wi,state.outerWalls.length)}!`)}
     }
    }
   }else if(e.phase==="outside"){
@@ -1482,7 +1563,7 @@ function update(dt){
       const assault=assaultFormationPoint(e,gate.angle,targetR,`mg:${gate.i}`,6);
       const d=moveEnemyToward(e,assault.x,assault.y,dt);
       if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const gateDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.35);
-       gate.hp=Math.max(0,gate.hp-gateDamage);burst(baseX,baseY,"#8c5734",6);if(gate.hp<=0)showToast(`Das ${gate.name} wurde durchbrochen!`)}
+       gate.hp=Math.max(0,gate.hp-gateDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#8c5734",6);if(gate.hp<=0)showToast(`Das ${gate.name} wurde durchbrochen!`)}
      }
     }
    }else{
@@ -1494,7 +1575,7 @@ function update(dt){
      const assault=assaultFormationPoint(e,wallAngle,targetR,`mw:${wi}`,4);
      const d=moveEnemyToward(e,assault.x,assault.y,dt);
      if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const wallDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.25);
-      wall.hp=Math.max(0,wall.hp-wallDamage);burst(baseX,baseY,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in mittlerer Palisade: ${wall.name||getMiddleWallSegmentName(wi,state.walls.length)}!`)}
+      wall.hp=Math.max(0,wall.hp-wallDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in mittlerer Palisade: ${wall.name||getMiddleWallSegmentName(wi,state.walls.length)}!`)}
     }
    }
   }else if(e.phase==="inside"){
@@ -1527,7 +1608,7 @@ function update(dt){
     if(d<5&&assault.canAttack&&e.attackCd<=0){
      e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;
      const wallDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.3);
-     innerWall.hp=Math.max(0,innerWall.hp-wallDamage);
+     innerWall.hp=Math.max(0,innerWall.hp-wallDamage*fortificationDamageMultiplier());
      const tx=CX+Math.cos(innerWall.am)*targetR,ty=CY+Math.sin(innerWall.am)*targetR;
      burst(tx,ty,"#9b8b70",5);
      if(innerWall.hp<=0)showToast(`Bresche im inneren Mauerring: ${innerWall.name}!`);
@@ -1588,14 +1669,16 @@ function update(dt){
  if(state.inWave&&state.toSpawn===0&&state.enemies.length===0){
   state.inWave=false;state.supportTimer=0;paused=false;last=performance.now();const completedWave=state.wave,gold=30+completedWave*5,rp=Math.min(9,2+Math.ceil(completedWave/4)+(completedWave%8===0?2:0));state.gold+=gold;state.researchPoints=(state.researchPoints||0)+rp;
   const waveHero=getAndreas();if(waveHero)waveHero.heroAbilityTime=0;
+  const completedCommand=warCouncilActiveCommand();
   const autoRepaired=applyAutomaticWaveRepair();
   state.wave++;
+  resetWarCouncilForWave(state,state.wave);
   state.repairActive=false;
   state.spawnQueue=[];
   prepareSiegePhase(state,siegeContext());
   const nextWaveType=getWaveTypeInfo(state.wave,state.siege?.waveType);
   for(const c of state.craftsmen)sendCraftsmanHome(c);
-  showToast(`Welle geschafft: +${gold} Gold · +${rp} Forschung${autoRepaired>0?` · +${Math.round(autoRepaired)} HP automatisch repariert`:""} · ${nextWaveType.icon} ${nextWaveType.label}`);hideRepairDecision();saveGame(true);
+  showToast(`Welle geschafft: +${gold} Gold · +${rp} Forschung${autoRepaired>0?` · +${Math.round(autoRepaired)} HP automatisch repariert`:completedCommand.key==="stockpile"?" · keine Autoreparatur":""} · ${nextWaveType.icon} ${nextWaveType.label}`);hideRepairDecision();saveGame(true);
  }
  for(const p of state.particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96}
  state.particles=state.particles.filter(p=>p.life>0);
@@ -1775,7 +1858,7 @@ function showEndScreen(){
 }
 function hideEndScreen(){const screen=document.getElementById("endScreen");if(screen){screen.classList.add("hidden");screen.style.pointerEvents="none"}}
 function reset(){
- state.gold=210;state.wood=105;state.stone=0;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.nextEnemyId=0;state.heroOffering=0;state.heroSummoned=false;state.heroFallen=false;
+ state.gold=210;state.wood=105;state.stone=0;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.nextEnemyId=0;state.heroOffering=0;state.heroSummoned=false;state.heroFallen=false;state.warCouncil=createWarCouncilState(1);
  state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeOuterWallSegments(state.outerWalls,{built:false});initializeOuterGates(state.outerGates,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
  selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();showToast("Neue Belagerung beginnt");
 }
@@ -1791,6 +1874,9 @@ renderBestiary();refreshSaveStatus();
 window.setInterval(()=>saveGame(true),AUTOSAVE_INTERVAL_MS);
 document.getElementById("marketTradeBtn").addEventListener("click",openMarketPanel);
 document.getElementById("statueOfferingBtn").addEventListener("click",openStatueOfferingPanel);
+ui.warCouncilBtn.addEventListener("click",openWarCouncilPanel);
+document.getElementById("warCouncilCloseBtn").addEventListener("click",()=>closeWarCouncilPanel(true));
+document.getElementById("warCouncilPanel").addEventListener("click",e=>{const command=e.target.closest("[data-war-command]");if(command){e.preventDefault();chooseWarCouncilCommand(command.dataset.warCommand);return}if(e.target.id==="warCouncilPanel")closeWarCouncilPanel(true)});
 document.getElementById("marketCloseBtn").addEventListener("click",closeMarketPanel);
 document.getElementById("marketTradeGrid").addEventListener("click",e=>{const b=e.target.closest("[data-trade]");if(b)executeMarketTrade(b.dataset.trade,Number(b.dataset.amount))});
 

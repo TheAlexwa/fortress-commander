@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.15.46 – Gegnerfähigkeiten & Kampfinfos</title>
+<title>Fortress Commander v1.15.47 – Kriegsrat vor der Welle</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,7 +20,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Spiel starten">Spiel starten</button>
-  <div id="gameVersionBadge">v1.15.46</div>
+  <div id="gameVersionBadge">v1.15.47</div>
   <div id="developmentNotice"><strong>🏗 Festungsumbau in Entwicklung</strong><span>Mauertürme stehen jetzt bereits auf Holzpalisaden. Der mittlere Ring bietet acht, der äußere Ring zwölf feste Turmplätze.</span></div>
  </div>
 </div>
@@ -101,6 +101,21 @@
 
 
   <details class="guideSection">
+   <summary>🗺️ Kriegsrat & Festungsbefehle</summary>
+   <div class="guideBody">
+    <p>Während der Belagerungsphase zeigt der Kriegsrat Wellentyp, Hauptgegner und gefährlichste Front. Genau ein Befehl kann bis zum Angriffsbeginn gewählt oder geändert werden.</p>
+    <div class="guideGrid">
+     <article class="guideCard"><h3>🛡️ Mauern verstärken</h3><p>Mauern und Tore erleiden 25 % weniger Schaden, Reparaturholz sinkt um 20 %. Dafür produziert die Wirtschaft 20 % weniger.</p></article>
+     <article class="guideCard"><h3>⚔️ Kampfbereitschaft</h3><p>Einheiten verursachen 15 % mehr Schaden, bewegen sich 10 % schneller und Türme laden schneller. Produktion −20 %.</p></article>
+     <article class="guideCard"><h3>📦 Vorräte anhäufen</h3><p>Produktion +35 % und bessere Marktrate. Dafür entfällt nach der Welle die automatische Festungsreparatur.</p></article>
+     <article class="guideCard"><h3>🔨 Reparaturbereitschaft</h3><p>Handwerker reparieren 30 % mehr und benötigen 15 % weniger Holz. Einheitenschaden −10 %.</p></article>
+     <article class="guideCard"><h3>🏹 Fernkampfvorbereitung</h3><p>Türme und Bogenschützen erhalten 15 % Reichweite und 10 % Schaden. Burgwachen verlieren 10 Prozentpunkte Rüstung.</p></article>
+     <article class="guideCard"><h3>⚪ Kein Sonderbefehl</h3><p>Keine Vorteile und keine Nachteile. Sinnvoll bei frühen oder ausgewogenen Wellen.</p></article>
+    </div>
+   </div>
+  </details>
+
+  <details class="guideSection">
    <summary>🧠 Gegnerfähigkeiten & taktische Konter</summary>
    <div class="guideBody">
     <div class="guideTip"><b>ⓘ Direktinfo:</b> In der Turm- und Einheitenauswahl öffnet das kleine Informationssymbol eine kompakte Übersicht mit Rolle, Stärken, Schwächen und empfohlenen Gegnerkontern.</div>
@@ -144,6 +159,7 @@
 <div id="gameWrap">
  <canvas id="game"></canvas>
  <div id="siegePhaseNotice" class="siegePhaseNotice hidden" role="status" aria-live="polite"><strong id="siegePhaseTitle">⛺ Belagerungsphase</strong><span id="siegePhaseText">Die nächste Armee sammelt sich in den Außenlagern.</span></div>
+ <button id="warCouncilBtn" class="warCouncilBtn" type="button" aria-label="Kriegsrat öffnen"><span id="warCouncilIcon">⚪</span><strong id="warCouncilLabel">Kriegsrat</strong></button>
  <button id="resourceOverviewBtn" type="button" aria-label="Rohstoffübersicht öffnen">
   <span class="resourceCompact"><span>🪙</span><strong id="gold">0</strong></span>
   <span class="resourceDivider"></span>
@@ -233,7 +249,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.15.46 · Gegner besitzen jetzt eigene Fähigkeiten; ⓘ-Kampfinfos erklären Konter direkt an Türmen und Einheiten.</div>
+  <div class="workshopFoot">v1.15.47 · Der Kriegsrat verbindet Wellenanalyse mit Festungsbefehlen, Vorteilen und taktischen Nachteilen.</div>
  </section>
 </div>
 
@@ -310,6 +326,17 @@
  <div class="heroSummonPortrait"><img src="assets/ui/andreas-portrait.webp" alt="Andreas, der große Held"></div>
  <strong>Andreas, der große Held,</strong>
  <span>wurde beschworen, um für die Festung zu kämpfen!</span>
+</div>
+
+<div id="warCouncilPanel" class="hidden" aria-label="Kriegsrat vor der Welle">
+ <section class="warCouncilCard" role="dialog" aria-modal="true" aria-labelledby="warCouncilTitle">
+  <button id="warCouncilCloseBtn" class="warCouncilClose" type="button" aria-label="Kriegsrat schließen">✕</button>
+  <div class="warCouncilHead"><span>🗺️</span><div><small>TAKTISCHE VORBEREITUNG</small><h2 id="warCouncilTitle">Kriegsrat</h2><p>Wähle genau einen Festungsbefehl. Vorteile und Nachteile gelten nur für die kommende Welle.</p></div></div>
+  <div class="warCouncilIntel"><article><span>NÄCHSTE WELLE</span><b id="warCouncilWave">Welle</b></article><article><span>HAUPTGEGNER</span><b id="warCouncilEnemySummary">Aufklärung läuft</b></article><article><span>GEFÄHRLICHSTE FRONT</span><b id="warCouncilFront">Unbekannt</b></article></div>
+  <div id="warCouncilRecommendation" class="warCouncilRecommendation">Empfehlung wird berechnet.</div>
+  <div id="warCouncilCommandGrid" class="warCouncilCommandGrid"></div>
+  <div id="warCouncilStatus" class="warCouncilStatus">Noch kein Sonderbefehl gewählt.</div>
+ </section>
 </div>
 
 <div id="pauseMenu" class="hidden" aria-label="Pause-Menü">

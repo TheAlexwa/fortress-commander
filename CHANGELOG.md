@@ -1,3 +1,13 @@
+## v1.15.47 – Kriegsrat vor der Welle
+
+- Vor jeder Welle kann im neuen Kriegsrat genau ein Festungsbefehl gewählt werden.
+- Wellentyp, Hauptgegner, gefährlichste Front und passende Empfehlungen werden angezeigt.
+- Mauern verstärken, Kampfbereitschaft, Vorräte, Reparaturbereitschaft, Fernkampfvorbereitung und ein neutraler Modus besitzen echte Vor- und Nachteile.
+- Wirkungen greifen in Produktion, Markt, Reparaturen, Mauerschaden, Türme und Einheiten ein.
+- Die Auswahl ist bis zum Angriff veränderbar, wird danach gesperrt und mit dem Spielstand gespeichert.
+- Anleitung und HUD wurden um den Kriegsrat ergänzt.
+- Versionsangaben im Spiel wurden auf v1.15.47 aktualisiert.
+
 ## v1.15.46 – Gegnerfähigkeiten & Kampfinfos
 
 - Alle sechs Gegnerklassen besitzen jetzt eine eigene aktive oder passive Fähigkeit.

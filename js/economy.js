@@ -70,6 +70,7 @@ export function runEconomySupportTick(
     syncResidents,
     residentCapacityForHouse,
     buildingHasWorker,
+    productionMultiplier = 1,
   }
 ) {
   if (!state.inWave || paused || gameOver) return;
@@ -92,11 +93,12 @@ export function runEconomySupportTick(
     }
   }
 
-  state.wood += woodGain;
-  state.stone += stoneGain;
+  const multiplier = Math.max(0, Number(productionMultiplier) || 0);
+  state.wood += woodGain * multiplier;
+  state.stone += stoneGain * multiplier;
   state.gold += getTotalGoldPerSecond(state, {
     syncResidents,
     residentCapacityForHouse,
     buildingHasWorker,
-  });
+  }) * multiplier;
 }
