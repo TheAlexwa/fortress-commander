@@ -1075,29 +1075,53 @@ function drawEnemySprite(enemy, now){
  const visualScale=Number.isFinite(enemy.visualScale)?enemy.visualScale:fallbackScale;
  const isSpecial=visualClass==="special",isBoss=visualClass==="boss";
  const r=enemy.radius;
- const stride=Math.sin(now+(enemy.animSeed||0))*1.5;
- const bob=stride*.25;
  const {width,height,offsetY=0}=sprite.def;
  const drawW=width*visualScale;
  const drawH=height*visualScale;
- const shadowW=Math.max(r*1.8,drawW*.52);
- const shadowH=Math.max(r*.72,drawH*.16);
+
+ const lastT=enemy._animLastTime||now,dt=Math.max(.001,Math.min(.08,now-lastT));
+ const lastX=Number.isFinite(enemy._animLastX)?enemy._animLastX:enemy.x;
+ const lastY=Number.isFinite(enemy._animLastY)?enemy._animLastY:enemy.y;
+ const moveDx=enemy.x-lastX,moveDy=enemy.y-lastY;
+ const moveSpeed=Math.hypot(moveDx,moveDy)/dt;
+ const moving=moveSpeed>4;
+ const idlePulse=Math.sin(now*3.1+(enemy.animSeed||0));
+ enemy._walkPhase=(enemy._walkPhase||0)+(moving?dt*(7+Math.min(9,moveSpeed*.06)):dt*1.4);
+ const step=Math.sin(enemy._walkPhase||0);
+ const stepLift=Math.abs(step);
+ const bob=(moving?stepLift*3.0:Math.abs(idlePulse)*0.7)+(isBoss?.4:0);
+ const sway=(moving?Math.cos((enemy._walkPhase||0)*.5)*1.8:idlePulse*.35);
+ if(moving)enemy._facing=Math.atan2(moveDy,moveDx);
+ const facing=Number.isFinite(enemy._facing)?enemy._facing:-Math.PI/2;
+ const facingX=Math.cos(facing),facingY=Math.sin(facing);
+ const attackAnim=Math.max(0,Math.min(1,(enemy.attackAnim||0)/.22));
+ const attackEase=attackAnim>0?1-Math.pow(1-attackAnim,2):0;
+ const lungeX=facingX*4.5*attackEase;
+ const lungeY=facingY*2.8*attackEase;
+ const tilt=(moving?step*.045:idlePulse*.012)+(moving?Math.sin(facing)*.015:0)-attackEase*.035;
+ const shadowW=Math.max(r*1.55,drawW*.38)*(moving?(1-stepLift*.06):(1-idlePulse*.015));
+ const shadowH=Math.max(r*.42,drawH*.09)*(moving?(1-stepLift*.1):(1-idlePulse*.02));
+ const shadowY=6+(moving?stepLift*.8:0)+attackEase*.4;
 
  ctx.save();
  ctx.translate(enemy.x,enemy.y);
  ctx.fillStyle="#05060788";
- ctx.beginPath();ctx.ellipse(4,12,shadowW,shadowH,0,0,TAU);ctx.fill();
+ ctx.beginPath();ctx.ellipse(lungeX*.18,shadowY,shadowW,shadowH,0,0,TAU);ctx.fill();
  if(isBoss||isSpecial){
   ctx.globalAlpha=isBoss?.22:.14;
   ctx.fillStyle=isBoss?"#ce9540":"#8ea7ba";
-  ctx.beginPath();ctx.arc(0,-drawH*.22,Math.max(drawW,drawH)*(.48+Math.sin(now+(enemy.animSeed||0))*.01),0,TAU);ctx.fill();
+  ctx.beginPath();ctx.arc(0,-drawH*.19,Math.max(drawW,drawH)*(.44+Math.sin(now*2.1+(enemy.animSeed||0))*.01),0,TAU);ctx.fill();
   ctx.globalAlpha=1;
  }
- ctx.drawImage(sprite.image,-drawW/2,-drawH+offsetY+bob,drawW,drawH);
+ ctx.save();
+ ctx.translate(sway+lungeX,-bob+lungeY);
+ ctx.rotate(tilt);
+ ctx.drawImage(sprite.image,-drawW/2,-drawH+offsetY,drawW,drawH);
+ ctx.restore();
  const barHeight=isBoss?10:isSpecial?8:7;
  const barGap=isBoss?22:isSpecial?20:18;
  const bw=Math.max(isBoss?54:isSpecial?44:36,drawW*.9);
- const barY=-drawH-barGap+8;
+ const barY=-drawH-barGap+8-bob;
  ctx.fillStyle="#160b0b";ctx.fillRect(-bw/2,barY,bw,barHeight);
  const hp=Math.max(0,Math.min(1,enemy.hp/enemy.maxHp));
  ctx.fillStyle=hp>.5?"#6ac265":hp>.25?"#d4a541":"#d14945";
@@ -1109,11 +1133,12 @@ function drawEnemySprite(enemy, now){
   ctx.fillText(enemy.name||"Eisenclan",0,barY-5);
  }
  ctx.restore();
+ enemy._animLastTime=now;enemy._animLastX=enemy.x;enemy._animLastY=enemy.y;
  return true;
 }
 
 function drawEnemies(){
- const now=performance.now()*.006;
+ const now=performance.now()*.001;
  for(const e of state.enemies){
   if(drawEnemySprite(e,now))continue;
   ctx.save();

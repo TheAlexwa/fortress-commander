@@ -1,3 +1,10 @@
+## v1.15.34 – Gegneranimationen verbessert
+
+- Gegner-Sprites nutzen jetzt eine deutlich lebendigere Laufanimation mit Schrittbewegung, Wippen und leichter Körperrotation.
+- Die Schatten wurden näher an die Einheit gesetzt und an die Bewegung gekoppelt, damit Gegner nicht mehr schwebend wirken.
+- Beim Angreifen wird nun ein kurzer Bewegungsimpuls ausgelöst, damit Treffer visuell klarer lesbar sind.
+- Versionsangaben im Spiel wurden auf v1.15.34 aktualisiert.
+
 # Fortress Commander – Changelog
 
 ## v1.15.33 – Gegnergrafiken

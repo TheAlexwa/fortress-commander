@@ -139,8 +139,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.33";
-const GAME_RELEASE_NAME="Gegnergrafiken";
+const GAME_VERSION="1.15.34";
+const GAME_RELEASE_NAME="Gegneranimationen verbessert";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
@@ -1034,7 +1034,9 @@ function update(dt){
  state.projectiles=state.projectiles.filter(p=>!p.dead);
 
  for(const e of state.enemies){
-  e.attackCd-=dt;const dx=CX-e.x,dy=CY-e.y,dCenter=Math.max(1,Math.hypot(dx,dy));
+  e.attackCd-=dt;
+  if(e.attackAnim>0)e.attackAnim=Math.max(0,e.attackAnim-dt);
+  const dx=CX-e.x,dy=CY-e.y,dCenter=Math.max(1,Math.hypot(dx,dy));
   if(e.phase==="outer"){
    const outerGate=Number.isInteger(e.approachGateIndex)
     ?state.outerGates[e.approachGateIndex]||null
@@ -1048,7 +1050,7 @@ function update(dt){
      if(d<5)e.phase="outside";
      else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
     }else if(d<5){
-     if(e.attackCd<=0){e.attackCd=e.attackRate;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
+     if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
       outerGate.hp=Math.max(0,outerGate.hp-gateDamage);burst(tx,ty,"#775039",6);if(outerGate.hp<=0)showToast(`Das ${outerGate.name} wurde durchbrochen!`)}
     }else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
    }else{
@@ -1061,7 +1063,7 @@ function update(dt){
      if(d<5)e.phase="outside";
      else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
     }else if(d<5){
-     if(e.attackCd<=0){e.attackCd=e.attackRate;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
+     if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
       wall.hp=Math.max(0,wall.hp-wallDamage);burst(tx,ty,"#8a5d3c",5);if(wall.hp<=0)showToast(`Bresche in äußerer Palisade: ${wall.name||getOuterWallSegmentName(wi,state.outerWalls.length)}!`)}
     }else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
    }
@@ -1077,7 +1079,7 @@ function update(dt){
     if(!gate.built||gate.hp<=0){
      if(d<5)e.phase="inside";
      else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
-    }else if(d<5){if(e.attackCd<=0){e.attackCd=e.attackRate;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
+    }else if(d<5){if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const gateDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.35);
      gate.hp=Math.max(0,gate.hp-gateDamage);burst(tx,ty,"#8c5734",6);if(gate.hp<=0)showToast(`Das ${gate.name} wurde durchbrochen!`)}}
     else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
    }else{
@@ -1085,7 +1087,7 @@ function update(dt){
     const tx=CX+(e.x-CX)/dCenter*targetR,ty=CY+(e.y-CY)/dCenter*targetR;
     const d=Math.hypot(tx-e.x,ty-e.y);
     if(!wall.built||wall.hp<=0){e.phase="inside"}
-    else if(d<5){if(e.attackCd<=0){e.attackCd=e.attackRate;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
+    else if(d<5){if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.25);
      wall.hp=Math.max(0,wall.hp-wallDamage);burst(tx,ty,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in mittlerer Palisade: ${wall.name||getMiddleWallSegmentName(wi,state.walls.length)}!`)}}
     else{e.x+=(tx-e.x)/Math.max(1,d)*e.speed*dt;e.y+=(ty-e.y)/Math.max(1,d)*e.speed*dt}
    }
@@ -1095,11 +1097,11 @@ function update(dt){
    const innerWall=getInnerWallSegmentForPoint(state,e.x,e.y,{CX,CY});
    e.innerWallIndex=innerWall?.i??null;
    if(blockingUnit){
-    if(e.attackCd<=0){e.attackCd=e.attackRate;blockingUnit.hp-=e.damage*.6*(1-(blockingUnit.armor||0));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
+    if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;blockingUnit.hp-=e.damage*.6*(1-(blockingUnit.armor||0));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
    }else if(tower){
     const tdx=tower.slot.x-e.x,tdy=tower.slot.y-e.y,td=Math.max(1,Math.hypot(tdx,tdy));
     if(td<38+e.radius){
-     if(e.attackCd<=0){e.attackCd=e.attackRate;tower.hp-=e.damage;burst(tower.slot.x,tower.slot.y,"#b67a45",6)}
+     if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;tower.hp-=e.damage;burst(tower.slot.x,tower.slot.y,"#b67a45",6)}
     }else{e.x+=tdx/td*e.speed*dt;e.y+=tdy/td*e.speed*dt}
    }else if(!innerWall||innerWall.hp<=0){
     e.phase="core";
@@ -1109,7 +1111,7 @@ function update(dt){
     const d=Math.hypot(tx-e.x,ty-e.y);
     if(d<5){
      if(e.attackCd<=0){
-      e.attackCd=e.attackRate;
+      e.attackCd=e.attackRate;e.attackAnim=.22;
       const wallDamage=e.damage*(["shield","berserker","boss"].includes(e.type)?1:.3);
       innerWall.hp=Math.max(0,innerWall.hp-wallDamage);
       burst(tx,ty,"#9b8b70",5);
@@ -1121,14 +1123,14 @@ function update(dt){
    const castleTower=nearestCastleTower(e);
    const blockingUnit=nearestBlockingUnit(e,62);
    if(blockingUnit){
-    if(e.attackCd<=0){e.attackCd=e.attackRate;blockingUnit.hp-=e.damage*.6*(1-(blockingUnit.armor||0));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
+    if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;blockingUnit.hp-=e.damage*.6*(1-(blockingUnit.armor||0));burst(blockingUnit.x,blockingUnit.y,"#b84640",4)}
    }else if(castleTower){
     const cdx=castleTower.slot.x-e.x,cdy=castleTower.slot.y-e.y,cd=Math.max(1,Math.hypot(cdx,cdy));
     if(cd<38+e.radius){
-     if(e.attackCd<=0){e.attackCd=e.attackRate;castleTower.hp-=e.damage;burst(castleTower.slot.x,castleTower.slot.y,"#b67a45",6)}
+     if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;castleTower.hp-=e.damage;burst(castleTower.slot.x,castleTower.slot.y,"#b67a45",6)}
     }else{e.x+=cdx/cd*e.speed*dt;e.y+=cdy/cd*e.speed*dt}
    }else if(dCenter<46){
-    if(e.attackCd<=0){e.attackCd=e.attackRate;state.hp-=e.damage;burst(CX,CY,e.color,8)}
+    if(e.attackCd<=0){e.attackCd=e.attackRate;e.attackAnim=.22;state.hp-=e.damage;burst(CX,CY,e.color,8)}
    }else{e.x+=dx/dCenter*e.speed*dt;e.y+=dy/dCenter*e.speed*dt}
   }
  }

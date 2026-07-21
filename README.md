@@ -1,3 +1,10 @@
+## v1.15.34 – Gegneranimationen verbessert
+
+- Alle Gegner-Sprites bewegen sich jetzt mit einer lebendigeren Laufanimation statt nur zu schweben.
+- Schatten wurden näher an die Füße gesetzt und reagieren subtil auf die Bewegung, damit Gegner nicht mehr fliegend wirken.
+- Beim Angriff lösen Gegner jetzt einen kurzen Vorwärtsimpuls aus, der den Treffer visuell besser unterstützt.
+- Versionsangaben im Spiel wurden auf v1.15.34 aktualisiert.
+
 ## v1.15.33 – Gegnergrafiken
 
 - Für alle sechs Gegnerklassen wurden neue comicartige Sprites integriert: Plünderer, Clanspäher, Speerjäger, Eisenschild, Blutberserker und Eisenclan-Häuptling.
