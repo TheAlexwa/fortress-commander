@@ -1,4 +1,4 @@
-## v1.16.0 – Kampagne & Endlosmodus
+## v1.17.0 – Kampagnenkarte
 
 - Die reguläre Partie besitzt jetzt ein klares Ziel: Die Festung muss 32 Wellen der Eisenclans überstehen.
 - Welle 8, 16, 24 und 32 bilden eigene Kampagnenmeilensteine mit stärkeren Häuptlingen und einmaligen Belohnungen.
@@ -9,7 +9,11 @@
 - Kampagnenstatus, Meilensteine, Endlosfortschritt und eine noch offene Siegesentscheidung werden im Spielstand gespeichert.
 - Alte Spielstände bis Welle 32 beginnen regulär in der Kampagne; ältere Spielstände oberhalb von Welle 32 werden automatisch als Endlospartie übernommen.
 - Die Anleitung erklärt Kampagne, Meilensteine, finalen Kriegsherrn und Endlosmodus.
-- Versionsangaben im Spiel wurden auf v1.16.0 aktualisiert.
+- Versionsangaben im Spiel wurden auf v1.17.0 aktualisiert.
+
+## Kampagnenkarte
+
+Nach dem Startmenü öffnet sich eine große Fantasy-Weltkarte. Die aktuelle Kampagne ist **Welt 1 – Die Grenzmark**. Vier weitere Welten sind bereits sichtbar, zeigen beim Antippen aber ausschließlich den Hinweis **„Noch im Aufbau“**. Zwischen zwei Wellen kann die laufende Festung gespeichert und zur Karte verlassen werden.
 
 ## v1.15.49 – Bonusziele pro Welle
 

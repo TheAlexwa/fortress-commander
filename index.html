@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.16.0 – Kampagne &amp; Endlosmodus</title>
+<title>Fortress Commander v1.17.0 – Kampagnenkarte</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -19,10 +19,66 @@
 <div id="startScreen" aria-label="Fortress Commander Startmenü">
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
-  <button id="playHotspot" class="menuHotspot" aria-label="Spiel starten">Spiel starten</button>
-  <div id="gameVersionBadge">v1.16.0</div>
-  <div id="developmentNotice"><strong>🏗 Festungsumbau in Entwicklung</strong><span>Mauertürme stehen jetzt bereits auf Holzpalisaden. Der mittlere Ring bietet acht, der äußere Ring zwölf feste Turmplätze.</span></div>
+  <button id="playHotspot" class="menuHotspot" aria-label="Kampagnenkarte öffnen">Spiel starten</button>
+  <div id="gameVersionBadge">v1.17.0</div>
+  <div id="developmentNotice"><strong>🗺 Die Weltkampagne beginnt</strong><span>Wähle die Grenzmark auf der neuen Kampagnenkarte. Weitere Welten sind bereits sichtbar und befinden sich im Aufbau.</span></div>
  </div>
+</div>
+
+<div id="campaignMapScreen" class="hidden" aria-label="Kampagnenkarte">
+ <section class="worldMapShell">
+  <div class="worldMapTopbar">
+   <button id="campaignMapBackBtn" type="button">← Startmenü</button>
+   <div><small>DIE WELTEN VON FORTRESS COMMANDER</small><h1>Kampagnenkarte</h1></div>
+   <button id="campaignMapInstructionsBtn" type="button">📖 Anleitung</button>
+  </div>
+  <div class="worldMapLayout">
+   <div class="fantasyWorldMap" role="group" aria-label="Wähle eine Kampagnenwelt">
+    <div class="mapCompass" aria-hidden="true"><span>N</span><i>✦</i></div>
+    <svg class="worldRouteLayer" viewBox="0 0 1000 620" aria-hidden="true" preserveAspectRatio="none">
+     <path d="M205 430 C310 410 330 315 420 292 S560 165 650 165"/>
+     <path d="M420 292 C520 330 565 430 660 438"/>
+     <path d="M660 438 C755 410 770 300 835 280"/>
+    </svg>
+    <div class="mapRange mapRangeWest" aria-hidden="true"></div>
+    <div class="mapRange mapRangeNorth" aria-hidden="true"></div>
+    <div class="mapForest mapForestOne" aria-hidden="true">♠ ♣ ♠ ♣</div>
+    <div class="mapForest mapForestTwo" aria-hidden="true">♣ ♠ ♣</div>
+    <div class="mapRiver" aria-hidden="true"></div>
+    <button class="worldNode worldPlayable" type="button" data-world-id="borderlands" style="--world-x:20%;--world-y:69%">
+     <span class="worldNodeMarker">🏰</span><b>1</b><small>Grenzmark</small>
+    </button>
+    <button class="worldNode worldConstruction" type="button" data-world-id="mistwood" style="--world-x:42%;--world-y:46%">
+     <span class="worldNodeMarker">🌲</span><b>2</b><small>Nebelwald</small><em>IM AUFBAU</em>
+    </button>
+    <button class="worldNode worldConstruction" type="button" data-world-id="frozen-pass" style="--world-x:65%;--world-y:22%">
+     <span class="worldNodeMarker">❄️</span><b>3</b><small>Eispass</small><em>IM AUFBAU</em>
+    </button>
+    <button class="worldNode worldConstruction" type="button" data-world-id="scorched-plains" style="--world-x:66%;--world-y:70%">
+     <span class="worldNodeMarker">🔥</span><b>4</b><small>Brandland</small><em>IM AUFBAU</em>
+    </button>
+    <button class="worldNode worldConstruction" type="button" data-world-id="ironclan-heart" style="--world-x:85%;--world-y:45%">
+     <span class="worldNodeMarker">🌋</span><b>5</b><small>Eisenclan</small><em>IM AUFBAU</em>
+    </button>
+   </div>
+   <aside id="worldInfoPanel" class="worldInfoPanel" aria-live="polite">
+    <div class="worldInfoStatus" id="worldInfoStatus">SPIELBAR</div>
+    <div class="worldInfoTitle"><span id="worldInfoIcon">🏰</span><div><small id="worldInfoSubtitle">Welt 1</small><h2 id="worldInfoName">Die Grenzmark</h2></div></div>
+    <p id="worldInfoDescription">Die erste Kampagnenwelt.</p>
+    <div id="worldInfoFeature" class="worldInfoFeature">Ausgewogene Angriffe</div>
+    <div id="worldProgressBlock" class="worldProgressBlock">
+     <div><span>Fortschritt</span><b id="worldProgressText">0 / 32 Wellen</b></div>
+     <div class="worldProgressTrack"><span id="worldProgressFill"></span></div>
+     <div class="worldInfoStats"><span>👑 <b id="worldBossCount">0 / 4</b> Bosse</span><span id="worldSaveInfo">Kein Spielstand</span></div>
+    </div>
+    <div id="worldConstructionNotice" class="worldConstructionNotice hidden"><strong>🏗 Noch im Aufbau</strong><span>Diese Welt ist bereits auf der Karte sichtbar, wird aber erst in einem späteren Update spielbar.</span></div>
+    <div class="worldInfoActions">
+     <button id="worldPrimaryBtn" class="primary" type="button">▶ Welt betreten</button>
+     <button id="worldNewGameBtn" type="button">🔄 Neu beginnen</button>
+    </div>
+   </aside>
+  </div>
+ </section>
 </div>
 
 <div id="instructionsScreen" class="hidden" aria-label="Anleitung">
@@ -64,6 +120,18 @@
    </div><p>Einheiten erhalten Erfahrung. Bei einem Stufenaufstieg wählst du Verbesserungen wie Schaden, Leben, Tempo, Angriffstakt oder Reichweite. Auf EXP-Stufe 3 wird zusätzlich genau ein dauerhafter Veteranenpfad freigeschaltet.</p></div>
   </details>
 
+
+  <details class="guideSection">
+   <summary>🗺️ Kampagnenkarte &amp; Welten</summary>
+   <div class="guideBody">
+    <div class="guideTip"><b>Neue Zwischenstation:</b> Nach dem Startbildschirm öffnet sich die große Kampagnenkarte. Wähle dort eine Welt aus und betrete anschließend ihre Festung.</div>
+    <div class="guideGrid">
+     <article class="guideCard"><h3>🏰 Die Grenzmark</h3><p>Die bisherige 32-Wellen-Kampagne ist jetzt Welt 1. Ein vorhandener v1.16.0-Spielstand kann über „Fortsetzen“ weitergespielt werden.</p></article>
+     <article class="guideCard"><h3>🏗 Weitere Welten</h3><p>Nebelwald, gefrorener Pass, verbrannte Ebenen und das Herz des Eisenclans sind bereits sichtbar. Beim Antippen erscheint vorerst nur „Noch im Aufbau“.</p></article>
+    </div>
+    <p>Zwischen zwei Wellen kannst du über das Pause-Menü zur Kampagnenkarte zurückkehren. Die laufende Festung wird dabei automatisch gespeichert.</p>
+   </div>
+  </details>
 
   <details class="guideSection">
    <summary>🏆 Kampagne &amp; Endlosmodus</summary>
@@ -297,7 +365,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.16.0 · 32-Wellen-Kampagne mit Meilensteinen, finalem Kriegsherrn und Endlosmodus.</div>
+  <div class="workshopFoot">v1.17.0 · Kampagnenkarte mit Welt 1, sichtbaren Regionen im Aufbau und direkter Fortsetzung.</div>
  </section>
 </div>
 
@@ -448,6 +516,7 @@
    <button id="resumeGameBtn" class="primary" type="button" data-tooltip="Setzt die laufende Partie fort.">▶ Spiel fortsetzen</button>
    <button id="saveGameBtn" class="saveAction" type="button" data-tooltip="Speichert Gebäude, Einheiten, Welle, Ressourcen und Forschungen lokal in diesem Browser.">💾 Spiel speichern</button>
    <button id="loadGameBtn" class="loadAction" type="button" data-tooltip="Lädt den zuletzt gespeicherten Spielstand dieser Version.">📂 Spiel laden</button>
+   <button id="returnCampaignMapBtn" class="mapAction" type="button" data-tooltip="Speichert zwischen den Wellen und kehrt zur Kampagnenkarte zurück.">🗺️ Kampagnenkarte</button>
    <button id="pauseRestartBtn" class="restartAction" type="button">🔄 Spiel neu starten</button>
    <button id="deleteSaveBtn" class="deleteSaveAction" type="button" data-tooltip="Löscht den lokalen Speicherstand nach Bestätigung. Die aktuelle Partie bleibt geöffnet.">🗑 Speicherstand löschen</button>
   </div>

@@ -1,3 +1,16 @@
+# Changelog
+
+## v1.17.0 – Kampagnenkarte
+
+- Neuer großer Kampagnenkarten-Bildschirm zwischen Startmenü und Festung.
+- Die bisherige 32-Wellen-Kampagne ist jetzt **Welt 1 – Die Grenzmark**.
+- Vorhandene Spielstände können direkt auf der Weltkarte fortgesetzt werden.
+- Vier weitere Regionen sind sichtbar: Nebelwald, gefrorener Pass, verbrannte Ebenen und das Herz des Eisenclans.
+- Nicht fertige Welten öffnen nur eine Vorschau mit dem Hinweis **„Noch im Aufbau“**.
+- Rückkehr zur Kampagnenkarte ist zwischen zwei Wellen über das Pause-Menü möglich.
+- Separates lokales Kartenprofil merkt Bestfortschritt, Bosse und zuletzt gespielte Welt.
+- Speicherstände aus v1.16.0 bleiben kompatibel.
+
 ## v1.16.0 – Kampagne & Endlosmodus
 
 - Die reguläre Partie besitzt jetzt ein klares Ziel: Die Festung muss 32 Wellen der Eisenclans überstehen.

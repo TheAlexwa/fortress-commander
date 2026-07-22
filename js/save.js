@@ -609,6 +609,17 @@ export function getSaveMetadata() {
       gameVersion: snapshot.gameVersion,
       wave: snapshot.state.wave,
       saveType: snapshot.saveType === "auto" ? "auto" : "manual",
+      campaign: snapshot.state.campaign && typeof snapshot.state.campaign === "object"
+        ? {
+            mode: snapshot.state.campaign.mode,
+            completed: snapshot.state.campaign.completed === true,
+            victoryPending: snapshot.state.campaign.victoryPending === true,
+            highestCompletedWave: Math.max(0, Number(snapshot.state.campaign.highestCompletedWave) || 0),
+            milestoneRewardsClaimed: Array.isArray(snapshot.state.campaign.milestoneRewardsClaimed)
+              ? [...snapshot.state.campaign.milestoneRewardsClaimed]
+              : [],
+          }
+        : null,
     };
   } catch (error) {
     console.error("Speicherstand konnte nicht gelesen werden:", error);

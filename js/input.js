@@ -5,6 +5,7 @@
 export function attachGameInput({
   canvas,
   startScreen,
+  campaignMapScreen,
   instructionsScreen,
   getZoom,
   setZoom,
@@ -138,6 +139,7 @@ export function attachGameInput({
   const onKeyDown = event => {
     if (
       !startScreen.classList.contains("hidden") ||
+      (campaignMapScreen && !campaignMapScreen.classList.contains("hidden")) ||
       !instructionsScreen.classList.contains("hidden")
     ) {
       if (

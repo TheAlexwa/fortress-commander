@@ -139,6 +139,16 @@ import {
   isCampaignFinished,
   resolveCampaignWave
 } from "./campaign.js";
+import {
+  ACTIVE_WORLD_ID,
+  getWorldDefinition,
+  getWorldMapView,
+  loadWorldMapProfile,
+  saveWorldMapProfile,
+  selectWorldOnMap,
+  syncWorldMapProfileFromSave,
+  syncWorldMapProfileFromState
+} from "./world-map.js";
 import { FIXED_INNER_WALL_RADIUS, OUTER_WALL_OFFSET } from "./map-layout.js";
 import {
   MIDDLE_WALL_SECTION_COUNT,
@@ -187,8 +197,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.16.0";
-const GAME_RELEASE_NAME="Kampagne & Endlosmodus";
+const GAME_VERSION="1.17.0";
+const GAME_RELEASE_NAME="Kampagnenkarte";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const ACTIVE_ENEMY_LIMIT=(window.matchMedia("(max-width: 900px)").matches||navigator.maxTouchPoints>0)?64:72;
 const ENEMY_PULSE_INTERVAL=.11;
@@ -208,6 +218,7 @@ const instructionVersion=document.getElementById("instructionVersion");
 if(gameVersionBadge)gameVersionBadge.textContent=`v${GAME_VERSION}`;
 if(instructionVersion)instructionVersion.textContent=`Anleitung · Version ${GAME_VERSION} – ${GAME_RELEASE_NAME}`;
 const startScreen=document.getElementById("startScreen");
+const campaignMapScreen=document.getElementById("campaignMapScreen");
 const instructionsScreen=document.getElementById("instructionsScreen");
 const playHotspot=document.getElementById("playHotspot");
 const instructionsHotspot=document.getElementById("instructionsHotspot");
@@ -239,10 +250,15 @@ function handleOrientationChange(){
  }
 }
 
-function enterGame(){
+let campaignMapHasLiveSession=false;
+let worldMapProfile=loadWorldMapProfile();
+let selectedCampaignWorldId=worldMapProfile.selectedWorldId||ACTIVE_WORLD_ID;
+
+function beginGameSession(){
  gameSessionStarted=true;
  requestPortraitLock();
  startScreen.classList.add("hidden");
+ campaignMapScreen.classList.add("hidden");
  instructionsScreen.classList.add("hidden");
  paused=false;
  last=performance.now();
@@ -262,13 +278,103 @@ function enterGame(){
  requestAnimationFrame(recoverCanvas);
  setTimeout(recoverCanvas,180);
 }
-let instructionsOpenedFromGame=false;
+function formatWorldMapDate(value){
+ if(!value)return "Kein Spielstand";
+ try{return new Intl.DateTimeFormat("de-DE",{dateStyle:"short",timeStyle:"short"}).format(new Date(value))}
+ catch(_){return "Spielstand vorhanden"}
+}
+function persistWorldMapProfile(){
+ worldMapProfile=saveWorldMapProfile(worldMapProfile);
+ return worldMapProfile;
+}
+function syncWorldMapFromCurrentState(){
+ worldMapProfile=syncWorldMapProfileFromState(worldMapProfile,state);
+ persistWorldMapProfile();
+}
+function renderCampaignWorldMap(){
+ const metadata=getSaveMetadata();
+ worldMapProfile=syncWorldMapProfileFromSave(worldMapProfile,metadata);
+ worldMapProfile=selectWorldOnMap(worldMapProfile,selectedCampaignWorldId);
+ persistWorldMapProfile();
+ const view=getWorldMapView(worldMapProfile,metadata);
+ const world=view.worlds.find(item=>item.id===selectedCampaignWorldId)||view.worlds[0];
+ document.querySelectorAll(".worldNode[data-world-id]").forEach(node=>node.classList.toggle("selected",node.dataset.worldId===world.id));
+ document.getElementById("worldInfoIcon").textContent=world.icon;
+ document.getElementById("worldInfoSubtitle").textContent=world.subtitle;
+ document.getElementById("worldInfoName").textContent=world.name;
+ document.getElementById("worldInfoDescription").textContent=world.description;
+ document.getElementById("worldInfoFeature").textContent=world.feature;
+ const status=document.getElementById("worldInfoStatus");
+ const progressBlock=document.getElementById("worldProgressBlock");
+ const construction=document.getElementById("worldConstructionNotice");
+ const primary=document.getElementById("worldPrimaryBtn");
+ const restart=document.getElementById("worldNewGameBtn");
+ if(world.underConstruction){
+  status.textContent="NOCH IM AUFBAU";status.classList.add("construction");
+  progressBlock.classList.add("hidden");construction.classList.remove("hidden");
+  primary.classList.add("hidden");restart.classList.add("hidden");
+ }else{
+  status.textContent=world.progress.completed?"ABGESCHLOSSEN":"SPIELBAR";status.classList.remove("construction");
+  progressBlock.classList.remove("hidden");construction.classList.add("hidden");
+  primary.classList.remove("hidden");
+  const hasSave=metadata?.valid===true;
+  const live=campaignMapHasLiveSession&&gameSessionStarted;
+  primary.textContent=live?"▶ Zur Festung":hasSave?"▶ Kampagne fortsetzen":"▶ Welt betreten";
+  restart.classList.toggle("hidden",!hasSave&&!live);
+  document.getElementById("worldProgressText").textContent=`${Math.min(32,world.progress.bestWave)} / 32 Wellen`;
+  document.getElementById("worldProgressFill").style.width=`${Math.min(100,world.progress.bestWave/32*100)}%`;
+  document.getElementById("worldBossCount").textContent=`${world.progress.bossesDefeated} / 4`;
+  document.getElementById("worldSaveInfo").textContent=live?`Aktuelle Welle ${state.wave}`:hasSave?`Welle ${metadata.wave} · ${formatWorldMapDate(metadata.savedAt)}`:"Kein Spielstand";
+ }
+}
+function openCampaignMap(fromGame=false){
+ if(fromGame&&state.inWave){showToast("Zur Kampagnenkarte geht es nur zwischen den Wellen");return false}
+ if(fromGame){
+  saveGame(true);
+  campaignMapHasLiveSession=true;
+  hidePauseMenu(false);
+ }else campaignMapHasLiveSession=false;
+ paused=true;state.supportTimer=0;last=performance.now();
+ startScreen.classList.add("hidden");instructionsScreen.classList.add("hidden");campaignMapScreen.classList.remove("hidden");
+ renderCampaignWorldMap();
+ return true;
+}
+function closeCampaignMapToTitle(){
+ campaignMapScreen.classList.add("hidden");startScreen.classList.remove("hidden");instructionsScreen.classList.add("hidden");
+ paused=true;gameSessionStarted=false;campaignMapHasLiveSession=false;
+}
+function enterSelectedCampaignWorld(){
+ const world=getWorldDefinition(selectedCampaignWorldId);
+ if(world.status!=="playable"){renderCampaignWorldMap();return}
+ const metadata=getSaveMetadata();
+ const useLiveSession=campaignMapHasLiveSession&&gameSessionStarted;
+ beginGameSession();
+ campaignMapHasLiveSession=false;
+ if(useLiveSession){paused=false;last=performance.now();updateUI();return}
+ if(metadata?.valid){
+  if(loadGame()){paused=false;last=performance.now();showToast(`🗺️ ${world.name} · Welle ${state.wave}`)}
+ }else{
+  paused=false;last=performance.now();ensureCurrentSiege();showToast(`🗺️ ${world.name} beginnt`);updateUI();
+ }
+}
+function startNewCampaignWorld(){
+ const world=getWorldDefinition(selectedCampaignWorldId);
+ if(world.status!=="playable")return;
+ const metadata=getSaveMetadata();
+ if((metadata?.valid||campaignMapHasLiveSession)&&!window.confirm("Die aktuelle Festung wirklich verwerfen und Welt 1 neu beginnen?"))return;
+ if(metadata?.valid)deleteSaveGame();
+ autosaveSuppressed=false;
+ beginGameSession();
+ campaignMapHasLiveSession=false;
+ reset();
+ syncWorldMapFromCurrentState();
+}
+let instructionsOpenedFrom="title";
 function openInstructions(){
- instructionsOpenedFromGame=startScreen.classList.contains("hidden");
- startScreen.classList.add("hidden");
- instructionsScreen.classList.remove("hidden");
+ instructionsOpenedFrom=!campaignMapScreen.classList.contains("hidden")?"map":startScreen.classList.contains("hidden")?"game":"title";
+ startScreen.classList.add("hidden");campaignMapScreen.classList.add("hidden");instructionsScreen.classList.remove("hidden");
  instructionsScreen.style.pointerEvents="auto";
- const back=document.getElementById("instructionsBackBtn");if(back)back.textContent=instructionsOpenedFromGame?"← Zurück zum Spiel":"← Zurück zum Startmenü";
+ const back=document.getElementById("instructionsBackBtn");if(back)back.textContent=instructionsOpenedFrom==="game"?"← Zurück zum Spiel":instructionsOpenedFrom==="map"?"← Zurück zur Kampagnenkarte":"← Zurück zum Startmenü";
  const book=instructionsScreen.querySelector(".instructionBook");if(book)book.scrollTop=0;
  renderBestiary();
  paused=true;
@@ -276,15 +382,25 @@ function openInstructions(){
 function returnToTitle(){
  instructionsScreen.classList.add("hidden");
  instructionsScreen.style.pointerEvents="none";
- if(instructionsOpenedFromGame){
-  startScreen.classList.add("hidden");instructionsOpenedFromGame=false;
+ if(instructionsOpenedFrom==="game"){
+  startScreen.classList.add("hidden");campaignMapScreen.classList.add("hidden");
   if(!gameOver){paused=false;last=performance.now()}
   const menuButton=document.getElementById("navMenu");if(menuButton)menuButton.classList.remove("active");
   updateUI();
- }else{startScreen.classList.remove("hidden");paused=true;gameSessionStarted=false}
+ }else if(instructionsOpenedFrom==="map"){
+  startScreen.classList.add("hidden");campaignMapScreen.classList.remove("hidden");paused=true;renderCampaignWorldMap();
+ }else{
+  campaignMapScreen.classList.add("hidden");startScreen.classList.remove("hidden");paused=true;gameSessionStarted=false;
+ }
+ instructionsOpenedFrom="title";
 }
-playHotspot.addEventListener("click",enterGame);
+playHotspot.addEventListener("click",()=>openCampaignMap(false));
 instructionsHotspot.addEventListener("click",openInstructions);
+document.getElementById("campaignMapBackBtn").addEventListener("click",closeCampaignMapToTitle);
+document.getElementById("campaignMapInstructionsBtn").addEventListener("click",openInstructions);
+document.querySelectorAll(".worldNode[data-world-id]").forEach(node=>node.addEventListener("click",()=>{selectedCampaignWorldId=node.dataset.worldId;worldMapProfile=selectWorldOnMap(worldMapProfile,selectedCampaignWorldId);renderCampaignWorldMap()}));
+document.getElementById("worldPrimaryBtn").addEventListener("click",enterSelectedCampaignWorld);
+document.getElementById("worldNewGameBtn").addEventListener("click",startNewCampaignWorld);
 instructionsBackBtn.addEventListener("click",returnToTitle);
 instructionsCloseBtn.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();returnToTitle()});
 instructionsScreen.addEventListener("click",e=>{if(e.target===instructionsScreen)returnToTitle()});
@@ -798,6 +914,7 @@ function saveGame(silent=false){
    wallSlots,insideSlots,castleSlots,
    view:{zoom,camX,camY}
   });
+  syncWorldMapFromCurrentState();
   if(!silent)autosaveSuppressed=false;
   refreshSaveStatus();
   if(!silent)showToast("Spiel gespeichert");
@@ -815,7 +932,7 @@ function loadGame(){
   hideRepairDecision();hideEndScreen();hideCampaignVictoryScreen();closeEnemyInfo(false);
   selected=null;buildMode=null;unitCommandMode=null;gameOver=false;paused=true;autosaveSuppressed=false;
   syncResidents();assignCraftsmen();ensureCurrentSiege();
-  const sameMapVersion=/^1\.(15|16)\./.test(String(loaded.gameVersion||""));
+  const sameMapVersion=/^1\.(15|16|17)\./.test(String(loaded.gameVersion||""));
   if(!sameMapVersion){
    const shiftX=CX-1200,shiftY=CY-850;
    for(const unit of state.units){
@@ -827,6 +944,7 @@ function loadGame(){
   camY=sameMapVersion&&Number.isFinite(loaded.view.camY)?loaded.view.camY:CY;
   setZoom(sameMapVersion&&Number.isFinite(loaded.view.zoom)?loaded.view.zoom:.42);
   clampCamera();last=performance.now();lastDockSignature="";
+  syncWorldMapFromCurrentState();
   refreshSaveStatus();updateUI();
   if(isCampaignChoiceRequired(state))showCampaignVictoryScreen(false);
   else if(isCampaignFinished(state))showCampaignVictoryScreen(true);
@@ -2114,7 +2232,7 @@ function hideEndScreen(){const screen=document.getElementById("endScreen");if(sc
 function reset(){
  state.gold=210;state.wood=105;state.stone=0;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.nextEnemyId=0;state.heroOffering=0;state.heroSummoned=false;state.heroFallen=false;state.warCouncil=createWarCouncilState(1);state.bonusObjective=null;state.campaign=createCampaignState(1);
  state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hideCampaignVictoryScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeOuterWallSegments(state.outerWalls,{built:false});initializeOuterGates(state.outerGates,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
- selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();showToast("Neue Belagerung beginnt");
+ selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();syncWorldMapFromCurrentState();showToast("Neue Belagerung beginnt");
 }
 
 document.querySelectorAll(".buildBtn").forEach(b=>b.addEventListener("click",e=>{if(e.target.closest(".buildInfoBtn"))return;hideRepairDecision();const k=b.dataset.build;buildMode=buildMode===k?null:k;selected=null;unitCommandMode=null}));
@@ -2124,7 +2242,7 @@ document.querySelectorAll(".buildInfoBtn").forEach(info=>{
 });
 document.getElementById("enemyInfoClose").addEventListener("click",()=>closeEnemyInfo(true));
 document.getElementById("enemyInfoOverlay").addEventListener("click",e=>{if(e.target.id==="enemyInfoOverlay")closeEnemyInfo(true)});
-renderBestiary();refreshSaveStatus();
+renderBestiary();refreshSaveStatus();renderCampaignWorldMap();
 window.setInterval(()=>saveGame(true),AUTOSAVE_INTERVAL_MS);
 document.getElementById("marketTradeBtn").addEventListener("click",openMarketPanel);
 document.getElementById("statueOfferingBtn").addEventListener("click",openStatueOfferingPanel);
@@ -2151,6 +2269,7 @@ document.getElementById("restartGameBtn").onclick=e=>{e.preventDefault();e.stopP
 document.getElementById("resumeGameBtn").onclick=e=>{e.preventDefault();e.stopPropagation();hidePauseMenu(true)};
 document.getElementById("saveGameBtn").onclick=e=>{e.preventDefault();e.stopPropagation();saveGame(false)};
 document.getElementById("loadGameBtn").onclick=e=>{e.preventDefault();e.stopPropagation();loadGame()};
+document.getElementById("returnCampaignMapBtn").onclick=e=>{e.preventDefault();e.stopPropagation();openCampaignMap(true)};
 document.getElementById("deleteSaveBtn").onclick=e=>{e.preventDefault();e.stopPropagation();deleteSave()};
 document.getElementById("pauseRestartBtn").onclick=e=>{e.preventDefault();e.stopPropagation();document.getElementById("pauseRestartConfirm").classList.remove("hidden")};
 document.getElementById("cancelPauseRestartBtn").onclick=e=>{e.preventDefault();e.stopPropagation();document.getElementById("pauseRestartConfirm").classList.add("hidden")};
@@ -2158,6 +2277,7 @@ document.getElementById("confirmPauseRestartBtn").onclick=e=>{e.preventDefault()
 attachGameInput({
  canvas,
  startScreen,
+ campaignMapScreen,
  instructionsScreen,
  getZoom:()=>zoom,
  setZoom,
@@ -2181,7 +2301,7 @@ attachGameInput({
  showPauseMenu,
  hidePauseMenu,
  resetGame:reset,
- enterGame,
+ enterGame:()=>openCampaignMap(false),
  returnToTitle,
  handleOrientationChange,
  isPhoneLandscape,
