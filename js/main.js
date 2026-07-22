@@ -141,13 +141,22 @@ import {
 } from "./campaign.js";
 import {
   ACTIVE_WORLD_ID,
+  COMMANDER_ACTIVE_LIMIT,
+  COMMANDER_PERKS,
+  createWorldRunStats,
+  formatStartBonuses,
+  getActiveStartBonuses,
+  getCommanderPointSummary,
   getWorldDefinition,
   getWorldMapView,
   loadWorldMapProfile,
+  recordWorldRunWave,
   saveWorldMapProfile,
   selectWorldOnMap,
   syncWorldMapProfileFromSave,
-  syncWorldMapProfileFromState
+  syncWorldMapProfileFromState,
+  toggleCommanderPerk,
+  unlockCommanderPerk
 } from "./world-map.js";
 import { FIXED_INNER_WALL_RADIUS, OUTER_WALL_OFFSET } from "./map-layout.js";
 import {
@@ -197,8 +206,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.0";
-const GAME_RELEASE_NAME="Kampagnenkarte";
+const GAME_VERSION="1.17.1";
+const GAME_RELEASE_NAME="Kampagnenbelohnungen";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const ACTIVE_ENEMY_LIMIT=(window.matchMedia("(max-width: 900px)").matches||navigator.maxTouchPoints>0)?64:72;
 const ENEMY_PULSE_INTERVAL=.11;
@@ -306,16 +315,20 @@ function renderCampaignWorldMap(){
  document.getElementById("worldInfoFeature").textContent=world.feature;
  const status=document.getElementById("worldInfoStatus");
  const progressBlock=document.getElementById("worldProgressBlock");
+ const rewardBlock=document.getElementById("worldRewardBlock");
  const construction=document.getElementById("worldConstructionNotice");
  const primary=document.getElementById("worldPrimaryBtn");
  const restart=document.getElementById("worldNewGameBtn");
+ const sealCount=view.worlds[0].seals.filter(seal=>seal.earned).length;
+ document.getElementById("campaignMapCommanderPoints").textContent=view.points.available;
+ document.getElementById("campaignMapSealCount").textContent=sealCount;
  if(world.underConstruction){
   status.textContent="NOCH IM AUFBAU";status.classList.add("construction");
-  progressBlock.classList.add("hidden");construction.classList.remove("hidden");
+  progressBlock.classList.add("hidden");rewardBlock.classList.add("hidden");construction.classList.remove("hidden");
   primary.classList.add("hidden");restart.classList.add("hidden");
  }else{
   status.textContent=world.progress.completed?"ABGESCHLOSSEN":"SPIELBAR";status.classList.remove("construction");
-  progressBlock.classList.remove("hidden");construction.classList.add("hidden");
+  progressBlock.classList.remove("hidden");rewardBlock.classList.remove("hidden");construction.classList.add("hidden");
   primary.classList.remove("hidden");
   const hasSave=metadata?.valid===true;
   const live=campaignMapHasLiveSession&&gameSessionStarted;
@@ -325,7 +338,47 @@ function renderCampaignWorldMap(){
   document.getElementById("worldProgressFill").style.width=`${Math.min(100,world.progress.bestWave/32*100)}%`;
   document.getElementById("worldBossCount").textContent=`${world.progress.bossesDefeated} / 4`;
   document.getElementById("worldSaveInfo").textContent=live?`Aktuelle Welle ${state.wave}`:hasSave?`Welle ${metadata.wave} · ${formatWorldMapDate(metadata.savedAt)}`:"Kein Spielstand";
+  document.getElementById("worldSealRow").innerHTML=world.seals.map(seal=>`<div class="worldSeal ${seal.earned?"earned":""}" title="${seal.description}"><span>${seal.icon}</span><b>${seal.name.replace("Siegel des ","")}</b></div>`).join("");
+  document.getElementById("worldBonusSuccess").textContent=world.progress.bonusObjectivesCompleted;
+  document.getElementById("worldCommanderEarned").textContent=view.points.earned;
+  document.getElementById("activeStartBonusText").textContent=formatStartBonuses(worldMapProfile);
  }
+}
+function commanderPerkHtml(perk,points){
+ const unlocked=worldMapProfile.commander.unlockedPerks.includes(perk.id);
+ const active=worldMapProfile.commander.activePerks.includes(perk.id);
+ const canUnlock=points.available>=perk.cost;
+ const action=active?"✓ Aktiv":unlocked?"Aktivieren":`Freischalten · ${perk.cost}⭐`;
+ return `<article class="commanderPerk ${active?"active":""}"><div class="commanderPerkIcon">${perk.icon}</div><div class="commanderPerkText"><b>${perk.name}</b><small>${perk.description}</small></div><button type="button" class="commanderPerkAction ${active?"active":unlocked?"":"unlock"}" data-commander-perk="${perk.id}" ${!unlocked&&!canUnlock?"disabled":""}>${action}</button></article>`;
+}
+function renderCommanderCamp(){
+ worldMapProfile=saveWorldMapProfile(worldMapProfile);
+ const points=getCommanderPointSummary(worldMapProfile);
+ document.getElementById("commanderPointsEarned").textContent=points.earned;
+ document.getElementById("commanderPointsSpent").textContent=points.spent;
+ document.getElementById("commanderPointsAvailable").textContent=points.available;
+ document.getElementById("commanderActiveCount").textContent=worldMapProfile.commander.activePerks.length;
+ document.getElementById("commanderPerkGrid").innerHTML=COMMANDER_PERKS.map(perk=>commanderPerkHtml(perk,points)).join("");
+ document.getElementById("commanderActiveSummary").textContent=formatStartBonuses(worldMapProfile);
+}
+function openCommanderCamp(){
+ renderCommanderCamp();
+ const panel=document.getElementById("commanderCampPanel");panel.classList.remove("hidden");panel.style.pointerEvents="auto";
+}
+function closeCommanderCamp(){
+ const panel=document.getElementById("commanderCampPanel");panel.classList.add("hidden");panel.style.pointerEvents="none";renderCampaignWorldMap();
+}
+function handleCommanderPerk(perkId){
+ const unlocked=worldMapProfile.commander.unlockedPerks.includes(perkId);
+ const result=unlocked?toggleCommanderPerk(worldMapProfile,perkId):unlockCommanderPerk(worldMapProfile,perkId);
+ worldMapProfile=result.profile;
+ if(!result.success){showToast(result.reason||"Vorteil kann nicht gewählt werden");renderCommanderCamp();return}
+ if(!unlocked){
+  worldMapProfile=saveWorldMapProfile(worldMapProfile);
+  const activation=toggleCommanderPerk(worldMapProfile,perkId);
+  if(activation.success)worldMapProfile=activation.profile;
+ }
+ persistWorldMapProfile();renderCommanderCamp();renderCampaignWorldMap();
 }
 function openCampaignMap(fromGame=false){
  if(fromGame&&state.inWave){showToast("Zur Kampagnenkarte geht es nur zwischen den Wellen");return false}
@@ -354,7 +407,8 @@ function enterSelectedCampaignWorld(){
  if(metadata?.valid){
   if(loadGame()){paused=false;last=performance.now();showToast(`🗺️ ${world.name} · Welle ${state.wave}`)}
  }else{
-  paused=false;last=performance.now();ensureCurrentSiege();showToast(`🗺️ ${world.name} beginnt`);updateUI();
+  reset();
+  paused=false;last=performance.now();showToast(`🗺️ ${world.name} beginnt · ${formatStartBonuses(worldMapProfile)}`);updateUI();
  }
 }
 function startNewCampaignWorld(){
@@ -401,6 +455,9 @@ document.getElementById("campaignMapInstructionsBtn").addEventListener("click",o
 document.querySelectorAll(".worldNode[data-world-id]").forEach(node=>node.addEventListener("click",()=>{selectedCampaignWorldId=node.dataset.worldId;worldMapProfile=selectWorldOnMap(worldMapProfile,selectedCampaignWorldId);renderCampaignWorldMap()}));
 document.getElementById("worldPrimaryBtn").addEventListener("click",enterSelectedCampaignWorld);
 document.getElementById("worldNewGameBtn").addEventListener("click",startNewCampaignWorld);
+document.getElementById("commanderCampBtn").addEventListener("click",openCommanderCamp);
+document.getElementById("commanderCampCloseBtn").addEventListener("click",closeCommanderCamp);
+document.getElementById("commanderCampPanel").addEventListener("click",e=>{const button=e.target.closest("[data-commander-perk]");if(button){e.preventDefault();handleCommanderPerk(button.dataset.commanderPerk);return}if(e.target.id==="commanderCampPanel")closeCommanderCamp()});
 instructionsBackBtn.addEventListener("click",returnToTitle);
 instructionsCloseBtn.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();returnToTitle()});
 instructionsScreen.addEventListener("click",e=>{if(e.target===instructionsScreen)returnToTitle()});
@@ -592,7 +649,7 @@ const BUILD={
  hero:{name:"Andreas, der große Held",kind:"unit",gold:0,wood:0,hp:650,damage:65,range:34,rate:1.05,speed:66,armor:.35,color:"#d4aa52",hero:true}
 };
 const state={gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,nextEnemyId:0,
- enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],outerGates:[],craftsmen:[],residents:[],siege:null,warCouncil:createWarCouncilState(1),bonusObjective:null,campaign:createCampaignState(1),spawnQueue:[],repairActive:false,repairedHp:0,heroOffering:0,heroSummoned:false,heroFallen:false,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
+ enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],outerGates:[],craftsmen:[],residents:[],siege:null,warCouncil:createWarCouncilState(1),bonusObjective:null,campaign:createCampaignState(1),worldRun:createWorldRunStats(),spawnQueue:[],repairActive:false,repairedHp:0,heroOffering:0,heroSummoned:false,heroFallen:false,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
 const wallSlots=[],insideSlots=[],castleSlots=[];
 
 function initMap(){
@@ -1208,7 +1265,7 @@ function buildRequirement(key){return getBuildRequirement(state,key)}
 
 function isPanelVisible(id){const el=document.getElementById(id);return !!(el&&!el.classList.contains("hidden"));}
 function isBlockingPanelOpen(){
- return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","bonusObjectivePanel","campaignPanel","veteranPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision","campaignVictoryScreen"].some(isPanelVisible);
+ return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","bonusObjectivePanel","campaignPanel","veteranPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision","campaignVictoryScreen","commanderCampPanel"].some(isPanelVisible);
 }
 function closeTopBlockingPanel(){
  if(isPanelVisible("testResourcePanel")){closeTestResourcePanel();return "Testfenster geschlossen"}
@@ -1217,6 +1274,7 @@ function closeTopBlockingPanel(){
  if(isPanelVisible("statueOfferingPanel")){closeStatueOfferingPanel(true);return "Opfergaben geschlossen"}
  if(isPanelVisible("warCouncilPanel")){closeWarCouncilPanel(true);return "Kriegsrat geschlossen"}
  if(isPanelVisible("bonusObjectivePanel")){closeBonusObjectivePanel(true);return "Bonusziel geschlossen"}
+ if(isPanelVisible("commanderCampPanel")){closeCommanderCamp();return "Kommandantenlager geschlossen"}
  if(isPanelVisible("campaignPanel")){closeCampaignPanel(true);return "Kampagnenübersicht geschlossen"}
  if(isPanelVisible("veteranPanel")){closeVeteranPanel(true);return "Veteranenwahl geschlossen"}
  if(isPanelVisible("workshopPanel")){closeWorkshopPanel(true);return "Fenster geschlossen"}
@@ -2033,6 +2091,8 @@ function update(dt){
    ?` · 🎯 ${bonusResult.definition.title}: ${bonusApplied.summary}`
    :` · 🎯 ${bonusResult.definition.title} verfehlt`;
   const campaignResult=resolveCampaignWave(state,completedWave);
+  recordWorldRunWave(state,completedWave,{bonusSuccess:bonusResult.success,bossWave:Boolean(campaignResult.milestone),heroAlive:Boolean(getAndreas())});
+  syncWorldMapFromCurrentState();
   const campaignApplied=applyCampaignMilestoneReward(campaignResult.reward);
   const campaignText=campaignResult.milestone&&campaignApplied.summary?` · ${campaignResult.milestone.icon} ${campaignResult.milestone.title}: ${campaignApplied.summary}`:"";
   state.wave++;
@@ -2230,7 +2290,8 @@ function showEndScreen(){
 }
 function hideEndScreen(){const screen=document.getElementById("endScreen");if(screen){screen.classList.add("hidden");screen.style.pointerEvents="none"}}
 function reset(){
- state.gold=210;state.wood=105;state.stone=0;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.nextEnemyId=0;state.heroOffering=0;state.heroSummoned=false;state.heroFallen=false;state.warCouncil=createWarCouncilState(1);state.bonusObjective=null;state.campaign=createCampaignState(1);
+ const startBonuses=getActiveStartBonuses(worldMapProfile);
+ state.gold=210+startBonuses.gold;state.wood=105+startBonuses.wood;state.stone=startBonuses.stone;state.researchPoints=startBonuses.researchPoints;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.nextEnemyId=0;state.heroOffering=startBonuses.heroOffering;state.heroSummoned=false;state.heroFallen=false;state.warCouncil=createWarCouncilState(1);state.bonusObjective=null;state.campaign=createCampaignState(1);state.worldRun=createWorldRunStats();
  state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hideCampaignVictoryScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeOuterWallSegments(state.outerWalls,{built:false});initializeOuterGates(state.outerGates,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
  selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();syncWorldMapFromCurrentState();showToast("Neue Belagerung beginnt");
 }

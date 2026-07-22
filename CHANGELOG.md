@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.17.1 – Kampagnenbelohnungen
+
+- Drei dauerhafte Weltsiegel für die Grenzmark: Verteidigung, Held und Kommandant.
+- Bonusziele, Häuptlingssiege und der Weltsieg erzeugen einen dauerhaften Kommandantenpunkt-Bestwert.
+- Neues Kommandantenlager direkt auf der Kampagnenkarte.
+- Fünf freischaltbare Startvorteile für Gold, Holz, Stein, Forschung und Andreas-Opferpunkte.
+- Höchstens zwei Startvorteile können gleichzeitig aktiviert werden.
+- Aktive Vorteile gelten nur beim Beginn einer neuen Kampagne und nicht rückwirkend für laufende Spielstände.
+- Kampagnenstatistik speichert beste Bonuszielzahl und das Überleben von Andreas in den vier Bosswellen.
+- Kartenprofile und Spielstände aus v1.17.0 bleiben kompatibel.
+
 ## v1.17.0 – Kampagnenkarte
 
 - Neuer großer Kampagnenkarten-Bildschirm zwischen Startmenü und Festung.

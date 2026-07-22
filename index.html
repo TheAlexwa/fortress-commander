@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.17.0 – Kampagnenkarte</title>
+<title>Fortress Commander v1.17.1 – Kampagnenbelohnungen</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,7 +20,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Kampagnenkarte öffnen">Spiel starten</button>
-  <div id="gameVersionBadge">v1.17.0</div>
+  <div id="gameVersionBadge">v1.17.1</div>
   <div id="developmentNotice"><strong>🗺 Die Weltkampagne beginnt</strong><span>Wähle die Grenzmark auf der neuen Kampagnenkarte. Weitere Welten sind bereits sichtbar und befinden sich im Aufbau.</span></div>
  </div>
 </div>
@@ -29,7 +29,7 @@
  <section class="worldMapShell">
   <div class="worldMapTopbar">
    <button id="campaignMapBackBtn" type="button">← Startmenü</button>
-   <div><small>DIE WELTEN VON FORTRESS COMMANDER</small><h1>Kampagnenkarte</h1></div>
+   <div><small>DIE WELTEN VON FORTRESS COMMANDER</small><h1>Kampagnenkarte</h1><div class="worldMapSummary"><span>⭐ <b id="campaignMapCommanderPoints">0</b> Punkte</span><span>🏅 <b id="campaignMapSealCount">0</b>/3 Siegel</span></div></div>
    <button id="campaignMapInstructionsBtn" type="button">📖 Anleitung</button>
   </div>
   <div class="worldMapLayout">
@@ -72,12 +72,28 @@
      <div class="worldInfoStats"><span>👑 <b id="worldBossCount">0 / 4</b> Bosse</span><span id="worldSaveInfo">Kein Spielstand</span></div>
     </div>
     <div id="worldConstructionNotice" class="worldConstructionNotice hidden"><strong>🏗 Noch im Aufbau</strong><span>Diese Welt ist bereits auf der Karte sichtbar, wird aber erst in einem späteren Update spielbar.</span></div>
+    <div id="worldRewardBlock" class="worldRewardBlock">
+     <div class="worldSealRow" id="worldSealRow"></div>
+     <div class="worldCampaignStats"><span>🎯 <b id="worldBonusSuccess">0</b> Bonusziele</span><span>⭐ <b id="worldCommanderEarned">0</b> Punkte verdient</span></div>
+     <button id="commanderCampBtn" class="commanderCampBtn" type="button">⛺ Kommandantenlager öffnen</button>
+     <small id="activeStartBonusText">Keine Startvorteile aktiv</small>
+    </div>
     <div class="worldInfoActions">
      <button id="worldPrimaryBtn" class="primary" type="button">▶ Welt betreten</button>
      <button id="worldNewGameBtn" type="button">🔄 Neu beginnen</button>
     </div>
    </aside>
   </div>
+ </section>
+</div>
+
+<div id="commanderCampPanel" class="hidden" aria-label="Kommandantenlager">
+ <section class="commanderCampCard" role="dialog" aria-modal="true" aria-labelledby="commanderCampTitle">
+  <button id="commanderCampCloseBtn" class="commanderCampClose" type="button" aria-label="Kommandantenlager schließen">✕</button>
+  <div class="commanderCampHead"><span>⛺</span><div><small>DAUERHAFTER KAMPAGNENFORTSCHRITT</small><h2 id="commanderCampTitle">Kommandantenlager</h2><p>Schalte Startvorteile mit Kommandantenpunkten frei. Vor einer neuen Kampagne dürfen höchstens zwei gleichzeitig aktiv sein.</p></div></div>
+  <div class="commanderPointGrid"><article><span>VERDIENT</span><b id="commanderPointsEarned">0</b></article><article><span>AUSGEGEBEN</span><b id="commanderPointsSpent">0</b></article><article><span>VERFÜGBAR</span><b id="commanderPointsAvailable">0</b></article><article><span>AKTIV</span><b><span id="commanderActiveCount">0</span> / 2</b></article></div>
+  <div id="commanderPerkGrid" class="commanderPerkGrid"></div>
+  <div class="commanderCampFooter"><strong>Aktive Startvorteile</strong><span id="commanderActiveSummary">Keine Startvorteile aktiv</span></div>
  </section>
 </div>
 
@@ -130,6 +146,19 @@
      <article class="guideCard"><h3>🏗 Weitere Welten</h3><p>Nebelwald, gefrorener Pass, verbrannte Ebenen und das Herz des Eisenclans sind bereits sichtbar. Beim Antippen erscheint vorerst nur „Noch im Aufbau“.</p></article>
     </div>
     <p>Zwischen zwei Wellen kannst du über das Pause-Menü zur Kampagnenkarte zurückkehren. Die laufende Festung wird dabei automatisch gespeichert.</p>
+   </div>
+  </details>
+
+  <details class="guideSection">
+   <summary>🏅 Siegel &amp; Kommandantenlager</summary>
+   <div class="guideBody">
+    <div class="guideGrid">
+     <article class="guideCard"><h3>🛡️ Siegel der Verteidigung</h3><p>Schließe die 32 Wellen der Grenzmark erfolgreich ab.</p></article>
+     <article class="guideCard"><h3>👑 Siegel des Helden</h3><p>Andreas muss bei allen vier Bosswellen 8, 16, 24 und 32 lebend an der Seite der Festung stehen.</p></article>
+     <article class="guideCard"><h3>🎯 Siegel des Kommandanten</h3><p>Erfülle mindestens 20 freiwillige Bonusziele innerhalb einer Kampagne.</p></article>
+     <article class="guideCard"><h3>⭐ Kommandantenpunkte</h3><p>Bonusziele, Häuptlingssiege und der Abschluss der Grenzmark erhöhen dauerhaft deinen besten Punktestand.</p></article>
+    </div>
+    <p>Im Kommandantenlager lassen sich Startressourcen und eine Ehrengabe freischalten. Höchstens zwei freigeschaltete Vorteile gelten beim Beginn einer neuen Kampagne.</p>
    </div>
   </details>
 
@@ -365,7 +394,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.17.0 · Kampagnenkarte mit Welt 1, sichtbaren Regionen im Aufbau und direkter Fortsetzung.</div>
+  <div class="workshopFoot">v1.17.1 · Kampagnenbelohnungen mit Weltsiegeln, Kommandantenpunkten und Startvorteilen.</div>
  </section>
 </div>
 

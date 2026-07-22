@@ -1,4 +1,4 @@
-## v1.17.0 – Kampagnenkarte
+## v1.17.1 – Kampagnenbelohnungen
 
 - Die reguläre Partie besitzt jetzt ein klares Ziel: Die Festung muss 32 Wellen der Eisenclans überstehen.
 - Welle 8, 16, 24 und 32 bilden eigene Kampagnenmeilensteine mit stärkeren Häuptlingen und einmaligen Belohnungen.
@@ -9,7 +9,11 @@
 - Kampagnenstatus, Meilensteine, Endlosfortschritt und eine noch offene Siegesentscheidung werden im Spielstand gespeichert.
 - Alte Spielstände bis Welle 32 beginnen regulär in der Kampagne; ältere Spielstände oberhalb von Welle 32 werden automatisch als Endlospartie übernommen.
 - Die Anleitung erklärt Kampagne, Meilensteine, finalen Kriegsherrn und Endlosmodus.
-- Versionsangaben im Spiel wurden auf v1.17.0 aktualisiert.
+- Versionsangaben im Spiel wurden auf v1.17.1 aktualisiert.
+
+## Kampagnenbelohnungen
+
+Die Grenzmark besitzt drei Weltsiegel. Erfüllte Bonusziele, Häuptlingssiege und der Kampagnenabschluss erhöhen Kommandantenpunkte. Im Kommandantenlager werden damit dauerhafte Startvorteile freigeschaltet; vor einer neuen Kampagne können höchstens zwei gleichzeitig aktiviert werden.
 
 ## Kampagnenkarte
 
