@@ -1,3 +1,17 @@
+## v1.17.2 – Bevölkerung 2.0
+
+- Die Bewohneranzeige öffnet jetzt eine zentrale Verwaltung mit Gesamtzahl, Beschäftigten, freien Bewohnern, Mindestreserve und geflohenen Arbeitskräften.
+- Holzfäller und Steinbrüche besitzen jeweils vier Arbeitsplätze, Handwerkerhaus und Werkstatt drei, der Marktplatz zwei.
+- Die Gebäudeleistung skaliert mit der Besetzung: 1 Bewohner = 45 %, 2 = 75 %, 3 = 100 %, 4 = 120 %.
+- Vier freiwillige Automatikprofile verteilen Bewohner ausgewogen, für Ausbau, für Verteidigung oder mit Rohstofffokus; manuelle Zuteilung bleibt jederzeit zwischen Wellen möglich.
+- Eine einstellbare Mindestreserve schützt freie Bewohner für Neubauten und Notfälle.
+- Die Werkstattbesetzung verändert Forschungskosten von +25 % ohne Personal bis −10 % bei voller Besetzung.
+- Mehrere Bewohner im Handwerkerhaus erscheinen als einzelne Handwerker; die Gesamtleistung bleibt über die Gebäudeeffizienz kontrolliert.
+- Während Angriffswellen ist die Zuteilung gesperrt. Nach zerstörten Arbeitsplätzen gelten Bewohner bis Wellenende als geflohen und kehren danach zurück.
+- Arbeitsverteilung und Mindestreserve werden im Spielstand gespeichert; ältere Ein-Arbeiter-Spielstände werden automatisch übernommen.
+- Auswahlfenster, Gebäudeinformationen, Ressourcenübersicht und Anleitung zeigen Arbeitsplätze, Besetzung und Leistung übersichtlich an.
+- Versionsangaben im Spiel wurden auf v1.17.2 aktualisiert.
+
 # Changelog
 
 ## v1.17.1 – Kampagnenbelohnungen

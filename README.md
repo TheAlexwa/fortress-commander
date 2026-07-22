@@ -1,3 +1,18 @@
+## v1.17.2 – Bevölkerung 2.0
+
+Die Bevölkerung wird jetzt zentral verwaltet. Wirtschaftsgebäude besitzen mehrere Arbeitsplätze und skalieren abhängig von ihrer Besetzung. Zwischen den Wellen kann der Spieler Bewohner manuell verteilen oder eines von vier Automatikprofilen verwenden. Eine Mindestreserve hält Arbeitskräfte für Neubauten und Notfälle frei.
+
+### Arbeitsplätze und Leistung
+
+- Holzfäller: bis zu 4 Bewohner
+- Steinbruch: bis zu 4 Bewohner
+- Handwerkerhaus: bis zu 3 Bewohner
+- Werkstatt: bis zu 3 Bewohner
+- Marktplatz: bis zu 2 Bewohner
+- Leistung: 1 Bewohner = 45 %, 2 = 75 %, 3 = 100 %, 4 = 120 %
+- Werkstattpersonal verändert zusätzlich die Forschungskosten von +25 % bis −10 %.
+- Zerstörte Arbeitsplätze setzen Bewohner während der Welle als geflohen; danach werden sie wieder frei oder über das aktive Profil neu verteilt.
+
 ## v1.17.1 – Kampagnenbelohnungen
 
 - Die reguläre Partie besitzt jetzt ein klares Ziel: Die Festung muss 32 Wellen der Eisenclans überstehen.

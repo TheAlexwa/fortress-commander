@@ -43,6 +43,9 @@ export function renderGameUI({
   buildRequirement,
   residentCapacityForHouse,
   buildingHasWorker,
+  buildingWorkerCount,
+  buildingWorkforceEfficiency,
+  workerCapacityForBuilding,
   supportProductionPerSecond,
   repairHpPerTick,
   workshopLevels,
@@ -83,8 +86,10 @@ export function renderGameUI({
   ui.populationTotal.textContent = residentTotal;
   ui.populationFree.textContent = availableResidents > 0 ? "•" : "";
   ui.populationOverviewBtn.classList.toggle("hasFreeResidents", availableResidents > 0);
-  ui.populationOverviewBtn.title = `${busyResidents} beschäftigt · ${availableResidents} frei · ${residentTotal} gesamt`;
-  ui.populationOverviewBtn.setAttribute("aria-label", `Bewohnerübersicht öffnen: ${busyResidents} beschäftigt, ${availableResidents} frei, ${residentTotal} gesamt`);
+  const reserve = Math.max(0, Number(state.population?.reserve) || 0);
+  const mode = state.population?.mode || "manual";
+  ui.populationOverviewBtn.title = `${busyResidents} beschäftigt · ${availableResidents} frei · Reserve ${reserve} · Modus ${mode}`;
+  ui.populationOverviewBtn.setAttribute("aria-label", `Bevölkerungsverwaltung öffnen: ${busyResidents} beschäftigt, ${availableResidents} frei, ${residentTotal} gesamt`);
 
   const campaignView = getCampaignView(state);
   const campaignChoiceRequired = isCampaignChoiceRequired(state);
@@ -336,25 +341,27 @@ export function renderGameUI({
     supportInfo = `<br>Bewohner: ${capacity} · Gold: +${(capacity * 0.18).toFixed(2)}/Sek. im Kampf`;
   }
   if (building.key === "lumber") {
-    supportInfo = `<br>Bewohner: ${buildingHasWorker(building) ? "zugewiesen" : "nicht zugewiesen"} · Produktion: ${supportProductionPerSecond(building).toFixed(2)} Holz/Sek.`;
+    supportInfo = `<br>Bewohner: ${buildingWorkerCount(building)}/${workerCapacityForBuilding(building)} · Leistung ${Math.round(buildingWorkforceEfficiency(building) * 100)} % · Produktion: ${supportProductionPerSecond(building).toFixed(2)} Holz/Sek.`;
   }
   if (building.key === "quarry") {
-    supportInfo = `<br>Bewohner: ${buildingHasWorker(building) ? "zugewiesen" : "nicht zugewiesen"} · Produktion: ${supportProductionPerSecond(building).toFixed(2)} Stein/Sek.`;
+    supportInfo = `<br>Bewohner: ${buildingWorkerCount(building)}/${workerCapacityForBuilding(building)} · Leistung ${Math.round(buildingWorkforceEfficiency(building) * 100)} % · Produktion: ${supportProductionPerSecond(building).toFixed(2)} Stein/Sek.`;
   }
   if (building.key === "repair") {
-    supportInfo = `<br>Bewohner: ${buildingHasWorker(building) ? "zugewiesen" : "nicht zugewiesen"} · Reparatur: ${repairHpPerTick(building).toFixed(1).replace(".", ",")} HP je Takt · ${building.repairEnabled === false ? "gestoppt" : "aktiv"}`;
+    supportInfo = `<br>Bewohner: ${buildingWorkerCount(building)}/${workerCapacityForBuilding(building)} · Leistung ${Math.round(buildingWorkforceEfficiency(building) * 100)} % · Reparatur: ${repairHpPerTick(building).toFixed(1).replace(".", ",")} HP je Takt · ${building.repairEnabled === false ? "gestoppt" : "aktiv"}`;
   }
   if (building.key === "workshop") {
-    supportInfo = `<br>Forschung: 🔬 ${Math.floor(state.researchPoints || 0)} · Technologiestufen: ${workshopLevels()}<br>Globaler Kostenanstieg je fremder Forschungsstufe: ${Math.round(globalResearchIncreaseRate() * 100)} %`;
+    const staff = buildingWorkerCount(building);
+    const staffModifier = staff <= 0 ? 25 : staff === 1 ? 10 : staff === 2 ? 0 : -10;
+    supportInfo = `<br>Bewohner: ${staff}/${workerCapacityForBuilding(building)} · Forschungskosten: ${staffModifier === 0 ? "normal" : staffModifier > 0 ? `+${staffModifier} %` : `${staffModifier} %`}<br>Forschung: 🔬 ${Math.floor(state.researchPoints || 0)} · Technologiestufen: ${workshopLevels()}`;
     if (workshopResearchButton) workshopResearchButton.style.display = "inline-block";
   }
   if (building.key === "market") {
-    supportInfo = `<br>Bewohner: ${buildingHasWorker(building) ? "zugewiesen" : "nicht zugewiesen"} · Gold: +${supportProductionPerSecond(building).toFixed(2)}/Sek. · Handelsverlust: ${marketLossPercent(building)}%`;
+    supportInfo = `<br>Bewohner: ${buildingWorkerCount(building)}/${workerCapacityForBuilding(building)} · Leistung ${Math.round(buildingWorkforceEfficiency(building) * 100)} % · Gold: +${supportProductionPerSecond(building).toFixed(2)}/Sek. · Handelsverlust: ${marketLossPercent(building)}%`;
   }
 
-  if (["lumber", "quarry", "repair", "market"].includes(building.key)) {
+  if (workerCapacityForBuilding(building) > 0) {
     ui.repairWall.disabled = false;
-    ui.repairWall.textContent = buildingHasWorker(building) ? "Abziehen" : "Zuweisen";
+    ui.repairWall.textContent = "Bevölkerung";
   }
   if (building.key === "repair" && buildingHasWorker(building)) {
     ui.craftsmanToggle.style.display = "inline-block";

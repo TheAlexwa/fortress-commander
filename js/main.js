@@ -32,13 +32,25 @@ import {
 } from "./economy.js";
 
 import {
+ POPULATION_MODES,
+ createPopulationState,
+ ensurePopulationState,
  residentCapacityForHouse as getResidentCapacityForHouse,
  syncResidents as syncResidentState,
  totalResidents as getTotalResidents,
  assignedResidents as getAssignedResidents,
+ displacedResidents as getDisplacedResidents,
  freeResidents as getFreeResidents,
  buildingHasWorker as hasBuildingWorker,
- toggleBuildingResident
+ buildingWorkerCount as getBuildingWorkerCount,
+ buildingWorkforceEfficiency as getBuildingWorkforceEfficiency,
+ workerCapacityForBuilding,
+ workplaceGroupSummary,
+ adjustWorkplaceWorkers,
+ adjustWorkforceGroup,
+ autoDistributeResidents,
+ setPopulationReserve,
+ releaseBuildingResidents as releaseResidentsFromBuilding
 } from "./villagers.js";
 
 import {
@@ -206,8 +218,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.1";
-const GAME_RELEASE_NAME="Kampagnenbelohnungen";
+const GAME_VERSION="1.17.2";
+const GAME_RELEASE_NAME="Bevölkerung 2.0";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const ACTIVE_ENEMY_LIMIT=(window.matchMedia("(max-width: 900px)").matches||navigator.maxTouchPoints>0)?64:72;
 const ENEMY_PULSE_INTERVAL=.11;
@@ -639,17 +651,17 @@ const BUILD={
  catapult:{name:"Katapult",kind:"tower",gold:140,wood:55,hp:390,range:315,rate:2.45,damage:58,speed:330,splash:62,color:"#5b554c",armorBreakAmount:.20,slowAmount:.15,debuffDuration:4,counter:"Fläche · Rüstungsbruch und Verlangsamung"},
  soldier:{name:"Bogenschütze",kind:"unit",gold:55,wood:10,hp:145,damage:15,range:120,rate:.85,speed:82,color:"#416a93"},
  guard:{name:"Burgwache",kind:"unit",gold:120,wood:10,hp:180,damage:24,range:30,rate:.78,speed:68,armor:.25,color:"#72583b"},
- house:{name:"Zeltlager",kind:"inside",gold:65,wood:20,color:"#9b7651"},
- lumber:{name:"Holzfäller",kind:"inside",gold:70,wood:0,color:"#8c6c45"},
- quarry:{name:"Steinbruch",kind:"inside",gold:90,wood:25,color:"#77736b"},
- workshop:{name:"Werkstatt",kind:"inside",gold:110,wood:40,color:"#6b6b70"},
- repair:{name:"Handwerkerhaus",kind:"inside",gold:90,wood:35,color:"#8b7063"},
- market:{name:"Marktplatz",kind:"inside",gold:150,wood:60,color:"#8a6b3d"},
- statue:{name:"Kriegerstatue",kind:"inside",gold:45,wood:0,stone:15,color:"#8f7958",slotRole:"statue",ritual:true},
+ house:{name:"Zeltlager",kind:"inside",gold:65,wood:20,hp:240,color:"#9b7651"},
+ lumber:{name:"Holzfäller",kind:"inside",gold:70,wood:0,hp:260,color:"#8c6c45"},
+ quarry:{name:"Steinbruch",kind:"inside",gold:90,wood:25,hp:340,color:"#77736b"},
+ workshop:{name:"Werkstatt",kind:"inside",gold:110,wood:40,hp:300,color:"#6b6b70"},
+ repair:{name:"Handwerkerhaus",kind:"inside",gold:90,wood:35,hp:300,color:"#8b7063"},
+ market:{name:"Marktplatz",kind:"inside",gold:150,wood:60,hp:280,color:"#8a6b3d"},
+ statue:{name:"Kriegerstatue",kind:"inside",gold:45,wood:0,stone:15,hp:420,color:"#8f7958",slotRole:"statue",ritual:true},
  hero:{name:"Andreas, der große Held",kind:"unit",gold:0,wood:0,hp:650,damage:65,range:34,rate:1.05,speed:66,armor:.35,color:"#d4aa52",hero:true}
 };
 const state={gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,nextEnemyId:0,
- enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],outerGates:[],craftsmen:[],residents:[],siege:null,warCouncil:createWarCouncilState(1),bonusObjective:null,campaign:createCampaignState(1),worldRun:createWorldRunStats(),spawnQueue:[],repairActive:false,repairedHp:0,heroOffering:0,heroSummoned:false,heroFallen:false,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
+ enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],outerGates:[],craftsmen:[],residents:[],population:createPopulationState(),siege:null,warCouncil:createWarCouncilState(1),bonusObjective:null,campaign:createCampaignState(1),worldRun:createWorldRunStats(),spawnQueue:[],repairActive:false,repairedHp:0,heroOffering:0,heroSummoned:false,heroFallen:false,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
 const wallSlots=[],insideSlots=[],castleSlots=[];
 
 function initMap(){
@@ -734,12 +746,18 @@ function residentCapacityForHouse(house){return getResidentCapacityForHouse(hous
 function syncResidents(){return syncResidentState(state)}
 function totalResidents(){return getTotalResidents(state)}
 function assignedResidents(){return getAssignedResidents(state)}
+function displacedResidents(){return getDisplacedResidents(state)}
 function freeResidents(){return getFreeResidents(state)}
 function buildingHasWorker(building){return hasBuildingWorker(building)}
+function buildingWorkerCount(building){return getBuildingWorkerCount(state,building)}
+function buildingWorkforceEfficiency(building){return getBuildingWorkforceEfficiency(state,building)}
+function populationState(){return ensurePopulationState(state)}
+function releaseBuildingResidents(building,options){return releaseResidentsFromBuilding(state,building,options)}
 const REPAIR_TICK_SECONDS=1;
 const BASE_REPAIR_WOOD_PER_TICK=0.5;
 function researchLevel(id){return getResearchLevel(state.research,id)}
-function repairHpPerTick(building){return getRepairHpPerTick(state.research,getRepairBuildingBaseHpPerTick(building))*activeWaveModifier("repairSpeed",1)}
+function repairHpPerTick(building){return getRepairHpPerTick(state.research,getRepairBuildingBaseHpPerTick(building))*buildingWorkforceEfficiency(building)*activeWaveModifier("repairSpeed",1)}
+function repairHpPerCraftsmanTick(building){const workers=Math.max(1,buildingWorkerCount(building));return repairHpPerTick(building)/workers}
 function repairWoodPerTick(){return getRepairWoodPerTick(state.research,BASE_REPAIR_WOOD_PER_TICK)*activeWaveModifier("repairCost",1)}
 function craftsmanMoveSpeed(){return getCraftsmanMoveSpeed(state.research)}
 function fortressAutoRepairPercent(){return getFortressAutoRepairPercent(state.research)}
@@ -754,7 +772,13 @@ function totalRepairDamage(){return getTotalRepairDamage(state)}
 let activeResearchTab="fortress";
 function researchRequirementMet(tech){return isResearchRequirementMet(tech,state.research)}
 function researchBaseCost(tech){return getResearchBaseCost(tech,state.research)}
-function researchCost(tech){return getResearchCost(tech,state.research,globalResearchMultiplier(tech.id))}
+function workshopStaffCostMultiplier(){
+ const workshop=workshopBuilding();
+ if(!workshop)return 1;
+ const workers=buildingWorkerCount(workshop);
+ return workers<=0?1.25:workers===1?1.10:workers===2?1:.90;
+}
+function researchCost(tech){return Math.max(1,Math.ceil(getResearchCost(tech,state.research,globalResearchMultiplier(tech.id))*workshopStaffCostMultiplier()))}
 function openWorkshopPanel(){
  if(!state.buildings.some(b=>b.key==="workshop"))return showToast("Zuerst eine Werkstatt bauen");
  hideRepairDecision();paused=true;last=performance.now();
@@ -772,7 +796,8 @@ function renderWorkshop(){
  tabs.innerHTML=RESEARCH_TABS.map(t=>`<button type="button" class="workshopTab ${t.id===activeResearchTab?"active":""}" data-research-tab="${t.id}">${t.label}</button>`).join("");
  const tab=RESEARCH_TABS.find(t=>t.id===activeResearchTab),techs=RESEARCH_TECHS[activeResearchTab]||[];
  const globalPct=Math.round(globalResearchIncreaseRate()*100),workshopLv=workshopBuildingLevel(),totalLevels=workshopLevels();
- tree.innerHTML=`<p class="techTreeIntro">${tab.intro}<br><b>Globale Forschungsskalierung:</b> Jede erforschte Stufe erhöht die Kosten aller anderen Technologien um ${globalPct} %. Werkstatt Stufe ${workshopLv}/5 · insgesamt ${totalLevels} Forschungsstufen.</p><div class="techTrack">${techs.map(tech=>{
+ const workshop=workshopBuilding(),staff=workshop?buildingWorkerCount(workshop):0,staffCap=workshop?workerCapacityForBuilding(workshop):0,staffModifier=Math.round((workshopStaffCostMultiplier()-1)*100);
+ tree.innerHTML=`<p class="techTreeIntro">${tab.intro}<br><b>Globale Forschungsskalierung:</b> Jede erforschte Stufe erhöht die Kosten aller anderen Technologien um ${globalPct} %. Werkstatt Stufe ${workshopLv}/5 · insgesamt ${totalLevels} Forschungsstufen.<br><b>Werkstattpersonal:</b> ${staff}/${staffCap} · ${staffModifier===0?"normale Kosten":staffModifier>0?`+${staffModifier} % Kosten`:`${staffModifier} % Kosten`}.</p><div class="techTrack">${techs.map(tech=>{
   const lv=state.research[tech.id]||0,maxed=lv>=tech.max,unlocked=researchRequirementMet(tech),cost=researchCost(tech),canBuy=unlocked&&!maxed&&(state.researchPoints||0)>=cost;
   const pips=Array.from({length:tech.max},(_,i)=>`<span class="techPip ${i<lv?"on":""}"></span>`).join("");
   const value=tech.values?`${lv?tech.values[lv-1]:"0 %"}`:`Stufe ${lv}/${tech.max}`;
@@ -1250,7 +1275,7 @@ function updateUI(){
   builtOuterGates:()=>getBuiltOuterGateCount(state),
   navResearch,navResearchBadge,closeAllBlockingPanels,totalGoldPerSecond,
   totalWoodPerSecond,totalStonePerSecond,syncResidents,assignedResidents,totalResidents,freeResidents,
-  waveCount,buildRequirement,residentCapacityForHouse,buildingHasWorker,
+  waveCount,buildRequirement,residentCapacityForHouse,buildingHasWorker,buildingWorkerCount,buildingWorkforceEfficiency,workerCapacityForBuilding,
   supportProductionPerSecond,repairHpPerTick,workshopLevels,
   globalResearchIncreaseRate,marketLossPercent,buildingUpgradePreview,
   getBuildingUpgradeCost,getBuildingMaxLevel,hasBuildingUpgradeEffect,HERO_OFFERING_TARGET
@@ -1459,45 +1484,58 @@ function applyBossDeathShock(boss){
  let affected=0;for(const enemy of state.enemies){if(enemy===boss||enemy.hp<=0)continue;if(Math.hypot(enemy.x-boss.x,enemy.y-boss.y)<=190){enemy.moraleBreakTime=Math.max(Number(enemy.moraleBreakTime)||0,4);affected++}}
  if(affected)showToast(`Der Häuptling fällt – ${affected} Gegner verlieren ihren Kampfgeist!`);
 }
+function reapplyPopulationProfile(){
+ const population=populationState();
+ if(state.inWave||population.mode==="manual")return false;
+ return autoDistributeResidents(state,population.mode,{assignCraftsmen});
+}
 function createAt(x,y,key){
- return createEntityAt(x,y,key,{
+ const created=createEntityAt(x,y,key,{
   state,BUILD,CX,CY,WALL_R,OUTER_WALL_R,wallSlots,castleSlots,insideSlots,
   researchedUnitStats,researchedTowerStats,syncResidents,showToast,
   setBuildMode:value=>{buildMode=value},
   setSelected:value=>{selected=value}
  });
+ if(created&&BUILD[key]?.kind==="inside")reapplyPopulationProfile();
+ return created;
 }
 function upgradeSelected(){
+ const upgradedEntity=selected;
  const fortificationUpgrade=getMiddleFortificationUpgrade(selected);
+ let upgraded=false;
  if(fortificationUpgrade.eligible){
-  return upgradeMiddleFortification(selected,{
+  upgraded=upgradeMiddleFortification(selected,{
    state,showToast,
    setSelected:value=>{selected=value}
   });
- }
- return upgradeEntity(selected,{state,syncResidents,showToast,globalResearchIncreaseRate});
+ }else upgraded=upgradeEntity(selected,{state,syncResidents,showToast,globalResearchIncreaseRate});
+ if(upgraded&&upgradedEntity?.kind==="building"&&upgradedEntity.base?.kind!=="tower")reapplyPopulationProfile();
+ return upgraded;
 }
 function sellSelected(){
  if(selected?.kind==="unit"&&selected.key==="hero")return showToast("Andreas kann nicht verkauft werden");
  if(selected?.kind==="building"&&selected.key==="statue"&&((state.heroOffering||0)>0||state.heroSummoned))return showToast("Die Kriegerstatue ist durch das Ritual gebunden");
- return sellEntity(selected,{
-  state,syncResidents,showToast,
+ const soldEntity=selected;
+ const sold=sellEntity(selected,{
+  state,syncResidents,releaseBuildingResidents,showToast,
   setSelected:value=>{selected=value}
  });
+ if(sold&&soldEntity?.kind==="building"&&soldEntity.base?.kind!=="tower")reapplyPopulationProfile();
+ return sold;
 }
 let residentAssignmentBusy=false;
-function setBuildingResident(building){
+function setBuildingResident(building,delta=1){
  if(residentAssignmentBusy)return false;
  residentAssignmentBusy=true;
  try{
-  const changed=toggleBuildingResident(state,building,{assignCraftsmen,showToast});
+  const changed=adjustWorkplaceWorkers(state,building,delta,{assignCraftsmen,showToast});
   updateUI();
   return changed;
  }finally{residentAssignmentBusy=false}
 }
 function repairSelectedWall(){
  if(!selected||selected.kind!=="building")return;
- setBuildingResident(selected);
+ if(workerCapacityForBuilding(selected)>0){openPopulationDetails();return}
 }
 function toggleCraftsmanWork(){
  if(!selected||selected.kind!=="building"||selected.key!=="repair"||!buildingHasWorker(selected))return;
@@ -1668,9 +1706,13 @@ function damagedRepairTargets(){
  return list;
 }
 function assignCraftsmen(){
- // Genau ein sichtbarer Handwerker pro gültig besetztem Handwerkerhaus.
- const homes=state.buildings.filter(b=>b&&b.key==="repair"&&b.slot&&b.residentId&&buildingHasWorker(b));
- const wanted=new Map(homes.map(home=>[home.residentId,home]));
+ // Jeder zugewiesene Bewohner eines Handwerkerhauses wird als eigener
+ // Handwerker dargestellt. Die Gesamtleistung des Hauses wird auf das Team
+ // aufgeteilt, damit mehrere Figuren nicht unkontrolliert mehrfachen Schaden
+ // reparieren.
+ const repairHomes=new Map(state.buildings.filter(b=>b&&b.key==="repair"&&b.slot).map(home=>[home.bid,home]));
+ const assignments=state.residents.filter(r=>r.job==="craftsman"&&repairHomes.has(r.workplaceId));
+ const wanted=new Map(assignments.map(resident=>[resident.id,repairHomes.get(resident.workplaceId)]));
  state.craftsmen=state.craftsmen.filter(c=>c&&wanted.has(c.residentId));
  for(const c of state.craftsmen){
   const home=wanted.get(c.residentId);
@@ -1679,8 +1721,6 @@ function assignCraftsmen(){
  }
  for(const [residentId,home] of wanted){
   if(state.craftsmen.some(c=>c.residentId===residentId))continue;
-  const resident=state.residents.find(r=>r.id===residentId&&r.job==="craftsman"&&r.workplaceId===home.bid);
-  if(!resident)continue;
   state.craftsmen.push({x:home.slot.x,y:home.slot.y,home,target:null,mode:"idle",repairTimer:0,job:"craftsman",residentId,homeId:home.bid});
  }
 }
@@ -1733,7 +1773,7 @@ function updateCraftsmen(dt){
    if(state.wood<repairWoodPerTick()){c.repairTimer=0;c.mode="waiting";goHome(c);continue}
    c.repairTimer-=REPAIR_TICK_SECONDS;
    state.wood=Math.max(0,state.wood-repairWoodPerTick());
-   const repaired=Math.min(repairHpPerTick(c.home),Math.max(0,info.need()));
+   const repaired=Math.min(repairHpPerCraftsmanTick(c.home),Math.max(0,info.need()));
    info.apply(repaired);state.repairedHp+=repaired;
    burst(info.x,info.y,"#e7c36b",2);
   }
@@ -2062,7 +2102,11 @@ function update(dt){
   if(b.hp<=0){
    burst(b.slot.x,b.slot.y,b.base.kind==="tower"?"#8c6543":"#9b5b35",16);
    b.slot.building=null;
-   if(b.base.kind!=="tower"){supportBuildingDestroyed=true;state.craftsmen=state.craftsmen.filter(c=>c.home!==b&&c.homeId!==b.bid)}
+   if(b.base.kind!=="tower"){
+    releaseBuildingResidents(b,{displaced:state.inWave===true});
+    supportBuildingDestroyed=true;
+    state.craftsmen=state.craftsmen.filter(c=>c.home!==b&&c.homeId!==b.bid);
+   }
    if(selected===b)selected=null;
    return false;
   }
@@ -2078,6 +2122,10 @@ function update(dt){
  if(state.hp<=0&&!gameOver){state.hp=0;gameOver=true;state.inWave=false;paused=true;showEndScreen()}
  if(state.inWave&&state.toSpawn===0&&state.enemies.length===0){
   state.inWave=false;state.supportTimer=0;paused=false;last=performance.now();
+  syncResidents();
+  const population=populationState();
+  if(population.mode!=="manual")autoDistributeResidents(state,population.mode,{assignCraftsmen});
+  else assignCraftsmen();
   const completedWave=state.wave;
   const gold=30+completedWave*5;
   const rp=Math.min(9,2+Math.ceil(completedWave/4)+(completedWave%8===0?2:0));
@@ -2291,8 +2339,8 @@ function showEndScreen(){
 function hideEndScreen(){const screen=document.getElementById("endScreen");if(screen){screen.classList.add("hidden");screen.style.pointerEvents="none"}}
 function reset(){
  const startBonuses=getActiveStartBonuses(worldMapProfile);
- state.gold=210+startBonuses.gold;state.wood=105+startBonuses.wood;state.stone=startBonuses.stone;state.researchPoints=startBonuses.researchPoints;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.nextEnemyId=0;state.heroOffering=startBonuses.heroOffering;state.heroSummoned=false;state.heroFallen=false;state.warCouncil=createWarCouncilState(1);state.bonusObjective=null;state.campaign=createCampaignState(1);state.worldRun=createWorldRunStats();
- state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hideCampaignVictoryScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeOuterWallSegments(state.outerWalls,{built:false});initializeOuterGates(state.outerGates,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
+ state.gold=210+startBonuses.gold;state.wood=105+startBonuses.wood;state.stone=startBonuses.stone;state.researchPoints=startBonuses.researchPoints;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.nextEnemyId=0;state.nextResidentId=0;state.population=createPopulationState();state.heroOffering=startBonuses.heroOffering;state.heroSummoned=false;state.heroFallen=false;state.warCouncil=createWarCouncilState(1);state.bonusObjective=null;state.campaign=createCampaignState(1);state.worldRun=createWorldRunStats();
+ state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.residents=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hideCampaignVictoryScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeOuterWallSegments(state.outerWalls,{built:false});initializeOuterGates(state.outerGates,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
  selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();syncWorldMapFromCurrentState();showToast("Neue Belagerung beginnt");
 }
 
@@ -2443,11 +2491,11 @@ function buildingDisplayName(b){return b.key==="house"?(b.level>=2?"Holzhaus":"Z
 function buildingProductionInfo(b){
  const active=state.inWave&&!paused&&!gameOver;
  if(b.key==="house")return {label:"Goldproduktion",value:`+${(residentCapacityForHouse(b)*.18).toFixed(2)} Gold/Sek.`,state:active?"läuft":"nur in aktiver Welle"};
- if(b.key==="lumber")return {label:"Holzproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Holz/Sek.`,state:buildingHasWorker(b)?(active?"läuft":"wartet auf Welle"):"kein Bewohner"};
- if(b.key==="quarry")return {label:"Steinproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Stein/Sek.`,state:buildingHasWorker(b)?(active?"läuft":"wartet auf Welle"):"kein Bewohner"};
- if(b.key==="repair")return {label:"Reparaturleistung",value:`+${repairHpPerTick(b).toFixed(1).replace(".",",")} HP/Takt · −${repairWoodPerTick().toFixed(2).replace(".",",")} Holz`,state:!buildingHasWorker(b)?"kein Bewohner":b.repairEnabled===false?"gestoppt":active?"läuft bei Schaden":"wartet"};
- if(b.key==="market")return {label:"Goldproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Gold/Sek.`,state:buildingHasWorker(b)?(active?"läuft":"wartet auf Welle"):"kein Bewohner"};
- if(b.key==="workshop")return {label:"Forschung",value:`${workshopLevels()} Stufen`,state:`🔬 ${Math.floor(state.researchPoints||0)} verfügbar`};
+ if(b.key==="lumber")return {label:"Holzproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Holz/Sek.`,state:buildingHasWorker(b)?`${Math.round(buildingWorkforceEfficiency(b)*100)} % · ${active?"läuft":"wartet"}`:"kein Bewohner"};
+ if(b.key==="quarry")return {label:"Steinproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Stein/Sek.`,state:buildingHasWorker(b)?`${Math.round(buildingWorkforceEfficiency(b)*100)} % · ${active?"läuft":"wartet"}`:"kein Bewohner"};
+ if(b.key==="repair")return {label:"Reparaturleistung",value:`+${repairHpPerTick(b).toFixed(1).replace(".",",")} HP/Takt · −${repairWoodPerTick().toFixed(2).replace(".",",")} Holz`,state:!buildingHasWorker(b)?"kein Bewohner":b.repairEnabled===false?"gestoppt":`${Math.round(buildingWorkforceEfficiency(b)*100)} % · ${active?"bereit":"wartet"}`};
+ if(b.key==="market")return {label:"Goldproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Gold/Sek.`,state:buildingHasWorker(b)?`${Math.round(buildingWorkforceEfficiency(b)*100)} % · ${active?"läuft":"wartet"}`:"kein Bewohner"};
+ if(b.key==="workshop"){const mod=Math.round((workshopStaffCostMultiplier()-1)*100);return {label:"Forschung",value:`${workshopLevels()} Stufen`,state:`${buildingWorkerCount(b)}/${workerCapacityForBuilding(b)} Bewohner · ${mod===0?"normale Kosten":mod>0?`+${mod} % Kosten`:`${mod} % Kosten`}`};}
  return {label:"Produktion",value:"—",state:"—"};
 }
 function buildingStatsHtml(b){
@@ -2471,7 +2519,7 @@ function buildingStatsHtml(b){
  <div class="statTile"><span>Offene Punkte</span><b>${b.pendingUpgrades||0}</b></div></div>
  <div class="statsSection"><h3>Kampfwerte</h3><div class="statRow header"><div>Wert</div><div>Grundwert</div><div>Aktuell</div><div>Änderung</div></div>${rows}</div>
  <div class="statsHint">⚔ ${towerCounterText(b)}</div>${veteranStatsHtml(b)}<div class="statsHint">Türme werden nicht direkt mit Gold oder Holz verbessert. Individuelle Aufwertungen erfolgen über Kampf-EXP; globale Turmforschung folgt in einem eigenen Schritt.</div>`;
- const prod=buildingProductionInfo(b),workerNeeded=["lumber","quarry","repair","market"].includes(b.key),workerText=workerNeeded?(buildingHasWorker(b)?"1 / 1 zugewiesen":"0 / 1 zugewiesen"):b.key==="house"?`${residentCapacityForHouse(b)} Bewohnerplätze`:"Kein Arbeitsplatz";
+ const prod=buildingProductionInfo(b),workerNeeded=workerCapacityForBuilding(b)>0,workerText=workerNeeded?`${buildingWorkerCount(b)} / ${workerCapacityForBuilding(b)} zugewiesen · ${Math.round(buildingWorkforceEfficiency(b)*100)} %`:b.key==="house"?`${residentCapacityForHouse(b)} Bewohnerplätze`:"Kein Arbeitsplatz";
  const cost=getBuildingUpgradeCost(b),g=cost.gold,w=cost.wood,maxLevel=cost.maxLevel,canUpgrade=!cost.maxed&&state.gold>=g&&state.wood>=w,preview=buildingUpgradePreview(b);
  return `<div class="buildingOverview">
   <div class="statTile"><span>Gebäude</span><b>${buildingDisplayName(b)}</b></div>
@@ -2484,7 +2532,7 @@ function buildingStatsHtml(b){
  ${b.key==="workshop"?`<div class="statsHint">Öffne die Forschung über die Werkstatt. Verfügbar: 🔬 ${Math.floor(state.researchPoints||0)} · Erforschte Stufen: ${workshopLevels()}</div>`:""}
  ${preview?`<div class="statsSection"><h3>${preview.maxed?"Gebäude vollständig ausgebaut":`Nächste Stufe ${level+1}`}</h3><div class="upgradeCard"><b>${preview.label}</b><small>${preview.summary}</small></div></div>`:""}
  <div class="buildingActionBar">
-  ${workerNeeded?`<button type="button" data-building-worker="${b.bid}" class="${buildingHasWorker(b)?"danger":"primary"}">${buildingHasWorker(b)?"Bewohner abziehen":"Bewohner zuweisen"}</button>`:""}
+  ${workerNeeded?`<button type="button" data-building-worker="${b.bid}" class="primary">👥 Arbeitsverteilung öffnen</button>`:""}
   ${b.key==="repair"&&buildingHasWorker(b)?`<button type="button" data-building-repair="${b.bid}">${b.repairEnabled===false?"Arbeit starten":"Arbeit stoppen"}</button>`:""}
   ${b.key==="market"?`<button type="button" data-building-market="${b.bid}">Handel öffnen</button>`:""}
   <button type="button" data-building-upgrade="${b.bid}" class="primary wide" ${canUpgrade?"":"disabled"}>${b.level>=maxLevel?"Maximalstufe erreicht":`Aufwerten · ${g} Gold / ${w} Holz`}</button>
@@ -2530,13 +2578,13 @@ function resourceDetailsHtml(){
  const stoneRate=totalStonePerSecond();
  const goldRate=totalGoldPerSecond();
  const nextWaveReward=30+state.wave*5;
- const woodRows=lumberjacks.length?lumberjacks.map((b,i)=>`
+ const woodRows=lumberjacks.length?lumberjacks.map((b,i)=>{const workers=buildingWorkerCount(b),capacity=workerCapacityForBuilding(b),efficiency=Math.round(buildingWorkforceEfficiency(b)*100);return `
   <div class="rosterItem"><div class="rosterIcon">🪵</div><div><b>Holzfäller ${i+1} · Stufe ${b.level||1}</b>
-  <small>${buildingHasWorker(b)?`${supportProductionPerSecond(b).toFixed(2)} Holz pro Sekunde im Kampf`:`Kein Bewohner zugewiesen`}</small></div><div class="rosterBadge">${buildingHasWorker(b)?`+${supportProductionPerSecond(b).toFixed(2)}/s`:"frei"}</div></div>`).join("")
+  <small>${workers?`${workers}/${capacity} Bewohner · ${efficiency} % Leistung · ${supportProductionPerSecond(b).toFixed(2)} Holz pro Sekunde im Kampf`:`0/${capacity} Bewohner · Produktion steht`}</small></div><div class="rosterBadge">${workers?`+${supportProductionPerSecond(b).toFixed(2)}/s`:"0 %"}</div></div>`}).join("")
   :`<div class="statsHint">Noch kein Holzfäller gebaut. Ohne Holzfäller gibt es keine laufende Holzproduktion.</div>`;
- const stoneRows=quarries.length?quarries.map((b,i)=>`
+ const stoneRows=quarries.length?quarries.map((b,i)=>{const workers=buildingWorkerCount(b),capacity=workerCapacityForBuilding(b),efficiency=Math.round(buildingWorkforceEfficiency(b)*100);return `
   <div class="rosterItem"><div class="rosterIcon">🪨</div><div><b>Steinbruch ${i+1} · Stufe ${b.level||1}</b>
-  <small>${buildingHasWorker(b)?`${supportProductionPerSecond(b).toFixed(2)} Stein pro Sekunde im Kampf`:`Kein Bewohner zugewiesen`}</small></div><div class="rosterBadge">${buildingHasWorker(b)?`+${supportProductionPerSecond(b).toFixed(2)}/s`:"frei"}</div></div>`).join("")
+  <small>${workers?`${workers}/${capacity} Bewohner · ${efficiency} % Leistung · ${supportProductionPerSecond(b).toFixed(2)} Stein pro Sekunde im Kampf`:`0/${capacity} Bewohner · Produktion steht`}</small></div><div class="rosterBadge">${workers?`+${supportProductionPerSecond(b).toFixed(2)}/s`:"0 %"}</div></div>`}).join("")
   :`<div class="statsHint">Noch kein Steinbruch gebaut. Stein wird später für Mauern, Tore und schwere Festungsbauten benötigt.</div>`;
  return `<div class="statsSummary">
   <div class="statTile"><span>🪙 Gold</span><b>${Math.floor(state.gold)}</b></div>
@@ -2560,16 +2608,50 @@ function resourceDetailsHtml(){
  <div class="statsSection"><h3>🪨 Steinversorgung</h3>${stoneRows}</div>
  <div class="statsHint">Holz- und Steinproduktion laufen ausschließlich während einer aktiven, nicht pausierten Kampfwelle. Reparaturen verbrauchen Holz pro Reparatur-Takt. Stein wird in dieser Übergangsversion bereits gesammelt und später für Mauern, Tore und Festungsausbau verwendet.</div>`;
 }
-function residentJobLabel(r){return r.job==="lumberjack"?"Holzfäller":r.job==="stonecutter"?"Steinmetz":r.job==="craftsman"?"Handwerker":r.job==="merchant"?"Händler":r.job?"Arbeiter":"Frei"}
+function residentJobLabel(r){return r.job==="lumberjack"?"Holzfäller":r.job==="stonecutter"?"Steinmetz":r.job==="craftsman"?"Handwerker":r.job==="researcher"?"Werkstatt":r.job==="merchant"?"Händler":r.job?"Arbeiter":"Frei"}
 function workplaceLabel(b){return b.key==="lumber"?"Holzfäller":b.key==="quarry"?"Steinbruch":b.key==="repair"?"Handwerkerhaus":b.key==="market"?"Marktplatz":"Werkstatt"}
 function workplaceIcon(b){return b.key==="lumber"?"🪵":b.key==="quarry"?"🪨":b.key==="repair"?"👷":b.key==="market"?"🏪":"⚒️"}
+function populationGroupOutput(key,summary){
+ if(!summary||!summary.buildings.length)return "Noch nicht gebaut";
+ if(key==="lumber")return `+${summary.buildings.reduce((sum,b)=>sum+supportProductionPerSecond(b),0).toFixed(2)} Holz/Sek.`;
+ if(key==="quarry")return `+${summary.buildings.reduce((sum,b)=>sum+supportProductionPerSecond(b),0).toFixed(2)} Stein/Sek.`;
+ if(key==="repair")return `+${summary.buildings.reduce((sum,b)=>sum+repairHpPerTick(b),0).toFixed(1).replace(".",",")} HP/Takt`;
+ if(key==="market")return `+${summary.buildings.reduce((sum,b)=>sum+supportProductionPerSecond(b),0).toFixed(2)} Gold/Sek.`;
+ if(key==="workshop"){
+  const modifier=Math.round((workshopStaffCostMultiplier()-1)*100);
+  return modifier===0?"Normale Forschungskosten":modifier>0?`+${modifier} % Forschungskosten`:`${modifier} % Forschungskosten`;
+ }
+ return "—";
+}
 function populationDetailsHtml(){
  syncResidents();
- const residents=[...state.residents];
- const workplaces=state.buildings.filter(b=>["lumber","quarry","repair","market"].includes(b.key));
- const residentRows=residents.length?residents.map((r,i)=>{const home=state.buildings.find(h=>h.bid===r.homeId);return `<div class="rosterItem"><div class="rosterIcon">${r.job==="craftsman"?"👷":r.job==="lumberjack"?"🧑‍🌾":r.job==="stonecutter"?"⛏️":r.job==="merchant"?"🧑‍💼":r.job?"🧑‍🔧":"🙂"}</div><div><b>Bewohner ${i+1}</b><small>${home?(home.level>=2?"Holzhaus":"Zeltlager"):"Ohne Unterkunft"} · ${residentJobLabel(r)}</small></div><div class="residentState ${r.workplaceId?"busy":"free"}">${r.workplaceId?"arbeitet":"frei"}</div></div>`}).join(""):'<div class="statsHint">Baue zuerst ein Zeltlager, um Bewohner zu erhalten.</div>';
- const workRows=workplaces.length?workplaces.map(b=>`<div class="populationWorkplace"><div class="workIcon">${workplaceIcon(b)}</div><div><b>${workplaceLabel(b)} · Stufe ${b.level||1}</b><small>${b.residentId?"Ein Bewohner arbeitet hier.":"Arbeitsplatz ist frei."}</small></div><button type="button" data-pop-workplace="${b.bid}" class="${b.residentId?"danger":"primary"}">${b.residentId?"Abziehen":"Zuweisen"}</button></div>`).join(""):'<div class="statsHint">Noch keine Versorgungsgebäude mit Arbeitsplätzen gebaut.</div>';
- return `<div class="statsSummary"><div class="statTile"><span>Bewohner gesamt</span><b>${totalResidents()}</b></div><div class="statTile"><span>Arbeiten</span><b>${assignedResidents()}</b></div><div class="statTile"><span>Frei</span><b>${freeResidents()}</b></div></div><div class="statsSection"><h3>👥 Bewohner</h3>${residentRows}</div><div class="statsSection"><h3>🏭 Arbeitsplätze zuweisen</h3><div class="populationActions">${workRows}</div></div><div class="statsHint">Ein Bewohner im Handwerkerhaus erscheint als sichtbarer Handwerker. Während einer aktiven Angriffswelle läuft er zu beschädigten Mauern, Türmen und zur Burg und repariert pro Sekunde 16 HP für 0,5 Holz.</div>`;
+ const population=populationState();
+ const locked=state.inWave;
+ const total=totalResidents(),assigned=assignedResidents(),free=freeResidents(),displaced=displacedResidents();
+ const modes=Object.values(POPULATION_MODES).map(mode=>`<button type="button" class="populationModeBtn ${population.mode===mode.key?"active":""}" data-pop-mode="${mode.key}" ${locked?"disabled":""}><span>${mode.icon}</span><b>${mode.label}</b><small>${mode.description}</small></button>`).join("");
+ const groupKeys=["lumber","quarry","repair","workshop","market"];
+ const groupRows=groupKeys.map(key=>{
+  const summary=workplaceGroupSummary(state,key);
+  const hasBuildings=Boolean(summary?.buildings.length);
+  const percent=Math.round((summary?.efficiency||0)*100);
+  const addDisabled=locked||!hasBuildings||summary.workers>=summary.capacity||free<=population.reserve;
+  const removeDisabled=locked||!hasBuildings||summary.workers<=0;
+  return `<div class="populationGroup ${!hasBuildings?"unbuilt":""}">
+   <div class="populationGroupIcon">${summary?.icon||"🏭"}</div>
+   <div class="populationGroupMain"><div class="populationGroupTitle"><b>${summary?.label||key}</b><span>${summary?.workers||0} / ${summary?.capacity||0}</span></div><small>${hasBuildings?`${summary.buildings.length} Gebäude · Leistung ${percent} % · ${populationGroupOutput(key,summary)}`:"Noch kein passendes Gebäude errichtet"}</small><div class="populationEfficiency"><span style="width:${Math.min(100,percent)}%"></span></div></div>
+   <div class="populationStepper"><button type="button" data-pop-job="${key}" data-pop-delta="-1" ${removeDisabled?"disabled":""} aria-label="Bewohner abziehen">−</button><button type="button" data-pop-job="${key}" data-pop-delta="1" ${addDisabled?"disabled":""} aria-label="Bewohner zuweisen">+</button></div>
+  </div>`;
+ }).join("");
+ const jobCounts=[
+  ["🪵","Holzfäller","lumberjack"],["🪨","Steinmetze","stonecutter"],["👷","Handwerker","craftsman"],["⚒️","Werkstatt","researcher"],["🏪","Händler","merchant"]
+ ].map(([icon,label,job])=>`<div class="populationMiniRow"><span>${icon} ${label}</span><b>${state.residents.filter(r=>r.job===job&&r.workplaceId).length}</b></div>`).join("");
+ const soldierCount=state.units.filter(u=>u.key==="soldier").length,guardCount=state.units.filter(u=>u.key==="guard").length,heroCount=state.units.filter(u=>u.key==="hero").length;
+ return `<div class="populationHero"><div><small>ZENTRALE VERWALTUNG</small><h3>👥 Bevölkerung 2.0</h3><p>Verteile Bewohner gezielt auf Wirtschaft, Reparatur und Forschung. Änderungen sind nur zwischen Angriffswellen möglich.</p></div><div class="populationLock ${locked?"locked":"open"}">${locked?"🔒 Angriff läuft":"✓ Zuteilung offen"}</div></div>
+ <div class="statsSummary populationSummary"><div class="statTile"><span>Gesamt</span><b>${total}</b></div><div class="statTile"><span>Beschäftigt</span><b>${assigned}</b></div><div class="statTile"><span>Frei</span><b>${free}</b></div><div class="statTile"><span>Mindestreserve</span><b>${population.reserve}</b></div>${displaced?`<div class="statTile populationDisplaced"><span>Geflohen</span><b>${displaced}</b></div>`:""}</div>
+ <div class="statsSection"><h3>⚙️ Verteilungsmodus</h3><div class="populationModes">${modes}</div><div class="populationControlRow"><div><b>Mindestreserve</b><small>Diese Bewohner bleiben für Neubauten und Notfälle frei.</small></div><div class="populationReserve"><button type="button" data-pop-reserve="-1" ${locked||population.reserve<=0?"disabled":""}>−</button><b>${population.reserve}</b><button type="button" data-pop-reserve="1" ${locked||population.reserve>=total?"disabled":""}>+</button></div></div>${population.mode!=="manual"?`<button type="button" class="populationRedistribute" data-pop-redistribute ${locked?"disabled":""}>↻ ${POPULATION_MODES[population.mode].label} neu verteilen</button>`:""}</div>
+ <div class="statsSection"><h3>🏭 Arbeitsplätze</h3><div class="populationGroups">${groupRows}</div><div class="statsHint">Leistung je Gebäude: 1 Bewohner = 45 %, 2 = 75 %, 3 = 100 %, 4 = 120 %. Manuelle Änderungen schalten automatisch auf „Manuell“.</div></div>
+ <div class="populationColumns"><div class="statsSection"><h3>🧑‍🏭 Zivile Berufe</h3>${jobCounts}</div><div class="statsSection"><h3>⚔️ Militär</h3><div class="populationMiniRow"><span>🏹 Bogenschützen</span><b>${soldierCount}</b></div><div class="populationMiniRow"><span>🛡️ Burgwachen</span><b>${guardCount}</b></div><div class="populationMiniRow"><span>👑 Andreas</span><b>${heroCount}</b></div><div class="statsHint">Militäreinheiten werden getrennt von den Bewohnern geführt und belegen keine Arbeitsplätze.</div></div></div>
+ ${displaced?`<div class="statsHint warning">${displaced} Bewohner sind nach der Zerstörung ihres Arbeitsplatzes geflohen. Nach Ende der Welle kehren sie als freie Bewohner zurück.</div>`:""}`;
 }
 function openMarketPanel(){
  if(!selected||selected.kind!=="building"||selected.key!=="market")return;
@@ -2587,16 +2669,27 @@ function executeMarketTrade(type,amount){
  openMarketPanel();updateUI();
 }
 function prepareStatsScreen(){hideRepairDecision();statsScreen.classList.remove("hidden");statsScreen.style.display="flex";statsScreen.style.pointerEvents="auto";statsScreen.style.visibility="visible"}
-function openPopulationDetails(){prepareStatsScreen();statsTitle.textContent="Bewohner & Arbeit";statsContent.innerHTML=populationDetailsHtml()}
-function toggleWorkplaceResident(bid){
- const b=state.buildings.find(x=>x.bid===bid);
- if(!b)return;
- const changed=setBuildingResident(b);
- if(changed){
-  // Das Zuweisungsfenster wird nach der Aktion vollständig geschlossen, damit kein unsichtbares Overlay Eingaben blockiert.
-  closeStats();
-  requestAnimationFrame(()=>{closeAllBlockingPanels();canvas.style.pointerEvents="auto";last=performance.now()});
+function openPopulationDetails(){prepareStatsScreen();statsTitle.textContent="Bevölkerung & Arbeitsverteilung";statsContent.innerHTML=populationDetailsHtml()}
+function refreshPopulationDetails(){statsContent.innerHTML=populationDetailsHtml();updateUI()}
+function changePopulationGroup(key,delta){
+ const changed=adjustWorkforceGroup(state,key,delta,{assignCraftsmen,showToast});
+ if(changed){saveGame(true);refreshPopulationDetails()}
+}
+function choosePopulationMode(mode){
+ if(mode==="manual"){
+  if(state.inWave)return showToast("Arbeitsverteilung ist während eines Angriffs gesperrt");
+  populationState().mode="manual";showToast("Manuelle Arbeitsverteilung aktiv");saveGame(true);refreshPopulationDetails();return;
  }
+ if(autoDistributeResidents(state,mode,{assignCraftsmen,showToast})){saveGame(true);refreshPopulationDetails()}
+}
+function changePopulationReserve(delta){
+ const population=populationState();
+ if(setPopulationReserve(state,population.reserve+delta,{assignCraftsmen,showToast,redistribute:true})){saveGame(true);refreshPopulationDetails()}
+}
+function redistributePopulation(){
+ const mode=populationState().mode;
+ if(mode==="manual")return showToast("Wähle zuerst einen automatischen Verteilungsmodus");
+ if(autoDistributeResidents(state,mode,{assignCraftsmen,showToast})){saveGame(true);refreshPopulationDetails()}
 }
 function openTestResourcePanel(){
  testResourcePanel.classList.remove("hidden");
@@ -2716,10 +2809,16 @@ statsContent.addEventListener("click",e=>{
  const focusUpgrade=e.target.closest("[data-upgrade-focus]");
  if(focusUpgrade){e.preventDefault();e.stopPropagation();const entity=findUpgradeEntity(focusUpgrade.dataset.upgradeFocus);if(entity){selected=entity;closeStats();camX=entity.x;camY=entity.y;clampCamera();updateUI();showToast(`${upgradeEntityName(entity)} ausgewählt`)}return}
  const openWorkshop=e.target.closest("[data-open-workshop]");if(openWorkshop){e.preventDefault();e.stopPropagation();closeStats();openWorkshopPanel();return}
- const pop=e.target.closest("[data-pop-workplace]");
- if(pop){e.preventDefault();e.stopPropagation();pop.disabled=true;toggleWorkplaceResident(Number(pop.dataset.popWorkplace));return}
+ const popMode=e.target.closest("[data-pop-mode]");
+ if(popMode){e.preventDefault();e.stopPropagation();choosePopulationMode(popMode.dataset.popMode);return}
+ const popReserve=e.target.closest("[data-pop-reserve]");
+ if(popReserve){e.preventDefault();e.stopPropagation();changePopulationReserve(Number(popReserve.dataset.popReserve));return}
+ const popJob=e.target.closest("[data-pop-job]");
+ if(popJob){e.preventDefault();e.stopPropagation();changePopulationGroup(popJob.dataset.popJob,Number(popJob.dataset.popDelta));return}
+ const popRedistribute=e.target.closest("[data-pop-redistribute]");
+ if(popRedistribute){e.preventDefault();e.stopPropagation();redistributePopulation();return}
  const worker=e.target.closest("[data-building-worker]");
- if(worker){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(worker.dataset.buildingWorker));if(b){selected=b;setBuildingResident(b);openStats(b);updateUI()}return}
+ if(worker){e.preventDefault();e.stopPropagation();openPopulationDetails();return}
  const repair=e.target.closest("[data-building-repair]");
  if(repair){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(repair.dataset.buildingRepair));if(b){selected=b;toggleCraftsmanWork();openStats(b)}return}
  const offering=e.target.closest("[data-building-offering]");
@@ -2890,9 +2989,11 @@ function updateSelectionHud(){
     :selected.base.kind==="tower"
     ?`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · 🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||90)} EXP${isVeteranChoiceReady(selected)?" · ⭐ Veteranenpfad bereit":getVeteranSpecialization(selected)?` · ${veteranSpecializationLabel(selected)}`:""}`
     :selected.key==="house"?`👥 ${residentCapacityForHouse(selected)} Bewohner · 🪙 +${(residentCapacityForHouse(selected)*.18).toFixed(2)}/Sek.`
-    :selected.key==="lumber"?`👤 ${buildingHasWorker(selected)?"besetzt":"frei"} · 🪵 ${supportProductionPerSecond(selected).toFixed(2)}/Sek.`
-    :selected.key==="repair"?`👤 ${buildingHasWorker(selected)?"besetzt":"frei"} · 👷 ${selected.repairEnabled===false?"gestoppt":"aktiv"}`
-    :selected.key==="workshop"?`⚒️ Forschung · 🔬 ${Math.floor(state.researchPoints||0)} · ${workshopLevels()} Stufen`
+    :selected.key==="lumber"?`👥 ${buildingWorkerCount(selected)}/${workerCapacityForBuilding(selected)} · ${Math.round(buildingWorkforceEfficiency(selected)*100)} % · 🪵 ${supportProductionPerSecond(selected).toFixed(2)}/Sek.`
+    :selected.key==="quarry"?`👥 ${buildingWorkerCount(selected)}/${workerCapacityForBuilding(selected)} · ${Math.round(buildingWorkforceEfficiency(selected)*100)} % · 🪨 ${supportProductionPerSecond(selected).toFixed(2)}/Sek.`
+    :selected.key==="repair"?`👥 ${buildingWorkerCount(selected)}/${workerCapacityForBuilding(selected)} · 👷 ${selected.repairEnabled===false?"gestoppt":`${Math.round(buildingWorkforceEfficiency(selected)*100)} %`}`
+    :selected.key==="workshop"?`👥 ${buildingWorkerCount(selected)}/${workerCapacityForBuilding(selected)} · ⚒️ Forschung · 🔬 ${Math.floor(state.researchPoints||0)}`
+    :selected.key==="market"?`👥 ${buildingWorkerCount(selected)}/${workerCapacityForBuilding(selected)} · 🪙 ${supportProductionPerSecond(selected).toFixed(2)}/Sek.`
     :"Versorgungsgebäude";
   }
  }else if(selected.kind==="gate"){

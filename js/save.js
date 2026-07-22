@@ -4,6 +4,7 @@ import { normalizeVeteranSpecialization } from "./specializations.js";
 import { restoreBonusObjectiveState, serializeBonusObjectiveState } from "./bonus-objectives.js";
 import { restoreCampaignState, serializeCampaignState } from "./campaign.js";
 import { restoreWorldRunStats, serializeWorldRunStats } from "./world-map.js";
+import { createPopulationState, serializePopulationState } from "./villagers.js";
 import {
   MIDDLE_GATE_STONE_MAX_HP,
   MIDDLE_GATE_WOOD_MAX_HP,
@@ -283,6 +284,7 @@ function createSnapshot({
       ),
       units: state.units.map(serializeUnit),
       residents: state.residents.map((resident) => ({ ...resident })),
+      population: serializePopulationState(state.population),
       siege: serializeSiegeState(state.siege),
       warCouncil: serializeWarCouncilState(state.warCouncil, state.wave),
       bonusObjective: serializeBonusObjectiveState(state.bonusObjective, state.wave),
@@ -343,6 +345,13 @@ function restoreBuilding(savedBuilding, context) {
     cooldown: 0,
     expUpgradeStats: { ...(savedBuilding.expUpgradeStats || {}) },
   };
+  if (blueprint.kind !== "tower") {
+    const fallbackHp = Math.max(1, Number(blueprint.hp) || 260);
+    building.maxHp = Math.max(1, Number(savedBuilding.maxHp) || fallbackHp);
+    building.hp = Number.isFinite(Number(savedBuilding.hp))
+      ? Math.max(0, Math.min(building.maxHp, Number(savedBuilding.hp)))
+      : building.maxHp;
+  }
   normalizeVeteranSpecialization(building);
   return building;
 }
@@ -413,7 +422,10 @@ export function loadGameState({
     restoreBuilding(building, slotContext)
   );
   const units = savedState.units.map((unit) => restoreUnit(unit, BUILD));
-  const residents = savedState.residents.map((resident) => ({ ...resident }));
+  const residents = savedState.residents.map((resident) => ({
+    ...resident,
+    displaced: false,
+  }));
   const occupiedSlots = new Set();
 
   for (const building of buildings) {
@@ -460,6 +472,7 @@ export function loadGameState({
     buildings,
     units,
     residents,
+    population: serializePopulationState(savedState.population || createPopulationState()),
     siege: restoreSiegeState(savedState.siege, savedState.wave),
     warCouncil: restoreWarCouncilState(savedState.warCouncil, savedState.wave),
     bonusObjective: null,

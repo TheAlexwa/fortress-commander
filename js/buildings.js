@@ -245,6 +245,8 @@ export function createEntityAt(x, y, key, context) {
     cooldown: 0,
     residentId: null,
     residentAssigned: false,
+    workerIds: [],
+    workerCount: 0,
     repairEnabled: true,
     investedGold: blueprint.gold,
     investedWood: blueprint.wood,
@@ -270,6 +272,10 @@ export function createEntityAt(x, y, key, context) {
       speed: stats.speed,
       splash: stats.splash || 0,
     });
+  } else {
+    const supportHp = Math.max(1, Number(blueprint.hp) || 260);
+    building.hp = supportHp;
+    building.maxHp = supportHp;
   }
 
   bestSlot.building = building;
@@ -352,7 +358,7 @@ export function upgradeEntity(entity, context) {
 }
 
 export function sellEntity(entity, context) {
-  const { state, syncResidents, showToast, setSelected } = context;
+  const { state, syncResidents, releaseBuildingResidents, showToast, setSelected } = context;
   if (!entity) return false;
 
   if (entity.kind === "unit") {
@@ -361,13 +367,13 @@ export function sellEntity(entity, context) {
     state.stone += Math.floor((entity.investedStone || 0) * 0.6);
     state.units = state.units.filter((unit) => unit !== entity);
   } else if (entity.kind === "building") {
-    if (entity.residentId) {
-      const resident = state.residents.find(
-        (candidate) => candidate.id === entity.residentId
-      );
-      if (resident) {
+    if (typeof releaseBuildingResidents === "function") {
+      releaseBuildingResidents(entity, { displaced: false });
+    } else {
+      for (const resident of state.residents.filter((candidate) => candidate.workplaceId === entity.bid)) {
         resident.job = null;
         resident.workplaceId = null;
+        resident.displaced = false;
       }
     }
 

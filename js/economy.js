@@ -1,3 +1,5 @@
+import { workforceEfficiencyForCount } from "./villagers.js";
+
 /**
  * Wirtschaftssystem von Fortress Commander.
  *
@@ -10,19 +12,22 @@ export function getRepairBuildingBaseHpPerTick(building) {
   return 16 + (level - 1) * 2;
 }
 
-export function getSupportProductionPerSecond(building, buildingHasWorker) {
+export function getSupportProductionPerSecond(building, _buildingHasWorker) {
   const level = building.level || 1;
+  const efficiency = workforceEfficiencyForCount(building.workerCount || (building.residentId ? 1 : 0));
 
   if (building.key === "lumber") {
-    return buildingHasWorker(building) ? 0.55 + (level - 1) * 0.30 : 0;
+    return (0.55 + (level - 1) * 0.30) * efficiency;
   }
 
   if (building.key === "quarry") {
-    return buildingHasWorker(building) ? 0.35 + (level - 1) * 0.20 : 0;
+    return (0.35 + (level - 1) * 0.20) * efficiency;
   }
 
   if (building.key === "market") {
-    return buildingHasWorker(building) ? level : 0;
+    // Zwei Händler entsprechen 100 % des bisherigen Marktertrags. Ein einzelner
+    // Händler hält den Markt bereits eingeschränkt offen.
+    return (level / 0.75) * efficiency;
   }
 
   return 0;
