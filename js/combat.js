@@ -56,17 +56,28 @@ export function findTowerTarget(enemies, tower, range) {
     const distance = Math.sqrt(distanceSquared);
     let score = distance;
     if (tower.key === "archer") {
-      if (enemy.type === "runner" || enemy.type === "raider") score -= 190;
-      if (getEffectiveEnemyArmor(enemy) >= 0.15) score += 85;
+      if (tower.specialization === "hunter") {
+        if (["shield", "berserker", "boss"].includes(enemy.type)) score -= 300;
+        else if (enemy.type === "runner" || enemy.type === "raider") score -= 80;
+      } else if (enemy.type === "runner" || enemy.type === "raider") {
+        score -= 190;
+      }
+      if (getEffectiveEnemyArmor(enemy) >= 0.15) score += tower.specialization === "hunter" ? 20 : 85;
     } else if (tower.key === "crossbow") {
       score -= getEffectiveEnemyArmor(enemy) * 820;
       if (["shield", "berserker", "boss"].includes(enemy.type)) score -= 170;
+      if (tower.specialization === "executioner" && Number(enemy.maxHp) > 0) {
+        score -= Math.max(0, 0.4 - Number(enemy.hp) / Number(enemy.maxHp)) * 1200;
+      }
     } else if (tower.key === "catapult") {
+      const splashMultiplier = tower.specialization === "fragmentation" ? 1.45 : tower.specialization === "breaker" ? 0.7 : 1;
+      const splashRadius = (tower.splash || 62) * splashMultiplier;
       const cluster = (enemies || []).reduce((count, candidate) => {
         if (!candidate || candidate.hp <= 0) return count;
-        return count + (Math.hypot(candidate.x - enemy.x, candidate.y - enemy.y) <= (tower.splash || 62) ? 1 : 0);
+        return count + (Math.hypot(candidate.x - enemy.x, candidate.y - enemy.y) <= splashRadius ? 1 : 0);
       }, 0);
       score -= Math.min(7, cluster) * 42;
+      if (tower.specialization === "breaker" && ["shield", "berserker", "boss"].includes(enemy.type)) score -= 130;
     }
 
     if (score < bestScore) {
@@ -455,6 +466,7 @@ export function createProjectile(
     armorBreakDuration: Math.max(0, Number(effects?.armorBreakDuration) || 0),
     slowAmount: Math.max(0, Math.min(0.75, Number(effects?.slowAmount) || 0)),
     slowDuration: Math.max(0, Number(effects?.slowDuration) || 0),
+    primaryTargetMultiplier: Math.max(0, Number(effects?.primaryTargetMultiplier) || 1),
     owner:
       from &&
       (from.kind === "unit" ||

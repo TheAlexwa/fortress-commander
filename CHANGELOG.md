@@ -1,3 +1,16 @@
+## v1.15.48 – Veteranen-Spezialisierungen
+
+- Türme, Bogenschützen, Burgwachen und Andreas schalten auf EXP-Stufe 3 eine einmalige Veteranenwahl frei.
+- Jede Einheit beziehungsweise jeder Turm besitzt zwei klar unterschiedliche Wege mit einem starken Vorteil und einem nachvollziehbaren Nachteil.
+- Bogentürme wählen Schnellfeuer oder Jagdplattform; Armbrusttürme Panzerbrecher oder Henkerschuss; Katapulte Splittergeschosse oder Brecherkugel.
+- Bogenschützen wählen Plänkler oder Scharfschütze; Burgwachen Torwächter oder Ausfallkämpfer; Andreas Wächter der Festung oder Bezwinger des Eisenclans.
+- Die Spezialisierungen verändern Zielwahl, Reichweite, Nachladezeit, Flächenschaden, Rüstungsdurchdringung, Bewegung, Rüstung, Eliteschaden und Heldenaura tatsächlich im Kampf.
+- Gewählte Wege sind dauerhaft, kostenlos und zusätzlich zu den bisherigen freien EXP-Aufwertungspunkten aktiv.
+- Goldene Markierungen auf Karte, Level-Dock, Auswahlleiste, Wertefenster und Upgrade-Zentrale zeigen bereite oder bereits gewählte Veteranenpfade.
+- Ein eigenes Auswahlfenster erklärt Rolle, Vorteil und Nachteil beider Wege; die Anleitung enthält alle zwölf Spezialisierungen.
+- Ältere Spielstände bleiben kompatibel. Bereits vorhandene Einheiten und Türme ab EXP-Stufe 3 erhalten die Veteranenwahl nach dem Laden.
+- Versionsangaben im Spiel wurden auf v1.15.48 aktualisiert.
+
 ## v1.15.47 – Kriegsrat vor der Welle
 
 - Vor jeder Welle kann im neuen Kriegsrat genau ein Festungsbefehl gewählt werden.

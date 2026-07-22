@@ -166,6 +166,7 @@ export function createEntityAt(x, y, key, context) {
       xpMax: 65,
       pendingUpgrades: 0,
       upgradeStats: { damage: 0, health: 0, speed: 0, rate: 0, range: 0 },
+      specialization: null,
       attackCd: 0,
       retargetCd: 0,
       controlMode: "auto",
@@ -253,6 +254,7 @@ export function createEntityAt(x, y, key, context) {
     xpMax: 90,
     pendingUpgrades: 0,
     expUpgradeStats: { damage: 0, range: 0, rate: 0, health: 0 },
+    specialization: null,
   };
 
   if (blueprint.kind === "tower") {

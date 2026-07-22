@@ -107,6 +107,16 @@ import {
   resetWarCouncilForWave,
   selectWarCouncilCommand
 } from "./war-council.js";
+import {
+  VETERAN_UNLOCK_LEVEL,
+  chooseVeteranSpecialization,
+  getVeteranModifiers,
+  getVeteranOptions,
+  getVeteranSpecialization,
+  isEliteEnemy,
+  isVeteranChoiceReady,
+  veteranSpecializationLabel
+} from "./specializations.js";
 import { FIXED_INNER_WALL_RADIUS, OUTER_WALL_OFFSET } from "./map-layout.js";
 import {
   MIDDLE_WALL_SECTION_COUNT,
@@ -155,8 +165,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.47";
-const GAME_RELEASE_NAME="Kriegsrat vor der Welle";
+const GAME_VERSION="1.15.48";
+const GAME_RELEASE_NAME="Veteranen-Spezialisierungen";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const ACTIVE_ENEMY_LIMIT=(window.matchMedia("(max-width: 900px)").matches||navigator.maxTouchPoints>0)?64:72;
 const ENEMY_PULSE_INTERVAL=.11;
@@ -300,8 +310,10 @@ function activeWaveModifier(key,fallback=1){
  return value===undefined?fallback:value;
 }
 function fortificationDamageMultiplier(){return activeWaveModifier("fortificationDamageTaken",1)}
-function effectiveTowerRange(tower){return tower.range*activeWaveModifier("towerRange",1)}
-function effectiveUnitRange(unit){return unit.range*(unit?.key==="soldier"?activeWaveModifier("archerRange",1):1)}
+function effectiveTowerRange(tower){return tower.range*activeWaveModifier("towerRange",1)*getVeteranModifiers(tower).rangeMultiplier}
+function effectiveUnitRange(unit){return unit.range*(unit?.key==="soldier"?activeWaveModifier("archerRange",1):1)*getVeteranModifiers(unit).rangeMultiplier}
+function effectiveAttackCooldown(entity){return Math.max(.16,entity.rate*getVeteranModifiers(entity).cooldownMultiplier)}
+function heroAuraRadius(hero=getAndreas()){return HERO_AURA_RADIUS*getVeteranModifiers(hero).auraRadiusMultiplier}
 
 function isMeleeHeroUnit(unit){return !!unit&&unit.kind==="unit"&&(unit.key==="guard"||unit.key==="hero")}
 function unitDisplayName(unit){return unit?.key==="hero"?"Andreas, der große Held":unit?.key==="guard"?"Burgwache":"Bogenschütze"}
@@ -330,16 +342,19 @@ function isInsideFortressArea(unit){return Math.hypot(unit.x-CX,unit.y-CY)<=OUTE
 function heroAbilityActive(hero=getAndreas()){return !!hero&&(Number(hero.heroAbilityTime)||0)>0}
 function hasHeroAura(unit){
  const hero=getAndreas();
- return !!hero&&unit!==hero&&unit.hp>0&&Math.hypot(unit.x-hero.x,unit.y-hero.y)<=HERO_AURA_RADIUS;
+ return !!hero&&unit!==hero&&unit.hp>0&&Math.hypot(unit.x-hero.x,unit.y-hero.y)<=heroAuraRadius(hero);
 }
 function hasHeroAbilityBuff(unit){
  const hero=getAndreas();
- return heroAbilityActive(hero)&&unit!==hero&&unit.hp>0&&Math.hypot(unit.x-hero.x,unit.y-hero.y)<=HERO_AURA_RADIUS;
+ return heroAbilityActive(hero)&&unit!==hero&&unit.hp>0&&Math.hypot(unit.x-hero.x,unit.y-hero.y)<=heroAuraRadius(hero);
 }
 function effectiveUnitSpeed(unit){
  let multiplier=hasHeroAura(unit)?1+HERO_AURA_BONUS:1;
  if(hasHeroAbilityBuff(unit))multiplier*=1+HERO_ABILITY_SPEED_BONUS;
  multiplier*=activeWaveModifier("unitSpeed",1);
+ const veteran=getVeteranModifiers(unit);
+ multiplier*=veteran.speedMultiplier;
+ if(unit?.stance==="offense")multiplier*=veteran.offenseSpeedMultiplier;
  return unit.speed*multiplier;
 }
 function unitNearIntactGate(unit){
@@ -354,7 +369,9 @@ function effectiveUnitArmor(unit){
  let armor=(unit.armor||0)+(hasHeroAura(unit)?HERO_AURA_BONUS:0);
  if(hasHeroAbilityBuff(unit))armor+=HERO_ABILITY_ARMOR_BONUS;
  if(unit?.key==="hero"&&heroAbilityActive(unit))armor+=HERO_ABILITY_SELF_ARMOR_BONUS;
- if(unitNearIntactGate(unit))armor+=GUARD_GATE_ARMOR_BONUS;
+ const veteran=getVeteranModifiers(unit);
+ armor+=veteran.armorDelta;
+ if(unitNearIntactGate(unit)){armor+=GUARD_GATE_ARMOR_BONUS;armor+=veteran.nearGateArmorDelta}
  if(unit?.key==="guard")armor+=activeWaveModifier("guardArmorDelta",0);
  return Math.max(0,Math.min(.75,armor));
 }
@@ -363,8 +380,13 @@ function unitDamageMultiplier(unit,enemy=null){
  if(hasActiveKriegerstatue()&&isInsideFortressArea(unit))multiplier*=1+STATUE_MORALE_DAMAGE_BONUS;
  if(hasHeroAura(unit))multiplier*=1+HERO_AURA_BONUS;
  if(hasHeroAbilityBuff(unit))multiplier*=1+HERO_ABILITY_DAMAGE_BONUS;
- if(unit?.key==="hero"&&enemy&&["shield","berserker","boss"].includes(enemy.type))multiplier*=1.35;
+ if(unit?.key==="hero"&&enemy&&isEliteEnemy(enemy))multiplier*=1.35;
  if(unitNearIntactGate(unit))multiplier*=1+GUARD_GATE_DAMAGE_BONUS;
+ const veteran=getVeteranModifiers(unit);
+ multiplier*=veteran.damageMultiplier;
+ if(enemy&&isEliteEnemy(enemy))multiplier*=veteran.eliteDamageMultiplier;
+ if(unitNearIntactGate(unit))multiplier*=veteran.nearGateDamageMultiplier;
+ if(unit?.stance==="offense")multiplier*=veteran.offenseDamageMultiplier;
  const unitDamageModifier=activeWaveModifier("unitDamage",1);
  if(!(unit?.key==="hero"&&warCouncilActiveCommand().key==="repairs"))multiplier*=unitDamageModifier;
  if(unit?.key==="soldier")multiplier*=activeWaveModifier("archerDamage",1);
@@ -604,7 +626,7 @@ function summonAndreas(){
   x,y,targetX:x,targetY:y,homeX:x,homeY:y,
   hp:blueprint.hp,maxHp:blueprint.hp,damage:blueprint.damage,range:blueprint.range,rate:blueprint.rate,speed:blueprint.speed,armor:blueprint.armor,
   stance:"defend",guardZone:"outer",retreating:false,level:1,expLevel:1,xp:0,xpMax:100,pendingUpgrades:0,
-  upgradeStats:{damage:0,health:0,speed:0,rate:0,range:0},attackCd:0,retargetCd:0,controlMode:"auto",targetPriority:null,autoTarget:null,
+  upgradeStats:{damage:0,health:0,speed:0,rate:0,range:0},specialization:null,attackCd:0,retargetCd:0,controlMode:"auto",targetPriority:null,autoTarget:null,
   heroAbilityTime:0,heroAbilityCooldown:0,investedGold:0,investedWood:0,investedStone:0
  };
  state.units.push(hero);
@@ -626,7 +648,7 @@ function activateHeroAbility(){
  const cooldown=Math.max(0,Number(hero.heroAbilityCooldown)||0);
  if(cooldown>0)return showToast(`Ruf des Helden in ${Math.ceil(cooldown)} Sekunden bereit`);
  hero.heroAbilityTime=HERO_ABILITY_DURATION;
- hero.heroAbilityCooldown=HERO_ABILITY_COOLDOWN;
+ hero.heroAbilityCooldown=HERO_ABILITY_COOLDOWN*getVeteranModifiers(hero).heroCooldownMultiplier;
  hero.autoTarget=null;hero.retargetCd=0;
  burst(hero.x,hero.y,"#ffe173",42);
  burst(hero.x,hero.y,"#b32638",22);
@@ -863,6 +885,39 @@ function chooseWarCouncilCommand(key){
  const command=getWarCouncilCommand(key);renderWarCouncilPanel();updateWarCouncilHud();showToast(`${command.icon} ${command.label} für Welle ${state.wave} gewählt`);saveGame(true);
 }
 
+function veteranOptionHtml(option,activeId,locked){
+ const active=activeId===option.id;
+ return `<button type="button" class="veteranOption ${active?"selected":""}" data-veteran-choice="${option.id}" ${locked?"disabled":""}><span class="veteranOptionIcon">${option.icon}</span><span class="veteranOptionText"><b>${option.name}</b><small>${option.role}</small><em class="veteranBenefit">✓ ${option.benefit}</em><em class="veteranDrawback">⚠ ${option.drawback}</em></span>${active?'<span class="veteranSelected">GEWÄHLT</span>':""}</button>`;
+}
+function renderVeteranPanel(){
+ if(!veteranPanel||!veteranPanelEntity)return;
+ const entity=veteranPanelEntity,options=getVeteranOptions(entity),active=getVeteranSpecialization(entity);
+ const name=entity.kind==="unit"?unitDisplayName(entity):entity.base?.name||entity.key;
+ veteranEntitySummary.innerHTML=`<span>${entity.kind==="unit"?(entity.key==="hero"?"👑":entity.key==="guard"?"🛡️":"🏹"):"🏰"}</span><div><b>${name}</b><small>EXP-Stufe ${entity.expLevel||1} · Auswahl ab Stufe ${VETERAN_UNLOCK_LEVEL}</small></div>`;
+ const locked=Boolean(active)||(Number(entity.expLevel)||1)<VETERAN_UNLOCK_LEVEL;
+ veteranOptionGrid.innerHTML=options.map(option=>veteranOptionHtml(option,active?.id||"",locked)).join("");
+ veteranStatus.textContent=active?`${active.icon} ${active.name} ist dauerhaft aktiv.`:locked?`Noch EXP-Stufe ${VETERAN_UNLOCK_LEVEL} erreichen.`:"Wähle genau einen dauerhaften Veteranenpfad. Diese Entscheidung kann nicht rückgängig gemacht werden.";
+ veteranStatus.classList.toggle("locked",locked);
+}
+function openVeteranPanel(entity=selected){
+ if(!entity||!getVeteranOptions(entity).length)return;
+ veteranPanelEntity=entity;veteranResumeAfterClose=!paused&&!gameOver;paused=true;state.supportTimer=0;
+ renderVeteranPanel();veteranPanel.classList.remove("hidden");veteranPanel.style.display="grid";veteranPanel.style.visibility="visible";veteranPanel.style.pointerEvents="auto";
+}
+function closeVeteranPanel(resume=true){
+ if(veteranPanel){veteranPanel.classList.add("hidden");veteranPanel.style.display="none";veteranPanel.style.visibility="hidden";veteranPanel.style.pointerEvents="none"}
+ veteranPanelEntity=null;if(resume&&veteranResumeAfterClose&&!gameOver){paused=false;last=performance.now()}veteranResumeAfterClose=false;updateUI();
+}
+function selectVeteranPath(id){
+ if(!veteranPanelEntity)return;
+ const chosen=chooseVeteranSpecialization(veteranPanelEntity,id);
+ if(!chosen){showToast("Veteranenpfad kann nicht gewählt werden");return}
+ burst(veteranPanelEntity.slot?.x??veteranPanelEntity.x,veteranPanelEntity.slot?.y??veteranPanelEntity.y,"#ffd867",24);
+ lastDockSignature="";showToast(`⭐ ${chosen.name} gewählt`);renderVeteranPanel();updateSelectionHud();
+ if(!state.inWave)saveGame(true);
+ setTimeout(()=>closeVeteranPanel(true),280);
+}
+
 function updateUI(){
  const result=renderGameUI({
   state,ui,BUILD,WALL_SEGMENTS,MIDDLE_WALL_SEGMENT_COUNT,MIDDLE_GATE_COUNT,OUTER_WALL_SEGMENT_COUNT,OUTER_GATE_COUNT,selected,buildMode,paused,gameOver,
@@ -885,7 +940,7 @@ function buildRequirement(key){return getBuildRequirement(state,key)}
 
 function isPanelVisible(id){const el=document.getElementById(id);return !!(el&&!el.classList.contains("hidden"));}
 function isBlockingPanelOpen(){
- return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision"].some(isPanelVisible);
+ return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","veteranPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision"].some(isPanelVisible);
 }
 function closeTopBlockingPanel(){
  if(isPanelVisible("testResourcePanel")){closeTestResourcePanel();return "Testfenster geschlossen"}
@@ -893,6 +948,7 @@ function closeTopBlockingPanel(){
  if(isPanelVisible("marketPanel")){closeMarketPanel();return "Fenster geschlossen"}
  if(isPanelVisible("statueOfferingPanel")){closeStatueOfferingPanel(true);return "Opfergaben geschlossen"}
  if(isPanelVisible("warCouncilPanel")){closeWarCouncilPanel(true);return "Kriegsrat geschlossen"}
+ if(isPanelVisible("veteranPanel")){closeVeteranPanel(true);return "Veteranenwahl geschlossen"}
  if(isPanelVisible("workshopPanel")){closeWorkshopPanel(true);return "Fenster geschlossen"}
  if(isPanelVisible("statsScreen")){closeStats();return "Fenster geschlossen"}
  if(isPanelVisible("pauseMenu")){hidePauseMenu(true);return "Pause geschlossen"}
@@ -902,7 +958,7 @@ function closeTopBlockingPanel(){
 }
 function closeAllBlockingPanels(){
  hideRepairDecision();
- ["statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","enemyInfoOverlay","pauseMenu"].forEach(id=>{
+ ["statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","veteranPanel","enemyInfoOverlay","pauseMenu"].forEach(id=>{
   const el=document.getElementById(id);
   if(el&&el.classList.contains("hidden")){el.style.display="none";el.style.pointerEvents="none";el.style.visibility="hidden"}
  });
@@ -1185,7 +1241,7 @@ function applyProjectileEffects(enemy,projectile){
 function projectileDamage(projectile,enemy,multiplier=1){
  const penetration=Math.max(0,Math.min(1,Number(projectile.armorPenetration)||0));
  const armor=Math.max(0,getEffectiveEnemyArmor(enemy)*(1-penetration));
- const shieldReduction=enemy?.shieldProtected?(penetration>=.5?.12:.28):0;
+ const shieldReduction=enemy?.shieldProtected?Math.max(0,.28-penetration*.32):0;
  return Math.max(0,projectile.damage*multiplier*(1-armor)*(1-shieldReduction));
 }
 function grantCombatXp(owner,amount){return grantCombatExperience(owner,amount,combatCallbacks())}
@@ -1375,13 +1431,17 @@ function update(dt){
   b.cooldown-=dt;
   const e=findTowerTarget(state.enemies,b,effectiveTowerRange(b));
   if(e&&b.cooldown<=0){
-   b.cooldown=b.rate*activeWaveModifier("towerCooldown",1);
-   let damage=b.damage*bonus*activeWaveModifier("towerDamage",1);
+   const veteran=getVeteranModifiers(b);
+   b.cooldown=effectiveAttackCooldown(b)*activeWaveModifier("towerCooldown",1);
+   let damage=b.damage*bonus*activeWaveModifier("towerDamage",1)*veteran.damageMultiplier;
    let effects=null;
+   let splash=b.splash*veteran.splashMultiplier;
    if(b.key==="archer"&&(e.type==="raider"||e.type==="runner"))damage*=1.35;
-   if(b.key==="crossbow")effects={armorPenetration:.5};
-   if(b.key==="catapult")effects={armorBreakAmount:CATAPULT_ARMOR_BREAK,armorBreakDuration:CATAPULT_DEBUFF_DURATION,slowAmount:CATAPULT_SLOW,slowDuration:CATAPULT_DEBUFF_DURATION};
-   shoot(b,e,damage,b.speed,b.splash,b.key==="catapult"?"#493d30":"#f0d176",effects);
+   if(isEliteEnemy(e))damage*=veteran.eliteDamageMultiplier;
+   if(e.maxHp>0&&e.hp/e.maxHp<=.4)damage*=veteran.lowHealthDamageMultiplier;
+   if(b.key==="crossbow")effects={armorPenetration:veteran.armorPenetration??.5};
+   if(b.key==="catapult")effects={armorBreakAmount:veteran.armorBreakAmount??CATAPULT_ARMOR_BREAK,armorBreakDuration:CATAPULT_DEBUFF_DURATION,slowAmount:veteran.slowAmount??CATAPULT_SLOW,slowDuration:CATAPULT_DEBUFF_DURATION,primaryTargetMultiplier:veteran.primaryTargetMultiplier};
+   shoot(b,e,damage,b.speed,splash,b.key==="catapult"?"#493d30":"#f0d176",effects);
   }
  }
  for(const u of state.units){
@@ -1416,7 +1476,7 @@ function update(dt){
     if(d<=meleeReach){
      if(u.attackCd<=0){
       u.attackAngle=Math.atan2(target.y-u.y,target.x-u.x);
-      u.attackCd=u.rate;
+      u.attackCd=effectiveAttackCooldown(u);
       const dealt=u.damage*unitDamageMultiplier(u,target)*(1-getEffectiveEnemyArmor(target));target.hp-=dealt;target.lastHitEntity=u;
       grantCombatXp(u,Math.min(7,dealt*.075));burst(target.x,target.y,"#f2cf82",7);
      }
@@ -1447,7 +1507,7 @@ function update(dt){
    if(t){
     const distance=Math.hypot(t.x-u.x,t.y-u.y);
     if(distance<=effectiveUnitRange(u)){
-     if(u.attackCd<=0){u.attackAngle=Math.atan2(t.y-u.y,t.x-u.x);u.attackCd=u.rate;shoot(u,t,u.damage*unitDamageMultiplier(u,t)*bonus,480,0,"#bfe0ff")}
+     if(u.attackCd<=0){u.attackAngle=Math.atan2(t.y-u.y,t.x-u.x);u.attackCd=effectiveAttackCooldown(u);shoot(u,t,u.damage*unitDamageMultiplier(u,t)*bonus,480,0,"#bfe0ff")}
     }else{
      const dx=t.x-u.x,dy=t.y-u.y,d=Math.max(1,distance);
      const moveSpeed=effectiveUnitSpeed(u);const desiredX=u.x+dx/d*moveSpeed*dt,desiredY=u.y+dy/d*moveSpeed*dt;
@@ -1466,7 +1526,7 @@ function update(dt){
    u.autoTarget=null;
    const e=nearestEnemy(u.x,u.y,effectiveUnitRange(u));
    if(e){
-    if(u.attackCd<=0){u.attackAngle=Math.atan2(e.y-u.y,e.x-u.x);u.attackCd=u.rate;shoot(u,e,u.damage*unitDamageMultiplier(u,e)*bonus,480,0,"#bfe0ff")}
+    if(u.attackCd<=0){u.attackAngle=Math.atan2(e.y-u.y,e.x-u.x);u.attackCd=effectiveAttackCooldown(u);shoot(u,e,u.damage*unitDamageMultiplier(u,e)*bonus,480,0,"#bfe0ff")}
    }else{
     const dx=u.targetX-u.x,dy=u.targetY-u.y,d=Math.hypot(dx,dy);
     if(d>4){
@@ -1487,14 +1547,15 @@ function update(dt){
     for(const e of state.enemies){
      const sd=Math.hypot(e.x-p.target.x,e.y-p.target.y);
      if(sd<p.splash){
-      const dealt=projectileDamage(p,e,Math.max(0,1-sd/(p.splash*1.7)));
+      const primaryMultiplier=e===p.target?(Number(p.primaryTargetMultiplier)||1):1;
+      const dealt=projectileDamage(p,e,Math.max(0,1-sd/(p.splash*1.7))*primaryMultiplier);
       e.hp-=dealt;applyProjectileEffects(e,p);
       if(p.owner){e.lastHitEntity=p.owner;grantCombatXp(p.owner,Math.min(5,dealt*.045))}
      }
     }
     burst(p.target.x,p.target.y,"#7e6a50",14);
    }else{
-    const dealt=projectileDamage(p,p.target);
+    const dealt=projectileDamage(p,p.target,Number(p.primaryTargetMultiplier)||1);
     p.target.hp-=dealt;applyProjectileEffects(p.target,p);
     if(p.owner){p.target.lastHitEntity=p.owner;grantCombatXp(p.owner,Math.min(6,dealt*.06))}
     burst(p.target.x,p.target.y,p.color,3);
@@ -1692,20 +1753,20 @@ function draw() {
 let lastDockSignature="";
 function renderLevelUpDock(){
  if(!ui.levelDock)return;
- const readyUnits=state.units.filter(u=>u.hp>0&&(u.pendingUpgrades||0)>0);
- const readyTowers=state.buildings.filter(b=>b.base.kind==="tower"&&b.hp>0&&(b.pendingUpgrades||0)>0);
+ const readyUnits=state.units.filter(u=>u.hp>0&&((u.pendingUpgrades||0)>0||isVeteranChoiceReady(u)));
+ const readyTowers=state.buildings.filter(b=>b.base.kind==="tower"&&b.hp>0&&((b.pendingUpgrades||0)>0||isVeteranChoiceReady(b)));
  const signature=[
-  ...readyUnits.map(u=>`u:${u.uid}:${u.pendingUpgrades}:${u.expLevel}`),
-  ...readyTowers.map(b=>{const slots=b.slot.type==="castle"?castleSlots:wallSlots;return `t:${b.slot.type}:${slots.indexOf(b.slot)}:${b.key}:${b.pendingUpgrades}:${b.expLevel}`})
+  ...readyUnits.map(u=>`u:${u.uid}:${u.pendingUpgrades}:${u.expLevel}:${u.specialization||"ready"}`),
+  ...readyTowers.map(b=>{const slots=b.slot.type==="castle"?castleSlots:wallSlots;return `t:${b.slot.type}:${slots.indexOf(b.slot)}:${b.key}:${b.pendingUpgrades}:${b.expLevel}:${b.specialization||"ready"}`})
  ].join("|");
  if(signature===lastDockSignature)return;
  lastDockSignature=signature;
  ui.levelDock.innerHTML=[
   ...readyUnits.map(u=>`<button class="levelCard" data-kind="unit" data-id="${u.uid}" title="Einheiten-Aufwertung">
-   <span class="spark"></span><span class="portrait">${u.key==="hero"?'<img src="assets/ui/andreas-portrait.webp" alt="">':u.key==="guard"?"🛡️":"🏹"}</span><span class="badge">${u.pendingUpgrades}</span><span class="lvl">Stufe ${u.expLevel}</span>
+   <span class="spark"></span><span class="portrait">${u.key==="hero"?'<img src="assets/ui/andreas-portrait.webp" alt="">':u.key==="guard"?"🛡️":"🏹"}</span><span class="badge">${isVeteranChoiceReady(u)?"★":u.pendingUpgrades}</span><span class="lvl">${isVeteranChoiceReady(u)?"Pfad bereit":`Stufe ${u.expLevel}`}</span>
   </button>`),
   ...readyTowers.map(b=>{const slots=b.slot.type==="castle"?castleSlots:wallSlots;return `<button class="levelCard" data-kind="tower" data-slot-type="${b.slot.type}" data-slot="${slots.indexOf(b.slot)}" title="${b.base.name}-Aufwertung">
-   <span class="spark"></span><span class="portrait">🏰</span><span class="badge">${b.pendingUpgrades}</span><span class="lvl">Stufe ${b.expLevel}</span>
+   <span class="spark"></span><span class="portrait">🏰</span><span class="badge">${isVeteranChoiceReady(b)?"★":b.pendingUpgrades}</span><span class="lvl">${isVeteranChoiceReady(b)?"Pfad bereit":`Stufe ${b.expLevel}`}</span>
   </button>`})
  ].join("");
 }
@@ -1725,9 +1786,9 @@ function focusUpgradeEntity(card){
  }
  selected=entity;buildMode=null;unitCommandMode=null;
  updateSelectionHud();
- selectionTalentBar.classList.remove("hidden");
  const name=entity.kind==="unit"?unitDisplayName(entity):entity.base.name;
- showToast(`${name}: Aufwertung auswählen`);
+ if(isVeteranChoiceReady(entity)){openVeteranPanel(entity);showToast(`${name}: Veteranenpfad wählen`)}
+ else{selectionTalentBar.classList.remove("hidden");showToast(`${name}: Aufwertung auswählen`)}
 }
 
 function speedLabel(v){return v>=58?"Sehr schnell":v>=44?"Schnell":v>=33?"Mittel":v>=25?"Langsam":"Sehr langsam"}
@@ -1877,6 +1938,8 @@ document.getElementById("statueOfferingBtn").addEventListener("click",openStatue
 ui.warCouncilBtn.addEventListener("click",openWarCouncilPanel);
 document.getElementById("warCouncilCloseBtn").addEventListener("click",()=>closeWarCouncilPanel(true));
 document.getElementById("warCouncilPanel").addEventListener("click",e=>{const command=e.target.closest("[data-war-command]");if(command){e.preventDefault();chooseWarCouncilCommand(command.dataset.warCommand);return}if(e.target.id==="warCouncilPanel")closeWarCouncilPanel(true)});
+document.getElementById("veteranCloseBtn").addEventListener("click",()=>closeVeteranPanel(true));
+document.getElementById("veteranPanel").addEventListener("click",e=>{const choice=e.target.closest("[data-veteran-choice]");if(choice){e.preventDefault();selectVeteranPath(choice.dataset.veteranChoice);return}if(e.target.id==="veteranPanel")closeVeteranPanel(true)});
 document.getElementById("marketCloseBtn").addEventListener("click",closeMarketPanel);
 document.getElementById("marketTradeGrid").addEventListener("click",e=>{const b=e.target.closest("[data-trade]");if(b)executeMarketTrade(b.dataset.trade,Number(b.dataset.amount))});
 
@@ -1950,15 +2013,28 @@ const selectionTalentBar=document.getElementById("selectionTalentBar");
 const activeModeBanner=document.getElementById("activeModeBanner");
 const activeModeText=document.getElementById("activeModeText");
 const activeModeCancelBtn=document.getElementById("activeModeCancelBtn");
+const veteranPanel=document.getElementById("veteranPanel");
+const veteranEntitySummary=document.getElementById("veteranEntitySummary");
+const veteranOptionGrid=document.getElementById("veteranOptionGrid");
+const veteranStatus=document.getElementById("veteranStatus");
+let veteranPanelEntity=null;
+let veteranResumeAfterClose=false;
 let rangeDisplayMode=0; // 0=Aus, 1=Auswahl, 2=Alle
 
 
 function fmt(v,d=0){return Number(v||0).toFixed(d)}
 function pctDelta(base,current){if(!base)return "—";const p=(current/base-1)*100;return `${p>=0?"+":""}${p.toFixed(0)}%`}
 function statRow(label,base,current,next){return `<div class="statRow"><div class="label">${label}</div><div class="base">${base}</div><div class="current">${current}</div><div class="gain">${next}</div></div>`}
+function veteranStatsHtml(entity){
+ const selectedPath=getVeteranSpecialization(entity),options=getVeteranOptions(entity);
+ if(!options.length)return "";
+ if(selectedPath)return `<div class="statsSection veteranStatsSection"><h3>⭐ Veteranenpfad</h3><div class="veteranChosen"><span>${selectedPath.icon}</span><div><b>${selectedPath.name}</b><small>${selectedPath.role}</small><p><strong>Vorteil:</strong> ${selectedPath.benefit}<br><strong>Nachteil:</strong> ${selectedPath.drawback}</p></div></div></div>`;
+ if((Number(entity.expLevel)||1)>=VETERAN_UNLOCK_LEVEL)return `<div class="statsSection veteranStatsSection"><h3>⭐ Veteranenpfad bereit</h3><div class="statsHint">Ab EXP-Stufe ${VETERAN_UNLOCK_LEVEL} wird einmalig einer von zwei dauerhaften Wegen gewählt. Die Entscheidung kann nicht rückgängig gemacht werden.</div><div class="buildingActionBar"><button type="button" class="primary wide" data-open-veteran>Veteranenpfad wählen</button></div></div>`;
+ return `<div class="statsHint">⭐ Veteranen-Spezialisierung wird auf EXP-Stufe ${VETERAN_UNLOCK_LEVEL} freigeschaltet.</div>`;
+}
 function unitStatsHtml(u){
  const base=u.base,ups=u.upgradeStats||{},rateNext=Math.max(.24,u.rate*.84);
- const heroBanner=u.key==="hero"?`<div class="heroStatsBanner"><img src="assets/ui/andreas-portrait.webp" alt="Andreas"><div><small>LEGENDÄRER FESTUNGSHELD</small><h3>Andreas, der große Held</h3><p>Elitebonus +35 % · Dauerhafte Sammelruf-Aura +10 % · Aktiver „Ruf des Helden“: 10 Sek. lang +25 % Schaden, +20 % Rüstung und +15 % Tempo für nahe Verbündete.</p></div></div>`:"";
+ const heroBanner=u.key==="hero"?`<div class="heroStatsBanner"><img src="assets/ui/andreas-portrait.webp" alt="Andreas"><div><small>LEGENDÄRER FESTUNGSHELD</small><h3>Andreas, der große Held</h3><p>Elitebonus +35 % · Dauerhafte Sammelruf-Aura +10 % · Aktiver „Ruf des Helden“: 10 Sek. lang +25 % Schaden, +20 % Rüstung und +15 % Tempo. Auf EXP-Stufe 3 erhält Andreas einen eigenen Heldenpfad.</p></div></div>`:"";
  return `${heroBanner}<div class="statsSummary">
  <div class="statTile"><span>Erfahrungsstufe</span><b>${u.expLevel||1}</b></div>
  <div class="statTile"><span>Offene Punkte</span><b>${u.pendingUpgrades||0}</b></div>
@@ -1971,6 +2047,7 @@ function unitStatsHtml(u){
  ${statRow("Reichweite",fmt(base.range),fmt(u.range),pctDelta(base.range,u.range))}
  ${statRow("Schüsse/Sek.",fmt(1/base.rate,2),fmt(1/u.rate,2),pctDelta(1/base.rate,1/u.rate))}</div>
  ${u.key==="soldier"?`<div class="statsHint">🎯 Zielpriorität: <b>${targetPriorityLabel(u)}</b>. Wechsel direkt über die Auswahlleiste zwischen nächsten, schnellen und stärksten Gegnern.</div>`:u.key==="guard"?`<div class="statsHint">🚪 Torwächter: In der Nähe eines intakten Tores erhält die Burgwache +15 % Schaden und +15 Prozentpunkte Rüstung und hält anrückende Feinde auf.</div>`:""}
+ ${veteranStatsHtml(u)}
  <div class="statsSection"><h3>Nächste Aufwertung</h3><div class="upgradeGrid">
  <div class="upgradeCard"><b>⚔ Schaden</b><small>${fmt(u.damage)} → ${fmt(u.damage*1.24)}<br>+24% Angriffsschaden</small><div class="level">Bisher: ${ups.damage||0}×</div></div>
  <div class="upgradeCard"><b>♥ Leben</b><small>${fmt(u.maxHp)} → ${fmt(u.maxHp*1.28)}<br>+28% Leben und Heilung</small><div class="level">Bisher: ${ups.health||0}×</div></div>
@@ -2010,7 +2087,7 @@ function buildingStatsHtml(b){
  <div class="statTile"><span>EXP</span><b>${Math.floor(b.xp||0)}/${Math.floor(b.xpMax||90)}</b></div>
  <div class="statTile"><span>Offene Punkte</span><b>${b.pendingUpgrades||0}</b></div></div>
  <div class="statsSection"><h3>Kampfwerte</h3><div class="statRow header"><div>Wert</div><div>Grundwert</div><div>Aktuell</div><div>Änderung</div></div>${rows}</div>
- <div class="statsHint">⚔ ${towerCounterText(b)}</div><div class="statsHint">Türme werden nicht direkt mit Gold oder Holz verbessert. Individuelle Aufwertungen erfolgen über Kampf-EXP; globale Turmforschung folgt in einem eigenen Schritt.</div>`;
+ <div class="statsHint">⚔ ${towerCounterText(b)}</div>${veteranStatsHtml(b)}<div class="statsHint">Türme werden nicht direkt mit Gold oder Holz verbessert. Individuelle Aufwertungen erfolgen über Kampf-EXP; globale Turmforschung folgt in einem eigenen Schritt.</div>`;
  const prod=buildingProductionInfo(b),workerNeeded=["lumber","quarry","repair","market"].includes(b.key),workerText=workerNeeded?(buildingHasWorker(b)?"1 / 1 zugewiesen":"0 / 1 zugewiesen"):b.key==="house"?`${residentCapacityForHouse(b)} Bewohnerplätze`:"Kein Arbeitsplatz";
  const cost=getBuildingUpgradeCost(b),g=cost.gold,w=cost.wood,maxLevel=cost.maxLevel,canUpgrade=!cost.maxed&&state.gold>=g&&state.wood>=w,preview=buildingUpgradePreview(b);
  return `<div class="buildingOverview">
@@ -2179,6 +2256,7 @@ function upgradeEntityCost(entity){
 }
 function upgradeEntityName(entity){return entity.kind==="unit"?unitDisplayName(entity):buildingDisplayName(entity)}
 function upgradeEntityIcon(entity){if(entity.kind==="unit")return entity.key==="hero"?'<img class="heroMiniPortrait" src="assets/ui/andreas-portrait.webp" alt="">':entity.key==="guard"?"🛡️":"🏹";return {archer:"🏹",crossbow:"🎯",catapult:"🪨",house:entity.level>=2?"🏠":"⛺",lumber:"🪵",quarry:"🪨",statue:"🗿",workshop:"⚒️",repair:"👷",market:"🏪"}[entity.key]||"🏰"}
+function upgradeVeteranText(entity){const path=getVeteranSpecialization(entity);return path?` · ${path.icon} ${path.name}`:isVeteranChoiceReady(entity)?" · ⭐ Veteranenpfad bereit":""}
 function allResearchTechs(){return getAllResearchTechs()}
 function activeGlobalBonuses(){
  const bonuses=[];
@@ -2197,14 +2275,15 @@ function upgradeRecommendation(){
  if(workshop.level<5&&workshopLevels()>=3)return `Werkstatt auf Stufe ${workshop.level+1} ausbauen: Der globale Forschungsaufschlag sinkt danach auf ${[30,25,20,15,10][workshop.level]} % je fremder Forschungsstufe.`;
  if(freeResidents()===0)return "Deine Bevölkerung ist vollständig beschäftigt. Baue ein weiteres Zeltlager oder verbessere eines zum Holzhaus.";
  const damaged=totalRepairDamage();if(damaged>250)return `Die Festung hat ${Math.ceil(damaged)} Schadenspunkte. Handwerker- und Reparaturforschung haben aktuell hohe Priorität.`;
- const ready=[...state.units,...state.buildings.filter(b=>b.base.kind==="tower")].filter(x=>(x.pendingUpgrades||0)>0).length;if(ready)return `${ready} Veteranen-Aufwertung${ready===1?" ist":"en sind"} bereit. Wähle die markierten Einheiten oder Türme auf dem Spielfeld.`;
+ const veteranReady=[...state.units,...state.buildings.filter(b=>b.base.kind==="tower")].filter(isVeteranChoiceReady).length;if(veteranReady)return `${veteranReady} Veteranenpfad${veteranReady===1?" ist":"e sind"} bereit. Die gold markierten Einheiten oder Türme benötigen eine dauerhafte Entscheidung.`;
+ const ready=[...state.units,...state.buildings.filter(b=>b.base.kind==="tower")].filter(x=>(x.pendingUpgrades||0)>0).length;if(ready)return `${ready} EXP-Aufwertung${ready===1?" ist":"en sind"} bereit. Wähle die blau markierten Einheiten oder Türme auf dem Spielfeld.`;
  const affordable=state.buildings.filter(e=>{const c=upgradeEntityCost(e);return !c.maxed&&state.gold>=c.gold&&state.wood>=c.wood}).length;if(affordable)return `${affordable} reguläre Gebäudeaufwertung${affordable===1?" ist":"en sind"} mit deinen aktuellen Rohstoffen sofort bezahlbar.`;
  return "Sammle Gold und Holz in der nächsten Welle. Einheiten und Türme entwickeln sich über EXP; priorisiere Versorgungsgebäude nach Engpass.";
 }
 function upgradeCenterHtml(){
  const workshop=state.buildings.find(b=>b.key==="workshop"),upgradable=state.buildings.filter(e=>!upgradeEntityCost(e).maxed),affordable=upgradable.filter(e=>{const c=upgradeEntityCost(e);return state.gold>=c.gold&&state.wood>=c.wood});
- const buildingRows=state.buildings.length?state.buildings.map(b=>{const isTower=b.base.kind==="tower",c=upgradeEntityCost(b),can=!c.maxed&&state.gold>=c.gold&&state.wood>=c.wood;if(b.key==="statue"){const progress=Math.max(0,Math.min(HERO_OFFERING_TARGET,Number(state.heroOffering)||0));return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">🗿</div><div><b>Kriegerstatue</b><small>Festungsmoral +5 % Schaden · Opfergaben ${progress.toLocaleString("de-DE")} / ${HERO_OFFERING_TARGET.toLocaleString("de-DE")}${state.heroSummoned?" · Andreas wurde beschworen":""}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" data-building-offering="${b.bid}">🔥 Opfergaben</button></div></div>`}if(b.base.decorative)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)}</b><small>Zierbauwerk auf eigenem Ehrenplatz.</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" disabled>Keine Aufwertung</button></div></div>`;if(isTower)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · EXP-Stufe ${b.expLevel||1}</b><small>EXP ${Math.floor(b.xp||0)}/${Math.floor(b.xpMax||90)} · Schaden ${Math.round(b.damage)} · Reichweite ${Math.round(b.range)}${b.pendingUpgrades?` · ${b.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung über EXP oder Forschung"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">${b.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${b.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`;const preview=buildingUpgradePreview(b);return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · Stufe ${b.level||1}</b><small>${preview?(preview.maxed?preview.summary:preview.summary):"Keine wirksame Gebäudeaufwertung verfügbar."}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" data-upgrade-buy="building:${b.bid}" ${can?"":"disabled"}>${c.maxed?"✓ MAX":`⬆ ${c.gold} 🪙${c.wood?` · ${c.wood} 🪵`:""}`}</button></div></div>`}).join(""):'<div class="statsHint">Noch keine Gebäude errichtet.</div>';
- const unitRows=state.units.length?state.units.map(u=>`<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(u)}</div><div><b>${upgradeEntityName(u)} · Erfahrungsstufe ${u.expLevel||1}</b><small>EXP ${Math.floor(u.xp||0)}/${Math.floor(u.xpMax||65)} · Schaden ${Math.round(u.damage)} · Leben ${Math.round(u.maxHp)}${u.pendingUpgrades?` · ${u.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung nur durch EXP oder Forschung"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="unit:${u.uid}">${u.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${u.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`).join(""):'<div class="statsHint">Noch keine mobilen Einheiten ausgebildet.</div>';
+ const buildingRows=state.buildings.length?state.buildings.map(b=>{const isTower=b.base.kind==="tower",c=upgradeEntityCost(b),can=!c.maxed&&state.gold>=c.gold&&state.wood>=c.wood;if(b.key==="statue"){const progress=Math.max(0,Math.min(HERO_OFFERING_TARGET,Number(state.heroOffering)||0));return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">🗿</div><div><b>Kriegerstatue</b><small>Festungsmoral +5 % Schaden · Opfergaben ${progress.toLocaleString("de-DE")} / ${HERO_OFFERING_TARGET.toLocaleString("de-DE")}${state.heroSummoned?" · Andreas wurde beschworen":""}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" data-building-offering="${b.bid}">🔥 Opfergaben</button></div></div>`}if(b.base.decorative)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)}</b><small>Zierbauwerk auf eigenem Ehrenplatz.</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" disabled>Keine Aufwertung</button></div></div>`;if(isTower)return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · EXP-Stufe ${b.expLevel||1}</b><small>EXP ${Math.floor(b.xp||0)}/${Math.floor(b.xpMax||90)} · Schaden ${Math.round(b.damage)} · Reichweite ${Math.round(b.range)}${b.pendingUpgrades?` · ${b.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung über EXP oder Forschung"}${upgradeVeteranText(b)}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">${isVeteranChoiceReady(b)?"⭐ Pfad wählen":b.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${isVeteranChoiceReady(b)?"⭐ Veteranenpfad":b.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`;const preview=buildingUpgradePreview(b);return `<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(b)}</div><div><b>${upgradeEntityName(b)} · Stufe ${b.level||1}</b><small>${preview?(preview.maxed?preview.summary:preview.summary):"Keine wirksame Gebäudeaufwertung verfügbar."}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="building:${b.bid}">Ansehen</button><button type="button" data-upgrade-buy="building:${b.bid}" ${can?"":"disabled"}>${c.maxed?"✓ MAX":`⬆ ${c.gold} 🪙${c.wood?` · ${c.wood} 🪵`:""}`}</button></div></div>`}).join(""):'<div class="statsHint">Noch keine Gebäude errichtet.</div>';
+ const unitRows=state.units.length?state.units.map(u=>`<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(u)}</div><div><b>${upgradeEntityName(u)} · Erfahrungsstufe ${u.expLevel||1}</b><small>EXP ${Math.floor(u.xp||0)}/${Math.floor(u.xpMax||65)} · Schaden ${Math.round(u.damage)} · Leben ${Math.round(u.maxHp)}${u.pendingUpgrades?` · ${u.pendingUpgrades} EXP-Aufwertung bereit`:" · Aufwertung nur durch EXP oder Forschung"}${upgradeVeteranText(u)}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="unit:${u.uid}">${isVeteranChoiceReady(u)?"⭐ Pfad wählen":u.pendingUpgrades?"EXP wählen":"Ansehen"}</button><button type="button" disabled>${isVeteranChoiceReady(u)?"⭐ Veteranenpfad":u.pendingUpgrades?"✦ Aufwertung bereit":"✦ EXP / Forschung"}</button></div></div>`).join(""):'<div class="statsHint">Noch keine mobilen Einheiten ausgebildet.</div>';
  const research=allResearchTechs().map(t=>`<div class="researchCenterItem"><b>${t.icon} ${t.name}</b><small>${t.desc}</small><div class="level">Stufe ${researchLevel(t.id)}/${t.max}${researchLevel(t.id)<t.max?` · nächste Kosten ${researchCost(t)} 🔬`:" · MAX"}</div></div>`).join("");
  const bonuses=activeGlobalBonuses();
  return `<div class="upgradeCenter"><div class="upgradeHero"><h3>🔱 Upgrade-Zentrale</h3><p>Alle regulären Aufwertungen, Veteranenfortschritte, Forschungen und globalen Verstärkungen dieser Partie an einem Ort.</p><div class="upgradeSummaryGrid"><div class="upgradeSummaryTile"><span>Gebäude aufwertbar</span><b>${upgradable.length}</b></div><div class="upgradeSummaryTile"><span>Sofort bezahlbar</span><b>${affordable.length}</b></div><div class="upgradeSummaryTile"><span>Forschungsstufen</span><b>${workshopLevels()}</b></div><div class="upgradeSummaryTile"><span>Forschungspunkte</span><b>${Math.floor(state.researchPoints||0)} 🔬</b></div></div></div><div class="statsSection"><h3>⚒️ Werkstatt</h3><div class="upgradeCenterCard"><div class="upgradeCenterIcon">⚒️</div><div><b>${workshop?`Werkstatt Stufe ${workshop.level}/5`:"Noch keine Werkstatt"}</b><small>${workshop?`Jede fremde Forschungsstufe erhöht Kosten aktuell um ${Math.round(globalResearchIncreaseRate()*100)} %. Insgesamt ${workshopLevels()} erforschte Stufen.`:"Errichte eine Werkstatt, um den Forschungsbaum zu öffnen."}</small></div><div class="upgradeCenterActions">${workshop?'<button type="button" data-open-workshop>🔬 Forschung öffnen</button>':'<button type="button" disabled>Gesperrt</button>'}</div></div></div><div class="statsSection"><h3>🏰 Gebäude & Türme</h3>${buildingRows}</div><div class="statsSection"><h3>⚔️ Einheiten-Upgrades</h3>${unitRows}</div><div class="statsSection"><h3>🔬 Forschungsübersicht</h3><div class="researchCenterGrid">${research}</div></div><div class="statsSection"><h3>📈 Aktive globale Boni</h3><div class="bonusPills">${bonuses.length?bonuses.map(x=>`<span class="bonusPill">${x}</span>`).join(""):'<span class="statsHint">Noch keine globalen Forschungen aktiv.</span>'}</div></div><div class="statsSection"><h3>⭐ Empfehlung</h3><div class="recommendationCard">${upgradeRecommendation()}</div></div></div>`;
@@ -2335,6 +2414,7 @@ if(activeModeCancelBtn)activeModeCancelBtn.addEventListener("click",()=>cancelAc
 selectionUpgradeBtn.addEventListener("click",e=>{
  e.preventDefault();e.stopPropagation();closeStats();hideRepairDecision();
  if(!selected)return;
+ if(isVeteranChoiceReady(selected)){openVeteranPanel(selected);return}
  if(getMiddleFortificationUpgrade(selected).eligible){
   upgradeSelected();
   return;
@@ -2377,7 +2457,11 @@ selectionTalentBar.addEventListener("click",e=>{
  else return;
  if((selected.pendingUpgrades||0)<=0)selectionTalentBar.classList.add("hidden");
 });
-statsContent.addEventListener("click",e=>{const row=e.target.closest("[data-unit-stat]");if(!row)return;const u=state.units.find(x=>x.uid===Number(row.dataset.unitStat));if(u){selected=u;openStats(u)}});
+statsContent.addEventListener("click",e=>{
+ const veteran=e.target.closest("[data-open-veteran]");
+ if(veteran&&selected){e.preventDefault();e.stopPropagation();closeStats();openVeteranPanel(selected);return}
+ const row=e.target.closest("[data-unit-stat]");if(!row)return;const u=state.units.find(x=>x.uid===Number(row.dataset.unitStat));if(u){selected=u;openStats(u)}
+});
 navMenu.addEventListener("click",()=>{
  clearNavActionState();navButtons.forEach(b=>b.classList.remove("active"));navMenu.classList.add("active");
  openInstructions();
@@ -2404,7 +2488,8 @@ function updateSelectionHud(){
   icon=selected.key==="hero"?"👑":selected.key==="guard"?"🛡️":"🏹";name=`${unitDisplayName(selected)} · Stufe ${selected.expLevel||1}`;
   const abilityStatus=selected.key==="hero"?(heroAbilityActive(selected)?` · 📯 Ruf aktiv ${Math.ceil(selected.heroAbilityTime)}s`:(Number(selected.heroAbilityCooldown)||0)>0?` · ⏳ Ruf ${Math.ceil(selected.heroAbilityCooldown)}s`:" · 📯 Ruf bereit"):"";
   const tacticalStatus=selected.key==="soldier"?` · 🎯 ${targetPriorityLabel(selected)}`:selected.key==="guard"&&unitNearIntactGate(selected)?" · 🚪 Torbonus aktiv":"";
-  details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${isMeleeHeroUnit(selected)?`🛡️ ${Math.round(effectiveUnitArmor(selected)*100)}% · ${selected.retreating?"Rückzug":unitZoneLabel(selected)} · `:`📍 ${unitZoneLabel(selected)} · `}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP${selected.key==="hero"?" · ✨ Sammelruf-Aura":""}${tacticalStatus}${abilityStatus}`;
+  const veteranStatusText=isVeteranChoiceReady(selected)?" · ⭐ Veteranenpfad bereit":getVeteranSpecialization(selected)?` · ${veteranSpecializationLabel(selected)}`:"";
+  details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${isMeleeHeroUnit(selected)?`🛡️ ${Math.round(effectiveUnitArmor(selected)*100)}% · ${selected.retreating?"Rückzug":unitZoneLabel(selected)} · `:`📍 ${unitZoneLabel(selected)} · `}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP${selected.key==="hero"?" · ✨ Sammelruf-Aura":""}${tacticalStatus}${veteranStatusText}${abilityStatus}`;
  }else if(selected.kind==="building"){
   if(selected.key==="statue"){
    const progress=Math.max(0,Math.min(HERO_OFFERING_TARGET,Number(state.heroOffering)||0));
@@ -2420,7 +2505,7 @@ function updateSelectionHud(){
    details=selected.base.decorative
     ?"Zierbauwerk"
     :selected.base.kind==="tower"
-    ?`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · 🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||90)} EXP`
+    ?`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · 🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||90)} EXP${isVeteranChoiceReady(selected)?" · ⭐ Veteranenpfad bereit":getVeteranSpecialization(selected)?` · ${veteranSpecializationLabel(selected)}`:""}`
     :selected.key==="house"?`👥 ${residentCapacityForHouse(selected)} Bewohner · 🪙 +${(residentCapacityForHouse(selected)*.18).toFixed(2)}/Sek.`
     :selected.key==="lumber"?`👤 ${buildingHasWorker(selected)?"besetzt":"frei"} · 🪵 ${supportProductionPerSecond(selected).toFixed(2)}/Sek.`
     :selected.key==="repair"?`👤 ${buildingHasWorker(selected)?"besetzt":"frei"} · 👷 ${selected.repairEnabled===false?"gestoppt":"aktiv"}`
@@ -2461,10 +2546,15 @@ function updateSelectionHud(){
  const normalBuildingCost=isNormalBuilding?getBuildingUpgradeCost(selected):null;
  const normalBuildingCanUpgrade=isNormalBuilding&&!normalBuildingCost.maxed;
  const xpUpgradeReady=(isUnit||(selected.kind==="building"&&selected.base.kind==="tower"))&&(selected.pendingUpgrades||0)>0;
+ const veteranChoiceReady=isVeteranChoiceReady(selected);
  const fortificationUpgrade=getMiddleFortificationUpgrade(selected);
  const canOfferStoneUpgrade=fortificationUpgrade.eligible&&!fortificationUpgrade.upgraded&&selected.built&&selected.hp>0;
- selectionUpgradeBtn.classList.toggle("hidden",!(normalBuildingCanUpgrade||xpUpgradeReady||canOfferStoneUpgrade));
- if(canOfferStoneUpgrade){
+ selectionUpgradeBtn.classList.toggle("hidden",!(normalBuildingCanUpgrade||xpUpgradeReady||veteranChoiceReady||canOfferStoneUpgrade));
+ if(veteranChoiceReady){
+  selectionUpgradeBtn.querySelector("span").textContent="⭐";
+  selectionUpgradeBtn.querySelector("small").textContent="Veteranenpfad";
+  selectionUpgradeBtn.disabled=false;
+ }else if(canOfferStoneUpgrade){
   selectionUpgradeBtn.querySelector("span").textContent="🪨";
   selectionUpgradeBtn.querySelector("small").textContent=`Zu ${fortificationUpgrade.label} · ${fortificationUpgrade.cost}🪨`;
   selectionUpgradeBtn.disabled=state.inWave||state.stone<fortificationUpgrade.cost;

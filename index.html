@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.15.47 – Kriegsrat vor der Welle</title>
+<title>Fortress Commander v1.15.48 – Veteranen-Spezialisierungen</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,7 +20,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Spiel starten">Spiel starten</button>
-  <div id="gameVersionBadge">v1.15.47</div>
+  <div id="gameVersionBadge">v1.15.48</div>
   <div id="developmentNotice"><strong>🏗 Festungsumbau in Entwicklung</strong><span>Mauertürme stehen jetzt bereits auf Holzpalisaden. Der mittlere Ring bietet acht, der äußere Ring zwölf feste Turmplätze.</span></div>
  </div>
 </div>
@@ -41,7 +41,7 @@
      <article class="guideCard"><h3>Karte bewegen</h3><p>Mit einem Finger auf freiem Gelände ziehen. Zoomen mit zwei Fingern; am Desktop funktioniert zusätzlich das Mausrad.</p></article>
      <article class="guideCard"><h3>Objekte auswählen</h3><p>Tippe Gebäude, Einheiten, Mauern oder Gegner an. Die untere Auswahlleiste zeigt Werte und verfügbare Aktionen.</p></article>
      <article class="guideCard"><h3>Reichweiten anzeigen</h3><p>Der Reichweiten-Schalter wechselt zwischen <b>Aus</b>, <b>Auswahl</b> und <b>Alle</b>. Blau steht für Türme, Grün für Bogenschützen.</p></article>
-     <article class="guideCard"><h3>Aufwertungen</h3><p>Leuchtende Symbole rechts zeigen freie Aufwertungspunkte. Türme und Einheiten sammeln im Kampf eigene Erfahrung.</p></article>
+     <article class="guideCard"><h3>Aufwertungen</h3><p>Leuchtende Symbole rechts zeigen freie Aufwertungspunkte. Auf EXP-Stufe 3 erscheint zusätzlich eine goldene Veteranenwahl mit zwei dauerhaften Wegen.</p></article>
     </div>
    </div>
   </details>
@@ -61,9 +61,25 @@
    <div class="guideBody"><div class="guideGrid">
     <article class="guideCard"><h3>🏹 Bogenschütze</h3><p>Bewegliche Fernkampfeinheit mit wählbarer Zielpriorität: nächste, schnelle oder stärkste Gegner. Sie kann automatisch kämpfen oder manuell positioniert werden.</p><div class="guideMeta"><span>55 Gold</span><span>3 Zielprioritäten</span><span>Reichweite 120</span></div></article>
     <article class="guideCard"><h3>🛡️ Burgwache</h3><p>Robuster Nahkämpfer. In der Nähe eines intakten Tores erhält sie +15 % Schaden und +15 Prozentpunkte Rüstung und blockiert anrückende Feinde.</p><div class="guideMeta"><span>120 Gold</span><span>Torwächterbonus</span><span>Nahkampf</span></div></article><article class="guideCard"><h3>👑 Andreas, der große Held</h3><p>Ein einmaliger, besonders starker Nahkampfheld mit eigener Rot-Gold-Rüstung und Sammelruf-Aura. Seine aktive Fähigkeit „Ruf des Helden“ stärkt nahe Verbündete 10 Sekunden lang und zwingt nahe Feinde, Andreas anzugreifen.</p><div class="guideMeta"><span>10 Sek. Wirkung</span><span>60 Sek. Abklingzeit</span><span>Bonus gegen Elite</span></div></article>
-   </div><p>Einheiten erhalten Erfahrung. Bei einem Stufenaufstieg wählst du Verbesserungen wie Schaden, Leben, Tempo, Angriffstakt oder Reichweite.</p></div>
+   </div><p>Einheiten erhalten Erfahrung. Bei einem Stufenaufstieg wählst du Verbesserungen wie Schaden, Leben, Tempo, Angriffstakt oder Reichweite. Auf EXP-Stufe 3 wird zusätzlich genau ein dauerhafter Veteranenpfad freigeschaltet.</p></div>
   </details>
 
+
+  <details class="guideSection">
+   <summary>⭐ Veteranen-Spezialisierungen</summary>
+   <div class="guideBody">
+    <div class="guideTip"><b>Dauerhafte Entscheidung:</b> Sobald ein Turm, eine Einheit oder Andreas EXP-Stufe 3 erreicht, erscheint eine goldene Pfadwahl. Einer von zwei Wegen wird kostenlos gewählt und bleibt für diese Partie dauerhaft aktiv. Normale EXP-Aufwertungspunkte bleiben zusätzlich erhalten.</div>
+    <div class="guideGrid veteranGuideGrid">
+     <article class="guideCard"><h3>🏹 Bogenturm</h3><p><b>Schnellfeuer:</b> 22 % kürzere Nachladezeit, aber 10 % weniger Schaden.<br><b>Jagdplattform:</b> +20 % Reichweite und +30 % Eliteschaden, aber 12 % längere Nachladezeit.</p></article>
+     <article class="guideCard"><h3>🎯 Armbrustturm</h3><p><b>Panzerbrecher:</b> 80 % Rüstungsdurchdringung, aber 12 % längere Nachladezeit.<br><b>Henkerschuss:</b> +40 % Schaden unter 40 % Gegnerleben, aber 10 % weniger Reichweite.</p></article>
+     <article class="guideCard"><h3>🪨 Katapult</h3><p><b>Splittergeschosse:</b> +45 % Explosionsradius, aber 15 % weniger Schaden.<br><b>Brecherkugel:</b> starker Haupttreffer und stärkere Schwächung, aber kleinere Fläche und langsamere Schüsse.</p></article>
+     <article class="guideCard"><h3>🏹 Bogenschütze</h3><p><b>Plänkler:</b> +25 % Tempo und schnelleres Feuer, aber 15 % weniger Reichweite.<br><b>Scharfschütze:</b> +20 % Reichweite und +35 % Eliteschaden, aber langsamere Schüsse.</p></article>
+     <article class="guideCard"><h3>🛡️ Burgwache</h3><p><b>Torwächter:</b> stärker und robuster an intakten Toren, aber 12 % langsamer.<br><b>Ausfallkämpfer:</b> im Ausfall +25 % Schaden und +20 % Tempo, aber 10 Prozentpunkte weniger Rüstung.</p></article>
+     <article class="guideCard"><h3>👑 Andreas</h3><p><b>Wächter der Festung:</b> +25 % Auraradius und mehr eigene Rüstung, aber 10 % weniger Schaden.<br><b>Bezwinger:</b> mehr Eliteschaden und Ruf nach 45 Sekunden, aber 15 % kleinere Aura.</p></article>
+    </div>
+    <div class="guideTip"><b>Erkennbar:</b> Gewählte Spezialisierungen werden in der Auswahlleiste, im Wertefenster, in der Upgrade-Zentrale und als kleines goldenes Symbol direkt auf der Einheit beziehungsweise dem Turm angezeigt.</div>
+   </div>
+  </details>
   <details class="guideSection">
    <summary>⛺ Unterkünfte & Bewohner</summary>
    <div class="guideBody"><div class="guideGrid">
@@ -249,7 +265,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.15.47 · Der Kriegsrat verbindet Wellenanalyse mit Festungsbefehlen, Vorteilen und taktischen Nachteilen.</div>
+  <div class="workshopFoot">v1.15.48 · Türme, Einheiten und Andreas wählen auf EXP-Stufe 3 einen dauerhaften Veteranenpfad.</div>
  </section>
 </div>
 
@@ -339,6 +355,16 @@
  </section>
 </div>
 
+
+<div id="veteranPanel" class="hidden" aria-label="Veteranen-Spezialisierung wählen">
+ <section class="veteranCard" role="dialog" aria-modal="true" aria-labelledby="veteranTitle">
+  <button id="veteranCloseBtn" class="veteranClose" type="button" aria-label="Veteranenwahl schließen">✕</button>
+  <div class="veteranHead"><span>⭐</span><div><small>EXP-STUFE 3</small><h2 id="veteranTitle">Veteranen-Spezialisierung</h2><p>Wähle einen von zwei dauerhaften Wegen. Die regulären EXP-Aufwertungen bleiben erhalten.</p></div></div>
+  <div id="veteranEntitySummary" class="veteranEntitySummary"></div>
+  <div id="veteranOptionGrid" class="veteranOptionGrid"></div>
+  <div id="veteranStatus" class="veteranStatus">Veteranenpfad wird vorbereitet.</div>
+ </section>
+</div>
 <div id="pauseMenu" class="hidden" aria-label="Pause-Menü">
  <section class="pauseMenuCard">
   <h2>⏸ Spiel pausiert</h2>

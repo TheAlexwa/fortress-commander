@@ -1,5 +1,6 @@
 import { restoreSiegeState, serializeSiegeState } from "./siege.js";
 import { restoreWarCouncilState, serializeWarCouncilState } from "./war-council.js";
+import { normalizeVeteranSpecialization } from "./specializations.js";
 import {
   MIDDLE_GATE_STONE_MAX_HP,
   MIDDLE_GATE_WOOD_MAX_HP,
@@ -328,7 +329,7 @@ function restoreBuilding(savedBuilding, context) {
   }
 
   const { slot: _savedSlot, ...plainBuilding } = savedBuilding;
-  return {
+  const building = {
     ...plainBuilding,
     kind: "building",
     base: blueprint,
@@ -336,6 +337,8 @@ function restoreBuilding(savedBuilding, context) {
     cooldown: 0,
     expUpgradeStats: { ...(savedBuilding.expUpgradeStats || {}) },
   };
+  normalizeVeteranSpecialization(building);
+  return building;
 }
 
 function restoreUnit(savedUnit, BUILD) {
@@ -344,7 +347,7 @@ function restoreUnit(savedUnit, BUILD) {
     throw new Error("Speicherstand enthält eine unbekannte Einheit.");
   }
 
-  return {
+  const unit = {
     ...savedUnit,
     kind: "unit",
     base: blueprint,
@@ -358,6 +361,8 @@ function restoreUnit(savedUnit, BUILD) {
     heroAbilityCooldown: savedUnit?.key === "hero" ? Math.max(0, Number(savedUnit.heroAbilityCooldown) || 0) : 0,
     upgradeStats: { ...(savedUnit.upgradeStats || {}) },
   };
+  normalizeVeteranSpecialization(unit);
+  return unit;
 }
 
 export function saveGameState(context) {
