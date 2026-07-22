@@ -1,3 +1,15 @@
+## v1.15.49 – Bonusziele pro Welle
+
+- Jede Welle erhält ein freiwilliges taktisches Bonusziel mit zusätzlicher Belohnung; ein Fehlschlag beendet die Partie nicht.
+- Mögliche Ziele sind vollständige Musterung, Tore halten, Festung unversehrt, äußerer Ring hält, Held ohne Wanken und Häuptling früh brechen.
+- Ziele werden nur gewählt, wenn sie mit dem aktuellen Festungsausbau beziehungsweise dem vorhandenen Helden erfüllbar sind; jede achte Welle nutzt das Häuptlingsziel.
+- Ein eigener 🎯-HUD-Button und ein übersichtliches Fenster zeigen Aufgabe, Fortschritt, Status und Belohnung vor und während des Angriffs.
+- Der Belagerungshinweis nennt das aktuelle Bonusziel und seinen Fortschritt zusätzlich zur Wellenformation.
+- Belohnungen umfassen Gold, Holz, Stein, Forschungspunkte, kostenlose Reparatur oder Andreas-EXP.
+- Zielzustand und Auswahl werden zwischen den Wellen gespeichert; ältere Spielstände erhalten automatisch ein passendes Ziel.
+- Die Anleitung erklärt alle sechs Bonusziele und ihre Belohnungsarten.
+- Versionsangaben im Spiel wurden auf v1.15.49 aktualisiert.
+
 ## v1.15.48 – Veteranen-Spezialisierungen
 
 - Türme, Bogenschützen, Burgwachen und Andreas schalten auf EXP-Stufe 3 eine einmalige Veteranenwahl frei.

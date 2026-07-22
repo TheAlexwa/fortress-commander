@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.15.48 – Veteranen-Spezialisierungen</title>
+<title>Fortress Commander v1.15.49 – Bonusziele pro Welle</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,7 +20,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Spiel starten">Spiel starten</button>
-  <div id="gameVersionBadge">v1.15.48</div>
+  <div id="gameVersionBadge">v1.15.49</div>
   <div id="developmentNotice"><strong>🏗 Festungsumbau in Entwicklung</strong><span>Mauertürme stehen jetzt bereits auf Holzpalisaden. Der mittlere Ring bietet acht, der äußere Ring zwölf feste Turmplätze.</span></div>
  </div>
 </div>
@@ -117,6 +117,22 @@
 
 
   <details class="guideSection">
+   <summary>🎯 Freiwillige Bonusziele</summary>
+   <div class="guideBody">
+    <p>Pro Welle wird ein freiwilliges taktisches Ziel angekündigt. Ein Fehlschlag beendet die Partie nicht; nur die zusätzliche Belohnung entfällt. Das Ziel kann über den goldenen 🎯-Button vor und während des Angriffs geöffnet werden.</p>
+    <div class="guideGrid">
+     <article class="guideCard"><h3>⛺ Vollständige Musterung</h3><p>Warte, bis alle Gegner in den Außenlagern eingetroffen sind, bevor du den Angriff auslöst.</p><div class="guideMeta"><span>Gold</span><span>Forschung</span></div></article>
+     <article class="guideCard"><h3>🚪 Tore halten</h3><p>Alle zu Angriffsbeginn intakten Tore müssen die Welle überstehen.</p><div class="guideMeta"><span>Stein</span><span>Kostenlose Reparatur</span></div></article>
+     <article class="guideCard"><h3>🏰 Festung unversehrt</h3><p>Die zentrale Holzfestung darf keinen Schaden erleiden.</p><div class="guideMeta"><span>Gold</span><span>Forschung</span></div></article>
+     <article class="guideCard"><h3>🧱 Äußerer Ring hält</h3><p>Mindestens 75 % der zu Angriffsbeginn errichteten äußeren Segmente müssen stehen bleiben.</p><div class="guideMeta"><span>Holz</span><span>Stein</span></div></article>
+     <article class="guideCard"><h3>👑 Held ohne Wanken</h3><p>Andreas darf während der Welle nicht unter 50 % seiner maximalen Lebenspunkte fallen.</p><div class="guideMeta"><span>Gold</span><span>Andreas-EXP</span></div></article>
+     <article class="guideCard"><h3>⚔️ Häuptling früh brechen</h3><p>In jeder achten Welle muss der Häuptling vor dem Durchbruch in die Kernzone fallen.</p><div class="guideMeta"><span>Gold</span><span>Stein</span><span>Forschung</span></div></article>
+    </div>
+    <div class="guideTip"><b>Auswahl:</b> Das Ziel richtet sich nach Welle und Festungsausbau. Ziele für Andreas oder den äußeren Ring erscheinen nur, wenn sie tatsächlich erfüllbar sind.</div>
+   </div>
+  </details>
+
+  <details class="guideSection">
    <summary>🗺️ Kriegsrat & Festungsbefehle</summary>
    <div class="guideBody">
     <p>Während der Belagerungsphase zeigt der Kriegsrat Wellentyp, Hauptgegner und gefährlichste Front. Genau ein Befehl kann bis zum Angriffsbeginn gewählt oder geändert werden.</p>
@@ -176,6 +192,7 @@
  <canvas id="game"></canvas>
  <div id="siegePhaseNotice" class="siegePhaseNotice hidden" role="status" aria-live="polite"><strong id="siegePhaseTitle">⛺ Belagerungsphase</strong><span id="siegePhaseText">Die nächste Armee sammelt sich in den Außenlagern.</span></div>
  <button id="warCouncilBtn" class="warCouncilBtn" type="button" aria-label="Kriegsrat öffnen"><span id="warCouncilIcon">⚪</span><strong id="warCouncilLabel">Kriegsrat</strong></button>
+ <button id="bonusObjectiveBtn" class="bonusObjectiveBtn" type="button" aria-label="Bonusziel öffnen"><span id="bonusObjectiveIcon">🎯</span><strong id="bonusObjectiveLabel">Bonusziel</strong></button>
  <button id="resourceOverviewBtn" type="button" aria-label="Rohstoffübersicht öffnen">
   <span class="resourceCompact"><span>🪙</span><strong id="gold">0</strong></span>
   <span class="resourceDivider"></span>
@@ -265,7 +282,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.15.48 · Türme, Einheiten und Andreas wählen auf EXP-Stufe 3 einen dauerhaften Veteranenpfad.</div>
+  <div class="workshopFoot">v1.15.49 · Jede Welle kann ein freiwilliges Bonusziel mit zusätzlicher Belohnung enthalten.</div>
  </section>
 </div>
 
@@ -352,6 +369,19 @@
   <div id="warCouncilRecommendation" class="warCouncilRecommendation">Empfehlung wird berechnet.</div>
   <div id="warCouncilCommandGrid" class="warCouncilCommandGrid"></div>
   <div id="warCouncilStatus" class="warCouncilStatus">Noch kein Sonderbefehl gewählt.</div>
+ </section>
+</div>
+
+<div id="bonusObjectivePanel" class="hidden" aria-label="Bonusziel der aktuellen Welle">
+ <section class="bonusObjectiveCard" role="dialog" aria-modal="true" aria-labelledby="bonusObjectiveTitle">
+  <button id="bonusObjectiveCloseBtn" class="bonusObjectiveClose" type="button" aria-label="Bonusziel schließen">✕</button>
+  <div class="bonusObjectiveHead"><span id="bonusObjectivePanelIcon">🎯</span><div><small>FREIWILLIGE MISSION</small><h2 id="bonusObjectiveTitle">Bonusziel</h2><p id="bonusObjectiveDescription">Zusätzliche taktische Herausforderung für diese Welle.</p></div></div>
+  <div class="bonusObjectiveMeta"><span id="bonusObjectiveWave">Welle 1</span><b id="bonusObjectiveStateBadge">BEREIT</b></div>
+  <div class="bonusObjectiveGrid">
+   <article><span>FORTSCHRITT</span><strong id="bonusObjectiveProgress">Bereit für den Angriff</strong></article>
+   <article><span>BELOHNUNG</span><strong id="bonusObjectiveReward">Zusätzliche Ressourcen</strong></article>
+  </div>
+  <div id="bonusObjectiveStatus" class="bonusObjectiveStatus" data-status="available">Ein Fehlschlag beendet die Partie nicht.</div>
  </section>
 </div>
 

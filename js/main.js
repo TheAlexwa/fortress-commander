@@ -117,6 +117,16 @@ import {
   isVeteranChoiceReady,
   veteranSpecializationLabel
 } from "./specializations.js";
+import {
+  activateBonusObjective,
+  ensureBonusObjectiveState,
+  formatBonusReward,
+  getBonusObjectiveView,
+  registerBonusEnemyDeath,
+  resetBonusObjectiveForWave,
+  resolveBonusObjective,
+  updateBonusObjective
+} from "./bonus-objectives.js";
 import { FIXED_INNER_WALL_RADIUS, OUTER_WALL_OFFSET } from "./map-layout.js";
 import {
   MIDDLE_WALL_SECTION_COUNT,
@@ -165,8 +175,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.15.48";
-const GAME_RELEASE_NAME="Veteranen-Spezialisierungen";
+const GAME_VERSION="1.15.49";
+const GAME_RELEASE_NAME="Bonusziele pro Welle";
 const AUTOSAVE_INTERVAL_MS=60_000;
 const ACTIVE_ENEMY_LIMIT=(window.matchMedia("(max-width: 900px)").matches||navigator.maxTouchPoints>0)?64:72;
 const ENEMY_PULSE_INTERVAL=.11;
@@ -274,6 +284,7 @@ const ui={
  wave:document.getElementById("wave"),status:document.getElementById("waveStatus"),
  start:document.getElementById("startWaveBtn"),pause:document.getElementById("pauseBtn"),toast:document.getElementById("toast"),
  warCouncilBtn:document.getElementById("warCouncilBtn"),warCouncilIcon:document.getElementById("warCouncilIcon"),warCouncilLabel:document.getElementById("warCouncilLabel"),
+ bonusObjectiveBtn:document.getElementById("bonusObjectiveBtn"),bonusObjectiveIcon:document.getElementById("bonusObjectiveIcon"),bonusObjectiveLabel:document.getElementById("bonusObjectiveLabel"),
  selected:document.getElementById("selectedPanel"),levelDock:document.getElementById("levelUpDock"),upgrade:document.getElementById("upgradeBtn"),
  repairWall:document.getElementById("repairWallBtn"),craftsmanToggle:document.getElementById("craftsmanToggleBtn"),marketTrade:document.getElementById("marketTradeBtn"),statueOffering:document.getElementById("statueOfferingBtn"),sell:document.getElementById("sellBtn"),
  selectionHud:document.getElementById("selectionHud"),selectionText:document.getElementById("selectionText"),selectionPortrait:document.getElementById("selectionPortrait")
@@ -301,6 +312,7 @@ const CATAPULT_ARMOR_BREAK=.20;
 const CATAPULT_SLOW=.15;
 const CATAPULT_DEBUFF_DURATION=4;
 let warCouncilResumeAfterClose=false;
+let bonusObjectiveResumeAfterClose=false;
 function warCouncilState(){return ensureWarCouncilState(state)}
 function warCouncilActiveCommand(){return getWarCouncilCommand(warCouncilState().active)}
 function warCouncilModifiers(){return getWarCouncilModifiers(state)}
@@ -450,7 +462,7 @@ const BUILD={
  hero:{name:"Andreas, der große Held",kind:"unit",gold:0,wood:0,hp:650,damage:65,range:34,rate:1.05,speed:66,armor:.35,color:"#d4aa52",hero:true}
 };
 const state={gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,nextEnemyId:0,
- enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],outerGates:[],craftsmen:[],residents:[],siege:null,warCouncil:createWarCouncilState(1),spawnQueue:[],repairActive:false,repairedHp:0,heroOffering:0,heroSummoned:false,heroFallen:false,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
+ enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],outerGates:[],craftsmen:[],residents:[],siege:null,warCouncil:createWarCouncilState(1),bonusObjective:null,spawnQueue:[],repairActive:false,repairedHp:0,heroOffering:0,heroSummoned:false,heroFallen:false,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0}};
 const wallSlots=[],insideSlots=[],castleSlots=[];
 
 function initMap(){
@@ -885,6 +897,56 @@ function chooseWarCouncilCommand(key){
  const command=getWarCouncilCommand(key);renderWarCouncilPanel();updateWarCouncilHud();showToast(`${command.icon} ${command.label} für Welle ${state.wave} gewählt`);saveGame(true);
 }
 
+function bonusObjectiveStatusLabel(status){
+ return status==="success"?"ERFÜLLT":status==="failed"?"VERFEHLT":status==="active"?"LÄUFT":"BEREIT";
+}
+function updateBonusObjectiveHud(){
+ const button=ui.bonusObjectiveBtn;if(!button)return;
+ const view=getBonusObjectiveView(state),status=view.objective.status;
+ button.hidden=gameOver;
+ button.classList.toggle("isActive",status==="active");
+ button.classList.toggle("isSuccess",status==="success");
+ button.classList.toggle("isFailed",status==="failed");
+ if(ui.bonusObjectiveIcon)ui.bonusObjectiveIcon.textContent=view.definition.icon;
+ if(ui.bonusObjectiveLabel)ui.bonusObjectiveLabel.textContent=status==="failed"?"Verfehlt":status==="success"?"Erfüllt":view.definition.shortLabel;
+ button.title=`${view.definition.title} · ${view.progress} · Belohnung: ${view.rewardText}`;
+}
+function renderBonusObjectivePanel(){
+ const view=getBonusObjectiveView(state),status=view.objective.status;
+ const statusBox=document.getElementById("bonusObjectiveStatus");
+ document.getElementById("bonusObjectivePanelIcon").textContent=view.definition.icon;
+ document.getElementById("bonusObjectiveTitle").textContent=view.definition.title;
+ document.getElementById("bonusObjectiveWave").textContent=`Welle ${view.objective.wave}`;
+ document.getElementById("bonusObjectiveDescription").textContent=view.definition.description;
+ document.getElementById("bonusObjectiveProgress").textContent=view.progress;
+ document.getElementById("bonusObjectiveReward").textContent=view.rewardText||"Keine Belohnung";
+ statusBox.textContent=status==="failed"?`✖ ${view.objective.failedReason||"Bonusziel verfehlt"}`:status==="success"?`✓ ${view.definition.successText}`:status==="active"?"Das Bonusziel wird während des laufenden Angriffs überwacht.":"Freiwilliges Ziel: Ein Fehlschlag beendet die Partie nicht.";
+ statusBox.dataset.status=status;
+ document.getElementById("bonusObjectiveStateBadge").textContent=bonusObjectiveStatusLabel(status);
+}
+function openBonusObjectivePanel(){
+ const panel=document.getElementById("bonusObjectivePanel");if(!panel||gameOver)return;
+ ensureCurrentSiege();bonusObjectiveResumeAfterClose=!paused&&!gameOver;paused=true;state.supportTimer=0;
+ renderBonusObjectivePanel();panel.classList.remove("hidden");panel.style.display="grid";panel.style.visibility="visible";panel.style.pointerEvents="auto";updateBonusObjectiveHud();
+}
+function closeBonusObjectivePanel(resume=true){
+ const panel=document.getElementById("bonusObjectivePanel");if(panel){panel.classList.add("hidden");panel.style.display="none";panel.style.visibility="hidden";panel.style.pointerEvents="none"}
+ if(resume&&bonusObjectiveResumeAfterClose&&!gameOver){paused=false;last=performance.now()}
+ bonusObjectiveResumeAfterClose=false;updateBonusObjectiveHud();
+}
+function applyBonusObjectiveRewards(result){
+ if(!result?.success)return {summary:"",repaired:0};
+ const reward=result.reward||{};
+ state.gold+=(Number(reward.gold)||0);
+ state.wood+=(Number(reward.wood)||0);
+ state.stone+=(Number(reward.stone)||0);
+ state.researchPoints=(state.researchPoints||0)+(Number(reward.researchPoints)||0);
+ let repaired=0;
+ if((Number(reward.repairPercent)||0)>0)repaired=applyWaveAutoRepair(state,Number(reward.repairPercent));
+ if((Number(reward.heroXp)||0)>0){const hero=getAndreas();if(hero)grantCombatXp(hero,Number(reward.heroXp))}
+ return {summary:formatBonusReward(reward),repaired};
+}
+
 function veteranOptionHtml(option,activeId,locked){
  const active=activeId===option.id;
  return `<button type="button" class="veteranOption ${active?"selected":""}" data-veteran-choice="${option.id}" ${locked?"disabled":""}><span class="veteranOptionIcon">${option.icon}</span><span class="veteranOptionText"><b>${option.name}</b><small>${option.role}</small><em class="veteranBenefit">✓ ${option.benefit}</em><em class="veteranDrawback">⚠ ${option.drawback}</em></span>${active?'<span class="veteranSelected">GEWÄHLT</span>':""}</button>`;
@@ -933,6 +995,7 @@ function updateUI(){
   getBuildingUpgradeCost,getBuildingMaxLevel,hasBuildingUpgradeEffect,HERO_OFFERING_TARGET
  });
  updateWarCouncilHud();
+ updateBonusObjectiveHud();
  return result;
 }
 
@@ -940,7 +1003,7 @@ function buildRequirement(key){return getBuildRequirement(state,key)}
 
 function isPanelVisible(id){const el=document.getElementById(id);return !!(el&&!el.classList.contains("hidden"));}
 function isBlockingPanelOpen(){
- return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","veteranPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision"].some(isPanelVisible);
+ return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","bonusObjectivePanel","veteranPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision"].some(isPanelVisible);
 }
 function closeTopBlockingPanel(){
  if(isPanelVisible("testResourcePanel")){closeTestResourcePanel();return "Testfenster geschlossen"}
@@ -948,6 +1011,7 @@ function closeTopBlockingPanel(){
  if(isPanelVisible("marketPanel")){closeMarketPanel();return "Fenster geschlossen"}
  if(isPanelVisible("statueOfferingPanel")){closeStatueOfferingPanel(true);return "Opfergaben geschlossen"}
  if(isPanelVisible("warCouncilPanel")){closeWarCouncilPanel(true);return "Kriegsrat geschlossen"}
+ if(isPanelVisible("bonusObjectivePanel")){closeBonusObjectivePanel(true);return "Bonusziel geschlossen"}
  if(isPanelVisible("veteranPanel")){closeVeteranPanel(true);return "Veteranenwahl geschlossen"}
  if(isPanelVisible("workshopPanel")){closeWorkshopPanel(true);return "Fenster geschlossen"}
  if(isPanelVisible("statsScreen")){closeStats();return "Fenster geschlossen"}
@@ -958,7 +1022,7 @@ function closeTopBlockingPanel(){
 }
 function closeAllBlockingPanels(){
  hideRepairDecision();
- ["statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","veteranPanel","enemyInfoOverlay","pauseMenu"].forEach(id=>{
+ ["statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","bonusObjectivePanel","veteranPanel","enemyInfoOverlay","pauseMenu"].forEach(id=>{
   const el=document.getElementById(id);
   if(el&&el.classList.contains("hidden")){el.style.display="none";el.style.pointerEvents="none";el.style.visibility="hidden"}
  });
@@ -988,7 +1052,7 @@ function cycleUnitZone(unit){
 }
 
 function siegeContext(){return {getWaveEnemyCount,getBaseWaveEnemyCount,selectWaveEnemyType}}
-function ensureCurrentSiege(){ensureWarCouncilState(state);return ensureSiegePhase(state,siegeContext())}
+function ensureCurrentSiege(){ensureWarCouncilState(state);ensureBonusObjectiveState(state);return ensureSiegePhase(state,siegeContext())}
 function startWave(){
  ensureCurrentSiege();
  const command=activateWarCouncilCommand(state);
@@ -999,8 +1063,12 @@ function startWave(){
   setSelected:value=>{selected=value}
  });
  if(!release){state.warCouncil.locked=false;state.warCouncil.active="none";return false}
+ activateBonusObjective(state,{fullyGathered:release.reinforcements.length===0});
  closeWarCouncilPanel(false);
+ closeBonusObjectivePanel(false);
  if(command.key!=="none")showToast(`${command.icon} ${command.label} ist für Welle ${state.wave} aktiv`);
+ if(state.bonusObjective?.status==="failed")showToast(`🎯 Bonusziel verfehlt: ${state.bonusObjective.failedReason}`);
+ updateBonusObjectiveHud();
  return true;
 }
 function spawnEnemy(forcedType=null,spawnPoint=null,approachGateIndex=null,modifiers=null){
@@ -1708,7 +1776,7 @@ function update(dt){
  }
  resolveEnemySeparation(state.enemies,dt);
  for(const e of state.enemies)if(e.hp<=0&&!e.dead){
-  e.dead=true;if(e.type==="boss")applyBossDeathShock(e);state.gold+=e.reward;state.kills++;
+  e.dead=true;if(e.type==="boss"){registerBonusEnemyDeath(state,e);applyBossDeathShock(e)}state.gold+=e.reward;state.kills++;
   if(e.lastHitEntity){const baseXp=e.type==="boss"?55:e.type==="shield"?22:e.type==="runner"?13:16;grantCombatXp(e.lastHitEntity,baseXp*Math.max(.15,Number(e.xpScale)||1))}
   burst(e.x,e.y,e.color,8)
  }
@@ -1726,20 +1794,36 @@ function update(dt){
  });
  if(supportBuildingDestroyed){syncResidents();assignCraftsmen()}
  state.units=state.units.filter(u=>{if(u.hp<=0){burst(u.x,u.y,u.key==="hero"?"#ffd76e":"#47739c",u.key==="hero"?24:10);if(u.key==="hero"&&!state.heroFallen){state.heroFallen=true;showToast("Andreas, der große Held, ist im Kampf gefallen")};if(selected===u)selected=null;return false}return true});
+ if(state.inWave){
+  const objectiveStatusBefore=state.bonusObjective?.status;
+  updateBonusObjective(state,dt);
+  if(objectiveStatusBefore!=="failed"&&state.bonusObjective?.status==="failed")showToast(`🎯 Bonusziel verfehlt: ${state.bonusObjective.failedReason}`);
+ }
  if(state.hp<=0&&!gameOver){state.hp=0;gameOver=true;state.inWave=false;paused=true;showEndScreen()}
  if(state.inWave&&state.toSpawn===0&&state.enemies.length===0){
-  state.inWave=false;state.supportTimer=0;paused=false;last=performance.now();const completedWave=state.wave,gold=30+completedWave*5,rp=Math.min(9,2+Math.ceil(completedWave/4)+(completedWave%8===0?2:0));state.gold+=gold;state.researchPoints=(state.researchPoints||0)+rp;
+  state.inWave=false;state.supportTimer=0;paused=false;last=performance.now();
+  const completedWave=state.wave;
+  const gold=30+completedWave*5;
+  const rp=Math.min(9,2+Math.ceil(completedWave/4)+(completedWave%8===0?2:0));
+  state.gold+=gold;state.researchPoints=(state.researchPoints||0)+rp;
   const waveHero=getAndreas();if(waveHero)waveHero.heroAbilityTime=0;
   const completedCommand=warCouncilActiveCommand();
+  const bonusResult=resolveBonusObjective(state);
   const autoRepaired=applyAutomaticWaveRepair();
+  const bonusApplied=applyBonusObjectiveRewards(bonusResult);
+  const bonusText=bonusResult.success
+   ?` · 🎯 ${bonusResult.definition.title}: ${bonusApplied.summary}`
+   :` · 🎯 ${bonusResult.definition.title} verfehlt`;
   state.wave++;
   resetWarCouncilForWave(state,state.wave);
+  resetBonusObjectiveForWave(state,state.wave);
   state.repairActive=false;
   state.spawnQueue=[];
   prepareSiegePhase(state,siegeContext());
   const nextWaveType=getWaveTypeInfo(state.wave,state.siege?.waveType);
   for(const c of state.craftsmen)sendCraftsmanHome(c);
-  showToast(`Welle geschafft: +${gold} Gold · +${rp} Forschung${autoRepaired>0?` · +${Math.round(autoRepaired)} HP automatisch repariert`:completedCommand.key==="stockpile"?" · keine Autoreparatur":""} · ${nextWaveType.icon} ${nextWaveType.label}`);hideRepairDecision();saveGame(true);
+  showToast(`Welle geschafft: +${gold} Gold · +${rp} Forschung${autoRepaired>0?` · +${Math.round(autoRepaired)} HP automatisch repariert`:completedCommand.key==="stockpile"?" · keine Autoreparatur":""}${bonusText} · ${nextWaveType.icon} ${nextWaveType.label}`);
+  hideRepairDecision();saveGame(true);
  }
  for(const p of state.particles){p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96}
  state.particles=state.particles.filter(p=>p.life>0);
@@ -1919,7 +2003,7 @@ function showEndScreen(){
 }
 function hideEndScreen(){const screen=document.getElementById("endScreen");if(screen){screen.classList.add("hidden");screen.style.pointerEvents="none"}}
 function reset(){
- state.gold=210;state.wood=105;state.stone=0;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.nextEnemyId=0;state.heroOffering=0;state.heroSummoned=false;state.heroFallen=false;state.warCouncil=createWarCouncilState(1);
+ state.gold=210;state.wood=105;state.stone=0;state.researchPoints=0;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.nextEnemyId=0;state.heroOffering=0;state.heroSummoned=false;state.heroFallen=false;state.warCouncil=createWarCouncilState(1);state.bonusObjective=null;
  state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeOuterWallSegments(state.outerWalls,{built:false});initializeOuterGates(state.outerGates,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
  selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();showToast("Neue Belagerung beginnt");
 }
@@ -1938,6 +2022,9 @@ document.getElementById("statueOfferingBtn").addEventListener("click",openStatue
 ui.warCouncilBtn.addEventListener("click",openWarCouncilPanel);
 document.getElementById("warCouncilCloseBtn").addEventListener("click",()=>closeWarCouncilPanel(true));
 document.getElementById("warCouncilPanel").addEventListener("click",e=>{const command=e.target.closest("[data-war-command]");if(command){e.preventDefault();chooseWarCouncilCommand(command.dataset.warCommand);return}if(e.target.id==="warCouncilPanel")closeWarCouncilPanel(true)});
+ui.bonusObjectiveBtn.addEventListener("click",openBonusObjectivePanel);
+document.getElementById("bonusObjectiveCloseBtn").addEventListener("click",()=>closeBonusObjectivePanel(true));
+document.getElementById("bonusObjectivePanel").addEventListener("click",e=>{if(e.target.id==="bonusObjectivePanel")closeBonusObjectivePanel(true)});
 document.getElementById("veteranCloseBtn").addEventListener("click",()=>closeVeteranPanel(true));
 document.getElementById("veteranPanel").addEventListener("click",e=>{const choice=e.target.closest("[data-veteran-choice]");if(choice){e.preventDefault();selectVeteranPath(choice.dataset.veteranChoice);return}if(e.target.id==="veteranPanel")closeVeteranPanel(true)});
 document.getElementById("marketCloseBtn").addEventListener("click",closeMarketPanel);

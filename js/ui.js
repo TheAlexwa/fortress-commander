@@ -1,6 +1,7 @@
 import { getMiddleFortificationUpgrade } from "./fortifications.js";
 import { getWaveTypeInfo } from "./game.js";
 import { getSiegeCampPreview } from "./siege.js";
+import { getBonusObjectiveView } from "./bonus-objectives.js";
 
 /**
  * Benutzeroberfläche von Fortress Commander.
@@ -104,6 +105,8 @@ export function renderGameUI({
   const siegeNoticeTitle = document.getElementById("siegePhaseTitle");
   const siegeNoticeText = document.getElementById("siegePhaseText");
   const waveType = getWaveTypeInfo(state.wave, siege?.waveType);
+  const bonusObjectiveView = getBonusObjectiveView(state);
+  const bonusObjectiveHint = `Bonusziel: ${bonusObjectiveView.definition.icon} ${bonusObjectiveView.definition.title} · ${bonusObjectiveView.progress}.`;
   const counterRecommendation = {
     scoutRaid: "Empfohlen: Bogentürme und Bogenschützen mit Priorität ‚Schnelle Gegner‘.",
     shieldWall: "Empfohlen: Armbrusttürme und Katapulte gegen schwere Rüstung.",
@@ -139,8 +142,8 @@ export function renderGameUI({
       const remaining = Math.max(0, siegeTotal - siegeReady);
       const campPreview = getSiegeCampPreview(siege);
       siegeNoticeText.textContent = siegeReady >= siegeTotal
-        ? `${waveType.description} ${campPreview} · Alle Gegner bereit. ${counterRecommendation}`
-        : `${waveType.description} ${campPreview} · ${remaining} Nachzügler. ${counterRecommendation}`;
+        ? `${waveType.description} ${campPreview} · Alle Gegner bereit. ${bonusObjectiveHint} ${counterRecommendation}`
+        : `${waveType.description} ${campPreview} · ${remaining} Nachzügler. ${bonusObjectiveHint} ${counterRecommendation}`;
     }
   }
 
