@@ -1,3 +1,5 @@
+import { stoneHousingCapacity, stoneWorkerCapacityBonus } from "./stone-buildings.js";
+
 /**
  * Bewohner- und Arbeitersystem von Fortress Commander.
  *
@@ -58,7 +60,8 @@ export function workplaceDefinition(keyOrBuilding) {
 }
 
 export function workerCapacityForBuilding(building) {
-  return workplaceDefinition(building)?.capacity || 0;
+  const baseCapacity = workplaceDefinition(building)?.capacity || 0;
+  return baseCapacity + stoneWorkerCapacityBonus(building);
 }
 
 export function workforceEfficiencyForCount(count) {
@@ -67,11 +70,13 @@ export function workforceEfficiencyForCount(count) {
   if (workers === 1) return 0.45;
   if (workers === 2) return 0.75;
   if (workers === 3) return 1;
-  return 1.2;
+  if (workers === 4) return 1.2;
+  return 1.35;
 }
 
 export function residentCapacityForHouse(house) {
-  return (house.level || 1) >= 2 ? 4 : 2;
+  const woodenCapacity = (house.level || 1) >= 2 ? 4 : 2;
+  return stoneHousingCapacity(house, woodenCapacity);
 }
 
 function releaseResident(resident, displaced = false) {

@@ -12,7 +12,8 @@ export const RESEARCH_TABS=[
  {id:"guard",label:"🛡 Burgwache",intro:"Defensive Ausbildung für widerstandsfähige Nahkämpfer."},
  {id:"archer",label:"🏹 Bogenschützen",intro:"Fernkampftechnologien für Schaden, Reichweite und Angriffstempo."},
  {id:"tower",label:"🗼 Türme",intro:"Globale Werkstattverbesserungen für Bogen-, Armbrust- und Katapulttürme."},
- {id:"craft",label:"🔨 Handwerker",intro:"Verbesserungen für Reparaturleistung, Holzbedarf und Beweglichkeit."}
+ {id:"craft",label:"🔨 Handwerker",intro:"Verbesserungen für Reparaturleistung, Holzbedarf und Beweglichkeit."},
+ {id:"economy",label:"🧱 Steinbau",intro:"Schaltet nach Welle 8 dauerhafte Steinaufwertungen für vollständig ausgebaute Versorgungsgebäude frei."}
 ];
 
 export const RESEARCH_TECHS={
@@ -35,6 +36,9 @@ export const RESEARCH_TECHS={
   {id:"craft_repair",icon:"🔨",name:"Effiziente Reparatur",desc:"Erhöht die Reparaturleistung der Handwerker um 12 % je Stufe.",max:5,costs:[2,4,7,10,14]},
   {id:"craft_wood",icon:"🪵",name:"Materialkunde",desc:"Senkt den Holzverbrauch pro Reparaturtakt um 7 % je Stufe.",max:5,costs:[3,5,8,12,16],requires:"craft_repair"},
   {id:"craft_speed",icon:"➤",name:"Leichte Werkzeugtaschen",desc:"Erhöht die Bewegungsgeschwindigkeit der Handwerker um 8 % je Stufe.",max:5,costs:[3,6,9,13,18],requires:"craft_wood"}
+ ],
+ economy:[
+  {id:"stone_building",icon:"🏛️",name:"Steinbaukunst",desc:"Erlaubt nach Welle 8 den Ausbau vollständig entwickelter Versorgungsgebäude zu widerstandsfähigen Steingebäuden.",max:1,costs:[5],values:["Freigeschaltet"],minWave:9}
  ]
 };
 

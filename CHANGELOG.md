@@ -1,3 +1,16 @@
+## v1.17.3 – Steinbau & Gebäudestufen
+
+- Neue Forschung „Steinbaukunst“ im eigenen Wirtschaftsreiter; verfügbar ab Welle 9 und für 5 Forschungspunkte.
+- Vollständig ausgebaute Versorgungsgebäude können zwischen den Wellen dauerhaft zu Steingebäuden erweitert werden.
+- Steinhaus, Steinsägewerk, großer Steinbruch, Steinwerkstatt, Steinmetzhütte und Handelshaus besitzen eigene Kosten, Namen und Gebäudeboni.
+- Steingebäude erhalten ungefähr 85 bis 100 % mehr Lebenspunkte und erleiden durch Plünderer 25 % weniger Grundschaden statt 40 % Zusatzschaden.
+- Produktionsgebäude, Werkstatt, Handwerkerhaus und Markt erhalten einen zusätzlichen Arbeitsplatz; fünf Arbeiter erreichen 135 % Gebäudeleistung.
+- Gebäudespezifische Boni verbessern Holz, Stein, Forschung, Reparatur, Markt und Bevölkerung.
+- Handwerker reparieren jetzt auch beschädigte Versorgungsgebäude; Steingebäude benötigen dabei zusätzlich 0,1 Stein pro Reparaturtakt.
+- Steinaufwertungen erscheinen im Gebäude-Infofenster, in der Auswahlleiste und in der Upgrade-Zentrale; Steinbauten tragen ein sichtbares Fundament und 🏛️-Abzeichen.
+- Materialstufe, investierte Ressourcen und Ausbauwelle werden gespeichert; ältere Spielstände werden automatisch als Holzbau übernommen.
+- Anleitung und Versionsangaben wurden auf v1.17.3 aktualisiert.
+
 ## v1.17.2 – Bevölkerung 2.0
 
 - Die Bewohneranzeige öffnet jetzt eine zentrale Verwaltung mit Gesamtzahl, Beschäftigten, freien Bewohnern, Mindestreserve und geflohenen Arbeitskräften.

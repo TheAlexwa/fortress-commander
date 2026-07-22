@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.17.2 – Bevölkerung 2.0</title>
+<title>Fortress Commander v1.17.3 – Steinbau &amp; Gebäudestufen</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,8 +20,8 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Kampagnenkarte öffnen">Spiel starten</button>
-  <div id="gameVersionBadge">v1.17.2</div>
-  <div id="developmentNotice"><strong>🗺 Die Weltkampagne beginnt</strong><span>Wähle die Grenzmark auf der neuen Kampagnenkarte. Weitere Welten sind bereits sichtbar und befinden sich im Aufbau.</span></div>
+  <div id="gameVersionBadge">v1.17.3</div>
+  <div id="developmentNotice"><strong>🏛️ Die Grenzmark baut in Stein</strong><span>Ab Welle 9 schaltet Steinbaukunst dauerhafte Steingebäude mit zusätzlichen Arbeitsplätzen und eigenen Wirtschaftsboni frei.</span></div>
  </div>
 </div>
 
@@ -196,19 +196,36 @@
    <div class="guideBody"><div class="guideGrid">
     <article class="guideCard"><h3>⛺ Zeltlager</h3><p>Deine erste Unterkunft. Stellt <b>2 Bewohner</b> bereit und erzeugt während aktiver Wellen Gold.</p><div class="guideMeta"><span>65 Gold</span><span>20 Holz</span><span>2 Bewohner</span></div></article>
     <article class="guideCard"><h3>🏠 Holzhaus</h3><p>Die aufgewertete Unterkunft bietet Platz für <b>4 Bewohner</b>. Mehr Bewohner ermöglichen mehr Produktionsgebäude.</p><div class="guideMeta"><span>Stufe 2</span><span>4 Bewohner</span><span>Mehr Goldeinnahmen</span></div></article>
-   </div><p>Ein Klick auf die Bewohneranzeige öffnet die zentrale Arbeitsverteilung. Bewohner können manuell oder über die Profile Ausgewogen, Ausbau, Verteidigung und Rohstoffe verteilt werden. Eine einstellbare Mindestreserve bleibt für Neubauten und Notfälle frei.</p><div class="guideTip"><b>Leistung:</b> 1 Bewohner = 45 %, 2 = 75 %, 3 = 100 %, 4 = 120 %. Änderungen sind nur zwischen Angriffswellen möglich. Wird ein Arbeitsplatz zerstört, kehren die geflohenen Bewohner nach der Welle zurück.</div></div>
+   </div><p>Ein Klick auf die Bewohneranzeige öffnet die zentrale Arbeitsverteilung. Bewohner können manuell oder über die Profile Ausgewogen, Ausbau, Verteidigung und Rohstoffe verteilt werden. Eine einstellbare Mindestreserve bleibt für Neubauten und Notfälle frei.</p><div class="guideTip"><b>Leistung:</b> 1 Bewohner = 45 %, 2 = 75 %, 3 = 100 %, 4 = 120 %, ein fünfter Arbeitsplatz im Steingebäude erreicht 135 %. Änderungen sind nur zwischen Angriffswellen möglich. Wird ein Arbeitsplatz zerstört, kehren die geflohenen Bewohner nach der Welle zurück.</div></div>
   </details>
 
   <details class="guideSection">
    <summary>🛠️ Wirtschaft & Versorgung</summary>
    <div class="guideBody"><div class="guideGrid">
-    <article class="guideCard"><h3>🪵 Holzfäller</h3><p>Produziert Holz während aktiver Wellen. Bis zu <b>4 Bewohner</b> erhöhen die Leistung von 45 bis 120 %.</p><div class="guideMeta"><span>70 Gold</span><span>4 Arbeitsplätze</span><span>Holzproduktion</span></div></article>
-    <article class="guideCard"><h3>🪨 Steinbruch</h3><p>Produziert Stein während aktiver Wellen. Bis zu <b>4 Steinmetze</b> steigern die Leistung; Stein bleibt wichtig für Mauern, Tore und schwere Ausbauten.</p><div class="guideMeta"><span>90 Gold</span><span>4 Arbeitsplätze</span><span>Steinproduktion</span></div></article>
+    <article class="guideCard"><h3>🪵 Holzfäller</h3><p>Produziert Holz während aktiver Wellen. Im Holzbau erhöhen bis zu <b>4 Bewohner</b> die Leistung von 45 bis 120 %; das spätere Steinsägewerk besitzt einen fünften Arbeitsplatz.</p><div class="guideMeta"><span>70 Gold</span><span>4 Arbeitsplätze</span><span>Holzproduktion</span></div></article>
+    <article class="guideCard"><h3>🪨 Steinbruch</h3><p>Produziert Stein während aktiver Wellen. Im Holzbau steigern bis zu <b>4 Steinmetze</b> die Leistung; der große Steinbruch besitzt später einen fünften Arbeitsplatz.</p><div class="guideMeta"><span>90 Gold</span><span>4 Arbeitsplätze</span><span>Steinproduktion</span></div></article>
     <article class="guideCard"><h3>🗿 Kriegerstatue</h3><p>Stärkt Einheiten innerhalb der Festung mit +5 % Schaden. Spende Gold, Holz oder Stein: Bei 2.000 Opferpunkten erscheint einmalig Andreas, der große Held.</p><div class="guideMeta"><span>45 Gold</span><span>15 Stein</span><span>Held bei 2.000 Punkten</span></div></article>
-    <article class="guideCard"><h3>👷 Handwerkerhaus</h3><p>Bis zu <b>3 Handwerker</b> reparieren während eines Angriffs Mauern, Tore, Türme und die Burg. Die Gesamtleistung des Hauses steigt mit der Besetzung und wird auf die sichtbaren Handwerker verteilt.</p><div class="guideMeta"><span>90 Gold</span><span>35 Holz</span><span>3 Arbeitsplätze</span></div></article>
-    <article class="guideCard"><h3>⚒️ Werkstatt</h3><p>Öffnet das Forschungszentrum. Bis zu <b>3 Bewohner</b> beeinflussen die Forschungskosten: ohne Personal +25 %, mit einem +10 %, mit zwei normal und mit drei −10 %. Der Gebäudeausbau senkt zusätzlich den globalen Aufschlag.</p><div class="guideMeta"><span>110 Gold</span><span>3 Arbeitsplätze</span><span>Forschungskosten</span></div></article>
-    <article class="guideCard"><h3>🏪 Marktplatz</h3><p>Spätes Wirtschaftsgebäude für zusätzliche Goldeinnahmen und Ressourcentausch. Zwei Händler erreichen den bisherigen vollen Marktertrag.</p><div class="guideMeta"><span>150 Gold</span><span>2 Arbeitsplätze</span><span>Ressourcentausch</span></div></article>
+    <article class="guideCard"><h3>👷 Handwerkerhaus</h3><p>Bis zu <b>3 Handwerker</b> im Holzbau reparieren während eines Angriffs Mauern, Tore, Türme, Versorgungsgebäude und die Burg. Die Gesamtleistung des Hauses steigt mit der Besetzung und wird auf die sichtbaren Handwerker verteilt.</p><div class="guideMeta"><span>90 Gold</span><span>35 Holz</span><span>3 Arbeitsplätze</span></div></article>
+    <article class="guideCard"><h3>⚒️ Werkstatt</h3><p>Öffnet das Forschungszentrum. Bis zu <b>3 Bewohner</b> im Holzbau beeinflussen die Forschungskosten: ohne Personal +25 %, mit einem +10 %, mit zwei normal und mit drei −10 %. Der Gebäudeausbau senkt zusätzlich den globalen Aufschlag.</p><div class="guideMeta"><span>110 Gold</span><span>3 Arbeitsplätze</span><span>Forschungskosten</span></div></article>
+    <article class="guideCard"><h3>🏪 Marktplatz</h3><p>Spätes Wirtschaftsgebäude für zusätzliche Goldeinnahmen und Ressourcentausch. Zwei Händler erreichen den bisherigen vollen Marktertrag; das Handelshaus bietet später einen dritten Arbeitsplatz.</p><div class="guideMeta"><span>150 Gold</span><span>2 Arbeitsplätze</span><span>Ressourcentausch</span></div></article>
    </div><div class="guideTip"><b>Freischaltfolge:</b> Zeltlager → Holzfäller → Steinbruch oder Handwerkerhaus → Werkstatt → Marktplatz.</div><div class="guideTip"><b>🏗 Umbauhinweis:</b> Beide Verteidigungsringe können mit Stein verstärkt werden. Der mittlere Ring besitzt acht und der äußere Ring zwölf feste Mauerturmplätze; intakte Holzpalisaden reichen bereits als Unterlage.</div></div>
+  </details>
+
+  <details class="guideSection">
+   <summary>🏛️ Steinbau &amp; Gebäudestufen</summary>
+   <div class="guideBody">
+    <div class="guideTip"><b>Freischaltung:</b> Ab Welle 9 kann in der Werkstatt für 5 Forschungspunkte „Steinbaukunst“ erforscht werden. Ein Versorgungsgebäude muss zuerst seine normale Holz-Maximalstufe erreichen.</div>
+    <div class="guideGrid">
+     <article class="guideCard"><h3>🏠 Steinhaus</h3><p>7 Bewohnerplätze, ungefähr doppelte Lebenspunkte und deutlich besserer Schutz gegen Plünderer.</p></article>
+     <article class="guideCard"><h3>🪵 Steinsägewerk</h3><p>Ein fünfter Arbeitsplatz, +15 % Holzproduktion und deutlich höhere Widerstandskraft.</p></article>
+     <article class="guideCard"><h3>🪨 Großer Steinbruch</h3><p>Ein fünfter Arbeitsplatz, +18 % Steinproduktion und mehr Gebäudeleben.</p></article>
+     <article class="guideCard"><h3>⚒️ Steinwerkstatt</h3><p>Ein vierter Arbeitsplatz und zusätzlich 5 % günstigere Forschung.</p></article>
+     <article class="guideCard"><h3>👷 Steinmetzhütte</h3><p>Ein vierter Handwerker und +18 % Reparaturleistung.</p></article>
+     <article class="guideCard"><h3>🏪 Handelshaus</h3><p>Ein dritter Händler, +10 % Einkommen und 3 Prozentpunkte weniger Handelsverlust.</p></article>
+    </div>
+    <div class="guideTip"><b>Abwägung:</b> Steinbauten benötigen Gold, Holz, Stein und Forschung. Stein fehlt dann möglicherweise bei Mauern und Toren. Beschädigte Steingebäude benötigen bei der Handwerkerreparatur zusätzlich 0,1 Stein pro Takt.</div>
+    <div class="guideTip"><b>Plündererschutz:</b> Holzgebäude erleiden weiterhin 40 % zusätzlichen Plündererschaden. Steingebäude erhalten stattdessen 25 % weniger Grundschaden und werden auf der Karte durch ein goldenes 🏛️-Symbol gekennzeichnet.</div>
+   </div>
   </details>
 
   <details class="guideSection">
@@ -394,7 +411,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.17.2 · Bevölkerung 2.0 mit zentraler Arbeitsverteilung, Mindestreserve und Automatikprofilen.</div>
+  <div class="workshopFoot">v1.17.3 · Steinbau &amp; Gebäudestufen mit Steinbaukunst, zusätzlichen Arbeitsplätzen und dauerhaften Wirtschaftsboni.</div>
  </section>
 </div>
 

@@ -1,3 +1,19 @@
+## v1.17.3 – Steinbau & Gebäudestufen
+
+Ab Welle 9 kann in einer Werkstatt die Forschung **Steinbaukunst** freigeschaltet werden. Ein Versorgungsgebäude muss zuerst seine normale Holz-Maximalstufe erreichen und kann anschließend zwischen den Wellen dauerhaft in Stein ausgebaut werden.
+
+### Steinbauten
+
+- Steinhaus: 7 Bewohnerplätze
+- Steinsägewerk: +1 Arbeitsplatz und +15 % Holzproduktion
+- Großer Steinbruch: +1 Arbeitsplatz und +18 % Steinproduktion
+- Steinwerkstatt: +1 Arbeitsplatz und zusätzlich 5 % günstigere Forschung
+- Steinmetzhütte: +1 Handwerker und +18 % Reparaturleistung
+- Handelshaus: +1 Händler, +10 % Einkommen und 3 Prozentpunkte weniger Handelsverlust
+- Alle Steinbauten besitzen deutlich mehr Lebenspunkte und hohen Plündererschutz.
+- Reparaturen an Steingebäuden verbrauchen neben Holz 0,1 Stein pro Takt.
+- Alte Spielstände bleiben kompatibel und behandeln vorhandene Versorgungsgebäude als Holzbau.
+
 ## v1.17.2 – Bevölkerung 2.0
 
 Die Bevölkerung wird jetzt zentral verwaltet. Wirtschaftsgebäude besitzen mehrere Arbeitsplätze und skalieren abhängig von ihrer Besetzung. Zwischen den Wellen kann der Spieler Bewohner manuell verteilen oder eines von vier Automatikprofilen verwenden. Eine Mindestreserve hält Arbeitskräfte für Neubauten und Notfälle frei.

@@ -360,7 +360,9 @@ export function getTotalRepairDamage(state) {
   total += state.buildings
     .filter(
       (building) =>
-        building.base.kind === "tower" && building.hp > 0
+        building.hp > 0 &&
+        (building.base.kind === "tower" ||
+          (building.base.kind !== "tower" && !building.base.decorative && building.key !== "statue"))
     )
     .reduce(
       (sum, building) =>

@@ -5,6 +5,7 @@ import { restoreBonusObjectiveState, serializeBonusObjectiveState } from "./bonu
 import { restoreCampaignState, serializeCampaignState } from "./campaign.js";
 import { restoreWorldRunStats, serializeWorldRunStats } from "./world-map.js";
 import { createPopulationState, serializePopulationState } from "./villagers.js";
+import { normalizeStoneBuilding } from "./stone-buildings.js";
 import {
   MIDDLE_GATE_STONE_MAX_HP,
   MIDDLE_GATE_WOOD_MAX_HP,
@@ -352,6 +353,7 @@ function restoreBuilding(savedBuilding, context) {
       ? Math.max(0, Math.min(building.maxHp, Number(savedBuilding.hp)))
       : building.maxHp;
   }
+  normalizeStoneBuilding(building);
   normalizeVeteranSpecialization(building);
   return building;
 }

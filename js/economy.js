@@ -1,4 +1,9 @@
 import { workforceEfficiencyForCount } from "./villagers.js";
+import {
+  stoneMarketLossReduction,
+  stoneProductionMultiplier,
+  stoneRepairMultiplier,
+} from "./stone-buildings.js";
 
 /**
  * Wirtschaftssystem von Fortress Commander.
@@ -9,7 +14,7 @@ import { workforceEfficiencyForCount } from "./villagers.js";
 
 export function getRepairBuildingBaseHpPerTick(building) {
   const level = Math.max(1, Math.min(5, Number(building?.level) || 1));
-  return 16 + (level - 1) * 2;
+  return (16 + (level - 1) * 2) * stoneRepairMultiplier(building);
 }
 
 export function getSupportProductionPerSecond(building, _buildingHasWorker) {
@@ -17,17 +22,17 @@ export function getSupportProductionPerSecond(building, _buildingHasWorker) {
   const efficiency = workforceEfficiencyForCount(building.workerCount || (building.residentId ? 1 : 0));
 
   if (building.key === "lumber") {
-    return (0.55 + (level - 1) * 0.30) * efficiency;
+    return (0.55 + (level - 1) * 0.30) * efficiency * stoneProductionMultiplier(building);
   }
 
   if (building.key === "quarry") {
-    return (0.35 + (level - 1) * 0.20) * efficiency;
+    return (0.35 + (level - 1) * 0.20) * efficiency * stoneProductionMultiplier(building);
   }
 
   if (building.key === "market") {
     // Zwei Händler entsprechen 100 % des bisherigen Marktertrags. Ein einzelner
     // Händler hält den Markt bereits eingeschränkt offen.
-    return (level / 0.75) * efficiency;
+    return (level / 0.75) * efficiency * stoneProductionMultiplier(building);
   }
 
   return 0;
@@ -58,9 +63,8 @@ export function getTotalGoldPerSecond(
 }
 
 export function getMarketLossPercent(building) {
-  if (building && building.level >= 3) return 10;
-  if (building && building.level >= 2) return 15;
-  return 20;
+  const baseLoss = building && building.level >= 3 ? 10 : building && building.level >= 2 ? 15 : 20;
+  return Math.max(5, baseLoss - stoneMarketLossReduction(building));
 }
 
 export function getMarketOutput(amount, building) {

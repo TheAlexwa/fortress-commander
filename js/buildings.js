@@ -242,6 +242,8 @@ export function createEntityAt(x, y, key, context) {
     base: blueprint,
     slot: bestSlot,
     level: 1,
+    material: blueprint.kind === "inside" && key !== "statue" ? "wood" : null,
+    buildTier: blueprint.kind === "inside" && key !== "statue" ? 1 : null,
     cooldown: 0,
     residentId: null,
     residentAssigned: false,

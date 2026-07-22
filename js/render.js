@@ -833,6 +833,27 @@ function drawUtilityBuildingSprite(building){
  return true;
 }
 
+function drawStoneBuildingFoundation(building){
+ if(building?.material!=="stone")return;
+ ctx.save();
+ ctx.fillStyle="#25282a99";ctx.beginPath();ctx.ellipse(1,23,36,13,0,0,TAU);ctx.fill();
+ ctx.strokeStyle="#c4c7c8";ctx.lineWidth=1.5;
+ for(let i=0;i<7;i++){
+  const x=-30+i*10,y=17+(i%2)*4;
+  ctx.fillStyle=i%2?"#777d80":"#92979a";ctx.fillRect(x,y,9,7);ctx.strokeRect(x,y,9,7);
+ }
+ ctx.restore();
+}
+
+function drawStoneBuildingBadge(building){
+ if(building?.material!=="stone")return;
+ ctx.save();
+ ctx.fillStyle="#26333be8";ctx.strokeStyle="#d7dde0";ctx.lineWidth=1.5;
+ ctx.beginPath();ctx.roundRect(-33,-55,24,17,6);ctx.fill();ctx.stroke();
+ ctx.fillStyle="#f2f5f6";ctx.font="bold 10px system-ui";ctx.textAlign="center";ctx.fillText("🏛",-21,-43);
+ ctx.restore();
+}
+
 function drawTowerBuildingSprite(building){
  const sprite=buildingSprites[building.key];
  if(!sprite||!sprite.image.complete||!sprite.image.naturalWidth)return false;
@@ -923,6 +944,7 @@ function drawBuildings(){
   const inactiveWallTower=isTower&&(b.slot.type==="wall"||b.slot.type==="outer-wall")&&!wallTowerSpotReady(b.slot);
   ctx.fillStyle="#07090788";ctx.beginPath();ctx.ellipse(8,20,35,15,0,0,TAU);ctx.fill();
   if(selected===b){ctx.strokeStyle="#ffe184";ctx.shadowBlur=22;ctx.shadowColor="#ffd665";ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,43,0,TAU);ctx.stroke();ctx.shadowBlur=0}
+  if(!isTower)drawStoneBuildingFoundation(b);
   if(b.key==="statue"){
    if(drawStatueBuildingSprite(b)){ctx.restore();continue;}
    ctx.restore();drawWarriorStatue({x,y});continue;
@@ -1017,6 +1039,15 @@ function drawBuildings(){
      ctx.fillStyle="#d7c49b";ctx.fillRect(31,10,9,3);ctx.fillRect(34,7,3,9);
     }
     if(lv>=2){ctx.fillStyle="#e3c36c";ctx.beginPath();ctx.arc(0,-50,3+Math.min(5,lv),0,TAU);ctx.fill()}
+   }
+  }
+  if(!isTower&&b.key!=="statue"){
+   drawStoneBuildingBadge(b);
+   const supportHpRatio=Math.max(0,Math.min(1,b.hp/Math.max(1,b.maxHp)));
+   if(selected===b||supportHpRatio<.999){
+    ctx.fillStyle="#130b0b";ctx.fillRect(-26,47,52,7);
+    ctx.fillStyle=supportHpRatio>.60?"#66c161":supportHpRatio>.30?"#d4a341":"#d54b45";ctx.fillRect(-25,48,50*supportHpRatio,5);
+    ctx.strokeStyle="#f1dfcf66";ctx.lineWidth=1;ctx.strokeRect(-26,47,52,7);
    }
   }
   ctx.fillStyle="#ffe08a";ctx.font="bold 10px serif";ctx.textAlign="center";ctx.fillText("★".repeat(lv),0,42);ctx.restore();

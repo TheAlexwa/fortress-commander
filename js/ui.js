@@ -55,6 +55,7 @@ export function renderGameUI({
   getBuildingUpgradeCost,
   getBuildingMaxLevel,
   hasBuildingUpgradeEffect,
+  getStoneBuildingUpgrade,
   HERO_OFFERING_TARGET = 2000
 }) {
   closeAllBlockingPanels();
@@ -351,7 +352,9 @@ export function renderGameUI({
   }
   if (building.key === "workshop") {
     const staff = buildingWorkerCount(building);
-    const staffModifier = staff <= 0 ? 25 : staff === 1 ? 10 : staff === 2 ? 0 : -10;
+    const staffMultiplier = staff <= 0 ? 1.25 : staff === 1 ? 1.10 : staff === 2 ? 1 : staff === 3 ? 0.90 : 0.85;
+    const finalMultiplier = staffMultiplier * (building.material === "stone" ? 0.95 : 1);
+    const staffModifier = Math.round((finalMultiplier - 1) * 100);
     supportInfo = `<br>Bewohner: ${staff}/${workerCapacityForBuilding(building)} · Forschungskosten: ${staffModifier === 0 ? "normal" : staffModifier > 0 ? `+${staffModifier} %` : `${staffModifier} %`}<br>Forschung: 🔬 ${Math.floor(state.researchPoints || 0)} · Technologiestufen: ${workshopLevels()}`;
     if (workshopResearchButton) workshopResearchButton.style.display = "inline-block";
   }
@@ -371,22 +374,31 @@ export function renderGameUI({
   }
   if (building.key === "market") ui.marketTrade.style.display = "inline-block";
 
-  const buildingName = building.key === "house"
+  const woodenName = building.key === "house"
     ? building.level >= 2 ? "Holzhaus" : "Zeltlager"
     : building.base.name;
+  const stoneNames = {house:"Steinhaus",lumber:"Steinsägewerk",quarry:"Großer Steinbruch",workshop:"Steinwerkstatt",repair:"Steinmetzhütte",market:"Handelshaus"};
+  const buildingName = building.material === "stone" ? stoneNames[building.key] || woodenName : woodenName;
+  const stoneUpgrade = typeof getStoneBuildingUpgrade === "function" ? getStoneBuildingUpgrade(building, state) : { supported:false };
 
   const upgradeInfo = upgradePreview
     ? upgradePreview.maxed
-      ? `<br>${upgradePreview.summary}`
+      ? stoneUpgrade.upgraded
+        ? `<br>🏛️ Steingebäude · erhöhte Lebenspunkte und Gebäudebonus aktiv`
+        : stoneUpgrade.supported && stoneUpgrade.levelReady
+          ? `<br>Holzausbau abgeschlossen · Steinbau: ${stoneUpgrade.reason || "bereit"}`
+          : `<br>${upgradePreview.summary}`
       : `<br>Nächste Stufe: ${upgradePreview.summary}<br>Upgrade: ${goldCost} Gold / ${woodCost} Holz`
     : "<br>Keine wirksame Gebäudeaufwertung verfügbar";
-  ui.selected.innerHTML = `<b>${buildingName} Stufe ${building.level}</b>${supportInfo}${upgradeInfo}`;
+  ui.selected.innerHTML = `<b>${buildingName} Stufe ${building.level}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · ${building.material === "stone" ? "🏛️ Steinbau" : "🪵 Holzbau"}${supportInfo}${upgradeInfo}`;
 
   const maxLevel = getBuildingMaxLevel(building);
-  ui.upgrade.disabled =
-    !hasBuildingUpgradeEffect(building) ||
-    building.level >= maxLevel ||
-    state.gold < goldCost ||
-    state.wood < woodCost;
+  const regularReady = hasBuildingUpgradeEffect(building) && building.level < maxLevel;
+  const stoneReady = stoneUpgrade.supported && !stoneUpgrade.upgraded && stoneUpgrade.levelReady;
+  ui.upgrade.style.display = regularReady || stoneReady ? "inline-block" : "none";
+  ui.upgrade.textContent = stoneReady ? "🏛️ Steinbau" : "Verbessern";
+  ui.upgrade.disabled = stoneReady
+    ? !stoneUpgrade.canUpgrade
+    : !regularReady || state.gold < goldCost || state.wood < woodCost;
   ui.sell.disabled = false;
 }
