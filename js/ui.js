@@ -2,6 +2,7 @@ import { getMiddleFortificationUpgrade } from "./fortifications.js";
 import { getWaveTypeInfo } from "./game.js";
 import { getSiegeCampPreview } from "./siege.js";
 import { getBonusObjectiveView } from "./bonus-objectives.js";
+import { CAMPAIGN_FINAL_WAVE, getCampaignView, isCampaignChoiceRequired, isCampaignFinished } from "./campaign.js";
 
 /**
  * Benutzeroberfläche von Fortress Commander.
@@ -85,7 +86,10 @@ export function renderGameUI({
   ui.populationOverviewBtn.title = `${busyResidents} beschäftigt · ${availableResidents} frei · ${residentTotal} gesamt`;
   ui.populationOverviewBtn.setAttribute("aria-label", `Bewohnerübersicht öffnen: ${busyResidents} beschäftigt, ${availableResidents} frei, ${residentTotal} gesamt`);
 
-  ui.wave.textContent = state.wave;
+  const campaignView = getCampaignView(state);
+  const campaignChoiceRequired = isCampaignChoiceRequired(state);
+  const campaignFinished = isCampaignFinished(state);
+  ui.wave.textContent = campaignChoiceRequired || campaignFinished ? CAMPAIGN_FINAL_WAVE : state.wave;
   const builtWallSegments = typeof builtMiddleWallSegments === "function"
     ? builtMiddleWallSegments()
     : 0;
@@ -116,24 +120,38 @@ export function renderGameUI({
     standard: "Empfohlen: ausgewogene Mischung aus Bogen-, Armbrust- und Katapulttürmen."
   }[waveType.key] || "";
 
-  ui.start.disabled = state.inWave || gameOver;
+  ui.start.disabled = state.inWave || gameOver || campaignChoiceRequired || campaignFinished;
   ui.start.textContent = state.inWave
     ? "⚔ Läuft"
     : gameOver
       ? "✖ Verloren"
-      : "⚔ Angriff";
-  ui.start.title = state.inWave
-    ? `${waveType.label} läuft`
-    : `${waveType.label}: Alle bereits versammelten Gegner greifen gemeinsam an; Nachzügler folgen als Verstärkung.`;
+      : campaignChoiceRequired
+        ? "🏆 Sieg"
+        : campaignFinished
+          ? "✓ Ende"
+          : "⚔ Angriff";
+  ui.start.title = campaignChoiceRequired
+    ? "Die Kampagne ist gewonnen. Wähle Kampagnenende oder Endlosmodus."
+    : campaignFinished
+      ? "Diese Kampagne wurde abgeschlossen."
+      : state.inWave
+        ? `${waveType.label} läuft`
+        : `${waveType.label}: Alle bereits versammelten Gegner greifen gemeinsam an; Nachzügler folgen als Verstärkung.`;
   ui.pause.textContent = paused ? "▶ Weiter" : "Ⅱ Pause";
   ui.status.textContent = gameOver
     ? "✖ Festung gefallen"
-    : state.inWave
-      ? `⚔ ${state.enemies.length + state.toSpawn} Gegner`
-      : `⛺ ${siegeReady}/${siegeTotal} bereit`;
+    : campaignChoiceRequired
+      ? "🏆 Kampagne gewonnen"
+      : campaignFinished
+        ? "✓ Kampagne abgeschlossen"
+        : state.inWave
+          ? `⚔ ${state.enemies.length + state.toSpawn} Gegner`
+          : campaignView.campaign.mode === "endless"
+            ? `♾️ Endlos ${campaignView.endlessWave} · ${siegeReady}/${siegeTotal} bereit`
+            : `⛺ ${siegeReady}/${siegeTotal} bereit`;
 
   if (siegeNotice) {
-    const showSiegeNotice = !gameOver && !state.inWave && siege?.active;
+    const showSiegeNotice = !gameOver && !campaignChoiceRequired && !campaignFinished && !state.inWave && siege?.active;
     siegeNotice.classList.toggle("hidden", !showSiegeNotice);
     if (siegeNoticeTitle && showSiegeNotice) {
       siegeNoticeTitle.textContent = `${waveType.icon} ${waveType.label}`;

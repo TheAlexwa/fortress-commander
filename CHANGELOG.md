@@ -1,3 +1,16 @@
+## v1.16.0 – Kampagne & Endlosmodus
+
+- Die reguläre Partie besitzt jetzt ein klares Ziel: Die Festung muss 32 Wellen der Eisenclans überstehen.
+- Welle 8, 16, 24 und 32 bilden eigene Kampagnenmeilensteine mit stärkeren Häuptlingen und einmaligen Belohnungen.
+- Der finale Kriegsherr in Welle 32 besitzt deutlich mehr Leben, Schaden und eine größere rote Bossdarstellung.
+- Ein goldener Kampagnenbutton zeigt den Fortschritt und öffnet eine Übersicht mit allen Meilensteinen, Belohnungen und dem nächsten Ziel.
+- Nach dem Sieg erscheint ein eigenes Abschlussfenster mit der Wahl zwischen Kampagnenende und Endlosmodus.
+- Der Endlosmodus übernimmt die vollständige Festung, beginnt mit Welle 33 und verstärkt spätere Häuptlinge weiter.
+- Kampagnenstatus, Meilensteine, Endlosfortschritt und eine noch offene Siegesentscheidung werden im Spielstand gespeichert.
+- Alte Spielstände bis Welle 32 beginnen regulär in der Kampagne; ältere Spielstände oberhalb von Welle 32 werden automatisch als Endlospartie übernommen.
+- Die Anleitung erklärt Kampagne, Meilensteine, finalen Kriegsherrn und Endlosmodus.
+- Versionsangaben im Spiel wurden auf v1.16.0 aktualisiert.
+
 ## v1.15.49 – Bonusziele pro Welle
 
 - Jede Welle erhält ein freiwilliges taktisches Bonusziel mit zusätzlicher Belohnung; ein Fehlschlag beendet die Partie nicht.

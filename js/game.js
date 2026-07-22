@@ -272,8 +272,8 @@ export function createWaveEnemy(
   const wave = state.wave;
   const type = forcedType || selectWaveEnemyType(wave, state.toSpawn, random);
   const stats = enemyStatsFor(type, wave);
-  const powerScale = Math.max(0.2, Math.min(1, Number(modifiers?.powerScale) || 1));
-  const rewardScale = Math.max(0.15, Math.min(1, Number(modifiers?.rewardScale) || powerScale));
+  const powerScale = Math.max(0.2, Math.min(3, Number(modifiers?.powerScale) || 1));
+  const rewardScale = Math.max(0.15, Math.min(2, Number(modifiers?.rewardScale) || powerScale));
   const enemy = {
     kind: "enemy",
     eid: Math.max(0, Number(state.nextEnemyId) || 0),

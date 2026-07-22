@@ -1186,6 +1186,7 @@ function drawEnemySprite(enemy, now){
  const fallbackScale=visualClass==="boss"?1.5:visualClass==="special"?1.18:1;
  const visualScale=Number.isFinite(enemy.visualScale)?enemy.visualScale:fallbackScale;
  const isSpecial=visualClass==="special",isBoss=visualClass==="boss";
+ const isWarlord=enemy.campaignRole==="warlord";
  const r=enemy.radius;
  const {width,height,offsetY=0}=sprite.def;
  const drawW=width*visualScale;
@@ -1220,8 +1221,8 @@ function drawEnemySprite(enemy, now){
  ctx.fillStyle="#05060788";
  ctx.beginPath();ctx.ellipse(lungeX*.18,shadowY,shadowW,shadowH,0,0,TAU);ctx.fill();
  if(isBoss||isSpecial){
-  ctx.globalAlpha=isBoss?.22:.14;
-  ctx.fillStyle=isBoss?"#ce9540":"#8ea7ba";
+  ctx.globalAlpha=isWarlord?.34:isBoss?.22:.14;
+  ctx.fillStyle=isWarlord?"#d6422f":isBoss?"#ce9540":"#8ea7ba";
   ctx.beginPath();ctx.arc(0,-drawH*.19,Math.max(drawW,drawH)*(.44+Math.sin(now*2.1+(enemy.animSeed||0))*.01),0,TAU);ctx.fill();
   ctx.globalAlpha=1;
  }
@@ -1241,7 +1242,7 @@ function drawEnemySprite(enemy, now){
   ctx.fillStyle=hp>.5?"#6ac265":hp>.25?"#d4a541":"#d14945";
   ctx.fillRect(-bw/2+1,barY+1,(bw-2)*hp,barHeight-2);
   ctx.strokeStyle=isBoss?"#f0c56a99":isSpecial?"#c9d9df77":"#f5dfca55";ctx.strokeRect(-bw/2,barY,bw,barHeight);
-  if(isBoss){ctx.fillStyle="#d8ac45";ctx.fillRect(-bw/2,barY-3,bw,2)}
+  if(isBoss){ctx.fillStyle=isWarlord?"#ff5b3f":"#d8ac45";ctx.fillRect(-bw/2,barY-3,bw,2)}
   if(zoom>=.58||isBoss||selected===enemy){ctx.fillStyle="#f2dfba";ctx.font=`bold ${isBoss?11:isSpecial?9:8}px system-ui`;ctx.textAlign="center";ctx.fillText(enemy.name||"Eisenclan",0,barY-5);}
  }
  const statusLabels=[];
@@ -1253,6 +1254,7 @@ function drawEnemySprite(enemy, now){
  if(enemy.type==="berserker"&&enemy.hp>0&&enemy.hp<=enemy.maxHp*.5)statusLabels.push("🔥");
  if(enemy.bossAura)statusLabels.push("👑");
  if((enemy.moraleBreakTime||0)>0)statusLabels.push("💢");
+ if(enemy.campaignRole==="warlord")statusLabels.push("⚔️");
  if(statusLabels.length){
   const effectY=-drawH-4-bob;
   ctx.font="bold 11px system-ui";ctx.textAlign="center";

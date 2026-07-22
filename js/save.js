@@ -2,6 +2,7 @@ import { restoreSiegeState, serializeSiegeState } from "./siege.js";
 import { restoreWarCouncilState, serializeWarCouncilState } from "./war-council.js";
 import { normalizeVeteranSpecialization } from "./specializations.js";
 import { restoreBonusObjectiveState, serializeBonusObjectiveState } from "./bonus-objectives.js";
+import { restoreCampaignState, serializeCampaignState } from "./campaign.js";
 import {
   MIDDLE_GATE_STONE_MAX_HP,
   MIDDLE_GATE_WOOD_MAX_HP,
@@ -284,6 +285,7 @@ function createSnapshot({
       siege: serializeSiegeState(state.siege),
       warCouncil: serializeWarCouncilState(state.warCouncil, state.wave),
       bonusObjective: serializeBonusObjectiveState(state.bonusObjective, state.wave),
+      campaign: serializeCampaignState(state.campaign, state.wave),
     },
     view: {
       zoom: view?.zoom ?? 0.48,
@@ -459,6 +461,7 @@ export function loadGameState({
     siege: restoreSiegeState(savedState.siege, savedState.wave),
     warCouncil: restoreWarCouncilState(savedState.warCouncil, savedState.wave),
     bonusObjective: null,
+    campaign: restoreCampaignState(savedState.campaign, savedState.wave),
     spawnQueue: [],
     enemies: [],
     projectiles: [],

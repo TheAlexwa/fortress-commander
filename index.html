@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Fortress Commander v1.15.49 – Bonusziele pro Welle</title>
+<title>Fortress Commander v1.16.0 – Kampagne &amp; Endlosmodus</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,7 +20,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Spiel starten">Spiel starten</button>
-  <div id="gameVersionBadge">v1.15.49</div>
+  <div id="gameVersionBadge">v1.16.0</div>
   <div id="developmentNotice"><strong>🏗 Festungsumbau in Entwicklung</strong><span>Mauertürme stehen jetzt bereits auf Holzpalisaden. Der mittlere Ring bietet acht, der äußere Ring zwölf feste Turmplätze.</span></div>
  </div>
 </div>
@@ -64,6 +64,20 @@
    </div><p>Einheiten erhalten Erfahrung. Bei einem Stufenaufstieg wählst du Verbesserungen wie Schaden, Leben, Tempo, Angriffstakt oder Reichweite. Auf EXP-Stufe 3 wird zusätzlich genau ein dauerhafter Veteranenpfad freigeschaltet.</p></div>
   </details>
 
+
+  <details class="guideSection">
+   <summary>🏆 Kampagne &amp; Endlosmodus</summary>
+   <div class="guideBody">
+    <div class="guideTip"><b>Klares Spielziel:</b> Verteidige die Festung über 32 Wellen. Der goldene Kampagnenbutton zeigt den Fortschritt und öffnet die Übersicht mit allen vier Meilensteinen.</div>
+    <div class="guideGrid">
+     <article class="guideCard"><h3>👑 Welle 8</h3><p>Der erste Häuptling führt seine Eskorte an. Nach dem Sieg erhält die Festung eine Meilensteinbelohnung.</p></article>
+     <article class="guideCard"><h3>🛡️ Welle 16</h3><p>Ein Elitehäuptling greift mit verstärkten Werten und schwer gepanzerten Veteranen an.</p></article>
+     <article class="guideCard"><h3>🔥 Welle 24</h3><p>Der Großangriff bündelt besonders starke Truppen und einen mächtigen Großhäuptling.</p></article>
+     <article class="guideCard"><h3>⚔️ Welle 32</h3><p>Der Kriegsherr der Eisenclans führt die letzte Armee. Sein Fall beendet die Kampagne siegreich.</p></article>
+    </div>
+    <p>Nach dem Sieg wählst du zwischen <b>Kampagne abschließen</b> und <b>Endlosmodus</b>. Im Endlosmodus bleibt deine gesamte Festung erhalten; Wellen und Häuptlinge werden unbegrenzt stärker.</p>
+   </div>
+  </details>
 
   <details class="guideSection">
    <summary>⭐ Veteranen-Spezialisierungen</summary>
@@ -193,6 +207,7 @@
  <div id="siegePhaseNotice" class="siegePhaseNotice hidden" role="status" aria-live="polite"><strong id="siegePhaseTitle">⛺ Belagerungsphase</strong><span id="siegePhaseText">Die nächste Armee sammelt sich in den Außenlagern.</span></div>
  <button id="warCouncilBtn" class="warCouncilBtn" type="button" aria-label="Kriegsrat öffnen"><span id="warCouncilIcon">⚪</span><strong id="warCouncilLabel">Kriegsrat</strong></button>
  <button id="bonusObjectiveBtn" class="bonusObjectiveBtn" type="button" aria-label="Bonusziel öffnen"><span id="bonusObjectiveIcon">🎯</span><strong id="bonusObjectiveLabel">Bonusziel</strong></button>
+ <button id="campaignProgressBtn" class="campaignProgressBtn" type="button" aria-label="Kampagnenfortschritt öffnen"><span>🏆</span><strong id="campaignProgressLabel">0/32</strong><i><b id="campaignProgressFill"></b></i></button>
  <button id="resourceOverviewBtn" type="button" aria-label="Rohstoffübersicht öffnen">
   <span class="resourceCompact"><span>🪙</span><strong id="gold">0</strong></span>
   <span class="resourceDivider"></span>
@@ -282,7 +297,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.15.49 · Jede Welle kann ein freiwilliges Bonusziel mit zusätzlicher Belohnung enthalten.</div>
+  <div class="workshopFoot">v1.16.0 · 32-Wellen-Kampagne mit Meilensteinen, finalem Kriegsherrn und Endlosmodus.</div>
  </section>
 </div>
 
@@ -385,6 +400,36 @@
  </section>
 </div>
 
+
+<div id="campaignPanel" class="hidden" aria-label="Kampagnenfortschritt">
+ <section class="campaignCard" role="dialog" aria-modal="true" aria-labelledby="campaignPanelTitle">
+  <button id="campaignPanelCloseBtn" class="campaignClose" type="button" aria-label="Kampagnenübersicht schließen">✕</button>
+  <div class="campaignHead"><span>🏆</span><div><small id="campaignModeLabel">KAMPAGNE</small><h2 id="campaignPanelTitle">Der Krieg der Eisenclans</h2><p id="campaignWaveProgress">0 von 32 Wellen geschafft</p></div></div>
+  <div class="campaignPanelProgress"><span id="campaignPanelProgressFill"></span></div>
+  <div id="campaignNextObjective" class="campaignNextObjective">Nächster Meilenstein wird vorbereitet.</div>
+  <div id="campaignMilestoneGrid" class="campaignMilestoneGrid"></div>
+  <div class="campaignHint">Meilensteinbelohnungen werden nur einmal vergeben. Ein freiwilliges Bonusziel bleibt davon unabhängig.</div>
+ </section>
+</div>
+
+<div id="campaignVictoryScreen" class="hidden" aria-label="Kampagne gewonnen">
+ <section class="campaignVictoryCard">
+  <div class="campaignVictoryCrown">🏆</div>
+  <small>FORTRESS COMMANDER</small>
+  <h2>Die Festung hat gesiegt!</h2>
+  <p>Der Kriegsherr der Eisenclans ist gefallen. Nach 32 Belagerungswellen steht die Festung noch immer.</p>
+  <div id="campaignVictoryStats" class="endStats"></div>
+  <div id="campaignVictoryChoice" class="campaignVictoryActions">
+   <button id="campaignFinishBtn" class="campaignFinishBtn" type="button">🏰 Kampagne abschließen</button>
+   <button id="campaignContinueEndlessBtn" class="primary" type="button">♾️ Im Endlosmodus weiterspielen</button>
+  </div>
+  <div id="campaignVictoryFinal" class="campaignVictoryFinal hidden">
+   <strong>✓ Kampagne erfolgreich abgeschlossen</strong>
+   <p>Dieser siegreiche Festungsstand bleibt gespeichert. Eine neue Kampagne beginnt wieder bei Welle 1.</p>
+   <button id="campaignNewGameBtn" class="primary" type="button">🔄 Neue Kampagne starten</button>
+  </div>
+ </section>
+</div>
 
 <div id="veteranPanel" class="hidden" aria-label="Veteranen-Spezialisierung wählen">
  <section class="veteranCard" role="dialog" aria-modal="true" aria-labelledby="veteranTitle">

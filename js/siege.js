@@ -1,4 +1,5 @@
 import { getWaveTypeInfo } from "./game.js";
+import { getCampaignBossProfile } from "./campaign.js";
 
 /**
  * Belagerungsphase von Fortress Commander.
@@ -176,15 +177,20 @@ export function prepareSiegePhase(
     : 1;
   const planned = [];
 
+  const bossProfile = getCampaignBossProfile(state, state.wave);
   for (const type of denseTypes) {
     const camp = chooseCamp(type, campCounts, random, formation);
     campCounts[camp]++;
     const massTroop = MASS_ENEMY_TYPES.has(type);
+    const bossEntry = type === "boss" && bossProfile ? bossProfile : null;
     planned.push({
       type,
       camp,
-      powerScale: massTroop ? powerScale : 1,
-      rewardScale: massTroop ? rewardScale : 1,
+      powerScale: massTroop ? powerScale : bossEntry?.powerScale || 1,
+      rewardScale: massTroop ? rewardScale : bossEntry?.rewardScale || 1,
+      campaignRole: bossEntry?.role || null,
+      campaignName: bossEntry?.name || null,
+      visualScale: bossEntry?.visualScale || 1,
     });
   }
 
@@ -212,8 +218,11 @@ export function ensureSiegePhase(state, context) {
     Number(siege.wave) === Number(state.wave) &&
     Array.isArray(siege.planned) &&
     siege.planned.length === Number(siege.total);
+  const missingCampaignBossProfile = valid && siege.planned.some(
+    (entry) => entry?.type === "boss" && !entry.campaignRole
+  );
 
-  return valid ? siege : prepareSiegePhase(state, context);
+  return valid && !missingCampaignBossProfile ? siege : prepareSiegePhase(state, context);
 }
 
 export function updateSiegePhase(state, dt) {
@@ -313,6 +322,9 @@ function createPulsedSpawnQueue(planned, arrivedCount) {
         reinforcement: groupIndex === 1,
         powerScale: Math.max(0.2, Number(entry?.powerScale) || 1),
         rewardScale: Math.max(0.15, Number(entry?.rewardScale) || 1),
+        campaignRole: entry?.campaignRole ? String(entry.campaignRole) : null,
+        campaignName: entry?.campaignName ? String(entry.campaignName) : null,
+        visualScale: Math.max(0.8, Number(entry?.visualScale) || 1),
       });
     });
     if (groupIndex === 0) pulseOffset = Math.ceil(queue.length / pulseSize);
@@ -399,6 +411,9 @@ export function serializeSiegeState(siege) {
       camp: clampCampIndex(entry?.camp),
       powerScale: Math.max(0.2, Number(entry?.powerScale) || 1),
       rewardScale: Math.max(0.15, Number(entry?.rewardScale) || 1),
+      campaignRole: entry?.campaignRole ? String(entry.campaignRole) : null,
+      campaignName: entry?.campaignName ? String(entry.campaignName) : null,
+      visualScale: Math.max(0.8, Number(entry?.visualScale) || 1),
     })),
   };
 }
