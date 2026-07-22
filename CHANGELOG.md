@@ -1,3 +1,12 @@
+## v1.17.4 – Mobile Bedienleisten-Fix
+
+- Fehler behoben, durch den die untere Navigationsleiste auf bestimmten Android-Handys teilweise hinter der Systemnavigation lag.
+- Neue Synchronisierung der App-Höhe mit `window.visualViewport.height`; Fallback bleibt `100dvh` beziehungsweise `100vh`.
+- Die Höhe wird beim Start, beim Ändern der Browsergröße und nach einem Orientierungswechsel erneut berechnet.
+- Mobile Bauleiste auf 82 px und bei sehr niedriger Ansicht auf 76 px verdichtet.
+- Mobile Navigationsknöpfe auf 52 px beziehungsweise 48 px verdichtet, ohne Reiter zu entfernen.
+- Versionsangaben wurden auf v1.17.4 aktualisiert.
+
 ## v1.17.3 – Steinbau & Gebäudestufen
 
 - Neue Forschung „Steinbaukunst“ im eigenen Wirtschaftsreiter; verfügbar ab Welle 9 und für 5 Forschungspunkte.

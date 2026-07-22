@@ -1,3 +1,11 @@
+## v1.17.4 – Mobile Bedienleisten-Fix
+
+- Die tatsächliche sichtbare Höhe des mobilen Browserfensters wird über `visualViewport` ermittelt und als feste Spielhöhe verwendet.
+- Die untere Hauptnavigation bleibt dadurch oberhalb der Android-Systemleiste vollständig sichtbar.
+- Baukarten und Navigationsknöpfe sind auf kleinen und niedrigen Handybildschirmen kompakter, ohne Funktionen zu entfernen.
+- Größenänderungen, Browserleisten und ein Wechsel der Geräteausrichtung lösen eine erneute Höhenanpassung aus.
+- `viewport-fit=cover` und `interactive-widget=resizes-content` verbessern die Zusammenarbeit mit mobilen Browsern und sicheren Bildschirmbereichen.
+
 ## v1.17.3 – Steinbau & Gebäudestufen
 
 Ab Welle 9 kann in einer Werkstatt die Forschung **Steinbaukunst** freigeschaltet werden. Ein Versorgungsgebäude muss zuerst seine normale Holz-Maximalstufe erreichen und kann anschließend zwischen den Wellen dauerhaft in Stein ausgebaut werden.

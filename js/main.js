@@ -229,8 +229,21 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.3";
-const GAME_RELEASE_NAME="Steinbau & Gebäudestufen";
+const GAME_VERSION="1.17.4";
+const GAME_RELEASE_NAME="Mobile Bedienleisten-Fix";
+
+function syncVisibleViewportHeight(){
+ const viewport=window.visualViewport;
+ const height=Math.max(320,Math.round(viewport?.height||window.innerHeight||document.documentElement.clientHeight||0));
+ document.documentElement.style.setProperty("--app-height",`${height}px`);
+}
+syncVisibleViewportHeight();
+window.addEventListener("resize",syncVisibleViewportHeight,{passive:true});
+window.addEventListener("orientationchange",()=>setTimeout(syncVisibleViewportHeight,120),{passive:true});
+if(window.visualViewport){
+ window.visualViewport.addEventListener("resize",syncVisibleViewportHeight,{passive:true});
+}
+
 const AUTOSAVE_INTERVAL_MS=60_000;
 const ACTIVE_ENEMY_LIMIT=(window.matchMedia("(max-width: 900px)").matches||navigator.maxTouchPoints>0)?64:72;
 const ENEMY_PULSE_INTERVAL=.11;
@@ -275,6 +288,7 @@ function handleOrientationChange(){
   if(typeof state!=="undefined")state.supportTimer=0;
   last=performance.now();
  }else if(orientationPauseActive){
+  syncVisibleViewportHeight();
   orientationPauseActive=false;
   paused=pausedBeforeOrientation||gameOver;
   last=performance.now();
@@ -287,6 +301,7 @@ let worldMapProfile=loadWorldMapProfile();
 let selectedCampaignWorldId=worldMapProfile.selectedWorldId||ACTIVE_WORLD_ID;
 
 function beginGameSession(){
+ syncVisibleViewportHeight();
  gameSessionStarted=true;
  requestPortraitLock();
  startScreen.classList.add("hidden");

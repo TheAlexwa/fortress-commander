@@ -1000,3 +1000,30 @@ header>#startWaveBtn{grid-column:4!important;width:100%!important;height:43px!im
 .stoneUpgradeButton{background:linear-gradient(#88703f,#4e4025);border-color:#d5b76e;color:#fff1c8;font-weight:900}
 .stoneUpgradeButton:not(:disabled):hover{filter:brightness(1.08)}
 .stoneUpgradeButton:disabled{color:#d5c59c;background:linear-gradient(#514b3b,#302d26);border-color:#867753}
+
+
+/* v1.17.4 – Mobile Bedienleisten-Fix */
+:root{--app-height:100dvh}
+#app{height:var(--app-height,100dvh);max-height:var(--app-height,100dvh)}
+@supports not (height:100dvh){:root{--app-height:100vh}}
+@media(max-width:700px){
+ html,body{height:var(--app-height,100dvh);max-height:var(--app-height,100dvh)}
+ #app{overflow:hidden;grid-template-rows:auto minmax(0,1fr) auto}
+ footer{grid-template-rows:82px auto;max-height:calc(var(--app-height,100dvh) - 84px);overflow:hidden!important;padding:0!important}
+ #buildTray{height:82px;min-height:82px!important;padding:5px 7px!important;gap:5px!important}
+ .buildBtn{height:72px!important;flex-basis:108px}
+ .buildBtn:after{height:31px;font-size:24px}
+ .buildBtn .name{margin-top:3px}
+ .buildBtn .cost{margin-top:1px}
+ #bottomNav{min-height:58px;padding:4px 5px max(4px,var(--safeB));align-items:start}
+ .navBtn{height:52px;font-size:9px}
+ .navBtn .navIcon{font-size:21px}
+}
+@media(max-width:700px) and (max-height:760px){
+ footer{grid-template-rows:76px auto}
+ #buildTray{height:76px;min-height:76px!important}
+ .buildBtn{height:66px!important}
+ .buildBtn:after{height:28px;font-size:22px}
+ #bottomNav{min-height:54px;padding-top:3px}
+ .navBtn{height:48px}
+}
