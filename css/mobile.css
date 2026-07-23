@@ -205,3 +205,16 @@ header #populationOverviewBtn .popFree{display:block!important;width:auto!import
 @media(max-width:520px){
  .displaySettingsCard{padding:15px 10px}.displaySettingsHead{grid-template-columns:46px 1fr;gap:8px;padding-right:42px}.displaySettingsHead>span{width:46px;height:46px;font-size:27px}.displaySettingsHead h2{font-size:20px}.hudSizeChoices{gap:5px}.hudSizeChoices button{min-height:82px;padding:6px 3px}.displayToggleList label{min-height:66px;padding:8px}.displaySettingsSection{padding:9px}
 }
+
+/* v1.18.0 – PWA und installierte Handy-App */
+@media(min-width:701px){#bottomNav{grid-template-columns:repeat(auto-fit,minmax(68px,1fr))!important}}
+@media(max-width:700px){
+ #pwaInstallCard{left:4%;right:4%;bottom:10.5%;grid-template-columns:38px minmax(0,1fr) auto;padding:7px;gap:7px}#pwaInstallCard img{width:38px;height:38px}#pwaInstallCard span{display:none}#pwaInstallCard button{min-height:38px;padding-inline:9px;font-size:10px}
+ #appUpdateBanner{grid-template-columns:42px minmax(0,1fr);gap:8px;padding:9px}#appUpdateBanner img{width:40px;height:40px}#appUpdateBanner button{min-height:40px}#appUpdateNowBtn{grid-column:1/-1}#appUpdateLaterBtn{position:absolute;right:7px;top:7px;width:38px;height:38px;padding:0;font-size:0}#appUpdateLaterBtn::after{content:"✕";font-size:16px}
+ #pwaConnectionBadge{top:calc(max(7px,var(--safeT)) + 2px);max-width:86vw;overflow:hidden;text-overflow:ellipsis}
+ .pwaSettingsSummary{grid-template-columns:48px 1fr}.pwaSettingsSummary img{width:46px;height:46px}
+}
+@media(orientation:landscape) and (max-height:700px){
+ #pwaInstallCard{left:auto;right:max(8px,var(--safeR));bottom:calc(58px + max(5px,var(--safeB)));width:min(330px,44vw)}
+ .appLaunchCard{grid-template-columns:120px 1fr;column-gap:18px;text-align:left;justify-items:start}.appLaunchCard img{grid-row:1/6;width:120px}.appLaunchTitle{margin-top:0}.appLaunchProgress{width:min(250px,42vw)}
+}

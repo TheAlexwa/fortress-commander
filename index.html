@@ -3,11 +3,41 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
-<title>Fortress Commander v1.17.14 – Mobile Darstellung &amp; Touchkomfort</title>
+<title>Fortress Commander v1.18.0 – Installierbare Handy-App</title>
+<meta name="theme-color" content="#0b1b2d">
+<meta name="application-name" content="Fortress Commander">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fortress Commander">
+<meta name="description" content="Baue deine Festung, verteidige dein Reich und überstehe die Belagerungswellen der Eisenclans.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/mobile.css">
 </head>
 <body>
+
+<div id="appLaunchScreen" aria-label="Fortress Commander wird geladen">
+ <div class="appLaunchCard">
+  <img src="assets/icons/icon-512.png" alt="" width="160" height="160">
+  <div class="appLaunchTitle">FORTRESS<br><span>COMMANDER</span></div>
+  <div class="appLaunchSubtitle">Strategie · Verteidigung · Dein Reich</div>
+  <div class="appLaunchProgress" aria-hidden="true"><span></span></div>
+  <small>v1.18.0 · Wird geladen …</small>
+ </div>
+</div>
+
+<div id="appUpdateBanner" class="hidden" role="status" aria-live="polite">
+ <img src="assets/icons/icon-192.png" alt="" width="48" height="48">
+ <div><strong>Neue Spielversion verfügbar</strong><span>Das Update ist bereit. Dein Spielstand bleibt erhalten.</span></div>
+ <button id="appUpdateNowBtn" type="button">Jetzt aktualisieren</button>
+ <button id="appUpdateLaterBtn" type="button" aria-label="Updatehinweis schließen">Später</button>
+</div>
+<div id="pwaConnectionBadge" class="hidden" role="status" aria-live="polite">☁️ Offline-Modus · Spielstand bleibt lokal erhalten</div>
+<div id="pwaStatusToast" class="hidden" role="status" aria-live="polite"></div>
 
 <div id="orientationGuard" class="orientationHint hidden" role="status" aria-live="polite" aria-label="Hinweis zur Querformatansicht">
  <section class="orientationGuardCard">
@@ -20,8 +50,13 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Kampagnenkarte öffnen">Spiel starten</button>
-  <div id="gameVersionBadge">v1.17.14</div>
-  <div id="developmentNotice"><strong>📱 Mobile Darstellung &amp; Touchkomfort</strong><span>Safe-Area, Querformat, HUD-Größe, größere Touchflächen und optionale Vibration.</span></div>
+  <div id="gameVersionBadge">v1.18.0</div>
+  <div id="pwaInstallCard" class="hidden">
+   <img src="assets/icons/icon-192.png" alt="" width="38" height="38">
+   <div><strong>Als Handy-App installieren</strong><span>Vollbild, schneller Start und grundlegende Offline-Nutzung.</span></div>
+   <button id="startInstallAppBtn" type="button">Installieren</button>
+  </div>
+  <div id="developmentNotice"><strong>📲 Installierbare Handy-App</strong><span>PWA, App-Icon, Vollbildstart, Offline-Modus, Cache und Update-Hinweise.</span></div>
  </div>
 </div>
 
@@ -112,7 +147,8 @@
     <div class="guideGrid">
      <article class="guideCard"><h3>Karte bewegen</h3><p>Mit einem Finger auf freiem Gelände ziehen. Zoomen mit zwei Fingern; am Desktop funktioniert zusätzlich das Mausrad.</p></article>
      <article class="guideCard"><h3>Objekte auswählen</h3><p>Tippe Gebäude, Einheiten, Mauern oder Gegner an. Die untere Auswahlleiste zeigt Werte und verfügbare Aktionen.</p></article>
-     <article class="guideCard"><h3>Fenster schließen</h3><p>Alle wichtigen Fenster lassen sich über ✕, den dunklen Hintergrund, die Escape-Taste oder die Android-Zurück-Taste schließen. Der vorherige Pausenzustand bleibt erhalten.</p></article><article class="guideCard"><h3>Anzeige &amp; Touch</h3><p>Unter <b>Mehr → Anzeige</b> kannst du die HUD-Größe ändern, Vibration ein- oder ausschalten und den Querformat-Hinweis steuern. Das Spiel unterstützt Hoch- und Querformat.</p></article>
+     <article class="guideCard"><h3>Fenster schließen</h3><p>Alle wichtigen Fenster lassen sich über ✕, den dunklen Hintergrund, die Escape-Taste oder die Android-Zurück-Taste schließen. Der vorherige Pausenzustand bleibt erhalten.</p></article>
+     <article class="guideCard"><h3>Als App installieren</h3><p>Öffne unten <b>Mehr → App installieren</b>. Die installierte Version startet ohne Browserleiste, lädt wichtige Dateien schneller und funktioniert nach dem ersten vollständigen Start grundsätzlich auch offline.</p></article><article class="guideCard"><h3>Anzeige &amp; Touch</h3><p>Unter <b>Mehr → Anzeige</b> kannst du die HUD-Größe ändern, Vibration ein- oder ausschalten und den Querformat-Hinweis steuern. Das Spiel unterstützt Hoch- und Querformat.</p></article>
      <article class="guideCard"><h3>Reichweiten anzeigen</h3><p>Der Reichweiten-Schalter wechselt zwischen <b>Aus</b>, <b>Auswahl</b> und <b>Alle</b>. Blau steht für Türme, Grün für Bogenschützen.</p></article>
      <article class="guideCard"><h3>Aufwertungen</h3><p>Leuchtende Symbole rechts zeigen freie Aufwertungspunkte. Auf EXP-Stufe 3 erscheint zusätzlich eine goldene Veteranenwahl mit zwei dauerhaften Wegen.</p></article>
     </div>
@@ -410,6 +446,7 @@
    <button class="navBtn" id="navStats" type="button" role="menuitem"><span class="navIcon">📜</span>Werte</button>
    <button class="navBtn" id="navResearch" type="button" role="menuitem" disabled><span class="navIcon">🔬</span>Forschung<span class="researchBadge" id="navResearchBadge">0</span></button>
    <button class="navBtn" id="navDisplay" type="button" role="menuitem"><span class="navIcon">📱</span>Anzeige</button>
+   <button class="navBtn hidden" id="navInstallApp" type="button" role="menuitem"><span class="navIcon">📲</span>App installieren</button>
    <button class="navBtn" id="navMenu" type="button" role="menuitem"><span class="navIcon">📖</span>Anleitung</button>
   </div>
  </nav>
@@ -435,6 +472,11 @@
    <label><span><b>↔️ Querformat-Hinweis</b><small>Zeigt beim Drehen einmal einen kompakten Bedienhinweis.</small></span><input id="landscapeHintToggle" type="checkbox" checked></label>
   </div>
   <button id="hapticsTestBtn" class="hapticsTestBtn" type="button">📳 Vibration testen</button>
+  <div class="displaySettingsSection pwaSettingsSection">
+   <h3>Installierbare Handy-App</h3>
+   <div class="pwaSettingsSummary"><img src="assets/icons/icon-192.png" alt="" width="54" height="54"><div><b id="pwaInstallState">Browser-Version</b><small id="pwaInstallDescription">Nach der Installation startet Fortress Commander ohne Browserleiste und kann wichtige Dateien offline laden.</small></div></div>
+   <button id="installAppSettingsBtn" class="installAppSettingsBtn hidden" type="button">📲 App installieren</button>
+  </div>
   <div id="displaySettingsStatus" class="displaySettingsStatus" aria-live="polite">HUD-Größe: Normal</div>
  </section>
 </div>
@@ -450,7 +492,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.17.14 · Mobile Darstellung, Touchkomfort und optionale Vibration.</div>
+  <div class="workshopFoot">v1.18.0 · Installierbare PWA, Offline-Modus und Update-System.</div>
  </section>
 </div>
 

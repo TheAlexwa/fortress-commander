@@ -111,6 +111,7 @@ import {
 import { renderGameUI } from "./ui.js";
 import { renderGameFrame } from "./render.js";
 import { attachGameInput } from "./input.js";
+import { initializePwa } from "./pwa.js";
 import { saveGameState, loadGameState, deleteSaveGame, getSaveMetadata } from "./save.js";
 import {
   beginSiegeAttack,
@@ -230,8 +231,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.14";
-const GAME_RELEASE_NAME="Mobile Darstellung & Touchkomfort";
+const GAME_VERSION="1.18.0";
+const GAME_RELEASE_NAME="Installierbare Handy-App & PWA";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true};
@@ -300,6 +301,7 @@ const gameVersionBadge=document.getElementById("gameVersionBadge");
 const instructionVersion=document.getElementById("instructionVersion");
 if(gameVersionBadge)gameVersionBadge.textContent=`v${GAME_VERSION}`;
 if(instructionVersion)instructionVersion.textContent=`Anleitung · Version ${GAME_VERSION} – ${GAME_RELEASE_NAME}`;
+initializePwa({version:GAME_VERSION});
 const startScreen=document.getElementById("startScreen");
 const campaignMapScreen=document.getElementById("campaignMapScreen");
 const instructionsScreen=document.getElementById("instructionsScreen");

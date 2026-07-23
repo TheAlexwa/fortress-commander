@@ -1,3 +1,14 @@
+## v1.18.0 – Installierbare Handy-App / PWA
+
+- Fortress Commander kann auf unterstützten Geräten über „Zum Startbildschirm hinzufügen“ als App installiert werden.
+- Offizielles blau-goldenes Fortress-Commander-App-Icon in mehreren App-, Maskable-, Apple- und Favicon-Größen ergänzt.
+- Manifest und PWA-Metadaten ermöglichen einen Start ohne sichtbare Browserleiste im Standalone-Modus.
+- Neuer Lade-/Startbildschirm mit App-Logo für einen einheitlichen App-Start.
+- Service Worker speichert alle spielrelevanten Dateien für schnellere Starts und grundlegende Offline-Nutzung zwischen den Wellen.
+- Neue Versionen werden erkannt und über einen sichtbaren, freiwilligen Update-Hinweis angeboten.
+- Lokale Spielstände und Kampagnenprofile bleiben unverändert erhalten; PWA-Caches enthalten keine Spielstände.
+- Installationsknöpfe im Startmenü, unter „Mehr“ und in „Anzeige & Touch“ ergänzt.
+
 ## v1.17.14 – Mobile Darstellung & Touchkomfort
 
 - Safe-Area-Unterstützung für abgerundete Displays, Kameralöcher und seitliche Aussparungen ergänzt.

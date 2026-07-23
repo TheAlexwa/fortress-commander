@@ -1,3 +1,15 @@
+## v1.18.0 – Installierbare Handy-App / PWA
+
+- Web-App-Manifest, Service Worker und App-Metadaten ergänzt.
+- Offizielles App-Icon aus der gewählten Festung-im-goldenen-Schild-Variante in 16, 32, 180, 192, 512 und 1024 Pixeln erstellt; zusätzliche Maskable-Icons ergänzt.
+- Installationsmöglichkeit im Startbildschirm, Mehr-Menü und Anzeigefenster eingebaut.
+- Start im Standalone-Modus ohne sichtbare Browserleiste vorbereitet.
+- Spielrelevante Dateien werden nach dem ersten Online-Start lokal zwischengespeichert und stehen danach grundsätzlich offline zur Verfügung.
+- Hintergrundprüfung auf neue Service-Worker-Versionen mit Update-Hinweis und kontrolliertem Neuladen ergänzt.
+- Offline-Anzeige und PWA-Statusmeldungen ergänzt.
+- Bestehende localStorage-Spielstände, Autosaves und Kampagnenprofile bleiben unverändert kompatibel.
+- Anleitung, README, Startbildschirm und Versionsangaben auf v1.18.0 aktualisiert.
+
 ## v1.17.14 – Mobile Darstellung & Touchkomfort
 
 - Safe-Area-Unterstützung für obere, untere und seitliche Displayaussparungen ergänzt.
