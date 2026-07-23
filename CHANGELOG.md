@@ -1,3 +1,13 @@
+## v1.17.5 – HUD-Ruhe & Versorgungsreserve
+
+- Die App-Höhe verwendet auf modernen Mobilbrowsern die stabile Einheit `100svh`; Animationen der Chrome-Adressleiste verschieben die obere Bedienleiste nicht mehr fortlaufend.
+- JavaScript passt die Höhe nur noch auf älteren Browsern beziehungsweise bei echtem Orientierungs- oder Breitenwechsel an.
+- Eine Auswahl im Kriegsrat schließt das Fenster sofort und setzt das Spiel fort.
+- Der gewählte Kriegsratsbefehl bleibt über weitere Wellen gespeichert, bis der Spieler einen anderen Befehl auswählt.
+- Der letzte intakte Holzfäller erhält in den Wellen 1 bis 6 zusätzlichen Schutz gegen Plünderer.
+- Fehlt vollständig ein intakter Holzfäller, sammelt die Burg im Kampf automatisch 0,22 Notfallholz pro Sekunde bis zu einem Vorrat von 70 Holz.
+- Ressourcenübersicht, Anleitung und Versionsangaben wurden aktualisiert.
+
 ## v1.17.4 – Mobile Bedienleisten-Fix
 
 - Fehler behoben, durch den die untere Navigationsleiste auf bestimmten Android-Handys teilweise hinter der Systemnavigation lag.

@@ -5,6 +5,17 @@ import {
   stoneRepairMultiplier,
 } from "./stone-buildings.js";
 
+export const EMERGENCY_WOOD_PER_SECOND = 0.22;
+export const EMERGENCY_WOOD_CAP = 70;
+
+export function getEmergencyWoodPerSecond(state) {
+  const hasOperationalLumber = Array.isArray(state?.buildings) &&
+    state.buildings.some((building) => building?.key === "lumber" && Number(building.hp) > 0);
+  if (hasOperationalLumber) return 0;
+  if (Number(state?.wood) >= EMERGENCY_WOOD_CAP) return 0;
+  return EMERGENCY_WOOD_PER_SECOND;
+}
+
 /**
  * Wirtschaftssystem von Fortress Commander.
  *
@@ -102,8 +113,13 @@ export function runEconomySupportTick(
     }
   }
 
+  const emergencyWood = getEmergencyWoodPerSecond(state);
+  const emergencyGain = emergencyWood > 0
+    ? Math.min(emergencyWood, Math.max(0, EMERGENCY_WOOD_CAP - Number(state.wood || 0)))
+    : 0;
+
   const multiplier = Math.max(0, Number(productionMultiplier) || 0);
-  state.wood += woodGain * multiplier;
+  state.wood += woodGain * multiplier + emergencyGain;
   state.stone += stoneGain * multiplier;
   state.gold += getTotalGoldPerSecond(state, {
     syncResidents,

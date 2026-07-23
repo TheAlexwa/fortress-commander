@@ -28,6 +28,7 @@ import {
  getTotalGoldPerSecond,
  getMarketLossPercent,
  getRepairBuildingBaseHpPerTick,
+ getEmergencyWoodPerSecond,
  runEconomySupportTick
 } from "./economy.js";
 
@@ -229,20 +230,30 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.4";
-const GAME_RELEASE_NAME="Mobile Bedienleisten-Fix";
+const GAME_VERSION="1.17.5";
+const GAME_RELEASE_NAME="HUD-Ruhe & Versorgungsreserve";
 
-function syncVisibleViewportHeight(){
- const viewport=window.visualViewport;
- const height=Math.max(320,Math.round(viewport?.height||window.innerHeight||document.documentElement.clientHeight||0));
+const SUPPORTS_STABLE_SMALL_VIEWPORT=Boolean(window.CSS?.supports?.("height: 100svh"));
+let lastViewportWidth=Math.round(window.innerWidth||document.documentElement.clientWidth||0);
+let lastViewportOrientation=window.matchMedia("(orientation: landscape)").matches?"landscape":"portrait";
+function syncVisibleViewportHeight(force=false){
+ // Moderne Mobilbrowser erhalten mit 100svh eine stabile, kleine Viewporthoehe.
+ // Die Chrome-Adressleiste darf dadurch nicht mehr bei jeder Animation das
+ // komplette Spielfeld und die obere Bedienleiste verschieben.
+ if(SUPPORTS_STABLE_SMALL_VIEWPORT){
+  document.documentElement.style.removeProperty("--app-height");
+  return;
+ }
+ const width=Math.round(window.innerWidth||document.documentElement.clientWidth||0);
+ const orientation=window.matchMedia("(orientation: landscape)").matches?"landscape":"portrait";
+ if(!force&&orientation===lastViewportOrientation&&Math.abs(width-lastViewportWidth)<32)return;
+ lastViewportWidth=width;lastViewportOrientation=orientation;
+ const height=Math.max(320,Math.round(window.innerHeight||document.documentElement.clientHeight||0));
  document.documentElement.style.setProperty("--app-height",`${height}px`);
 }
-syncVisibleViewportHeight();
-window.addEventListener("resize",syncVisibleViewportHeight,{passive:true});
-window.addEventListener("orientationchange",()=>setTimeout(syncVisibleViewportHeight,120),{passive:true});
-if(window.visualViewport){
- window.visualViewport.addEventListener("resize",syncVisibleViewportHeight,{passive:true});
-}
+syncVisibleViewportHeight(true);
+window.addEventListener("resize",()=>syncVisibleViewportHeight(false),{passive:true});
+window.addEventListener("orientationchange",()=>setTimeout(()=>syncVisibleViewportHeight(true),180),{passive:true});
 
 const AUTOSAVE_INTERVAL_MS=60_000;
 const ACTIVE_ENEMY_LIMIT=(window.matchMedia("(max-width: 900px)").matches||navigator.maxTouchPoints>0)?64:72;
@@ -1123,7 +1134,7 @@ function renderWarCouncilPanel(){
  document.getElementById("warCouncilRecommendation").textContent=`Empfehlung: ${analysis.recommendationText}`;
  document.getElementById("warCouncilCommandGrid").innerHTML=Object.values(WAR_COUNCIL_COMMANDS).map(item=>warCouncilCommandHtml(item,council,analysis)).join("");
  const status=document.getElementById("warCouncilStatus");
- status.textContent=state.inWave||council.locked?`${command.icon} ${command.label} ist für diese Welle festgelegt.`:`${command.icon} Gewählt: ${command.label}. Die Auswahl kann bis zum Angriff geändert werden.`;
+ status.textContent=state.inWave||council.locked?`${command.icon} ${command.label} ist für diese Welle festgelegt.`:`${command.icon} Gewählt: ${command.label}. Bleibt vorgemerkt, bis du den Befehl änderst.`;
  status.classList.toggle("locked",state.inWave||council.locked);
 }
 function openWarCouncilPanel(){
@@ -1138,7 +1149,7 @@ function closeWarCouncilPanel(resume=true){
 }
 function chooseWarCouncilCommand(key){
  if(!selectWarCouncilCommand(state,key)){showToast("Der Festungsbefehl ist für diese Welle bereits festgelegt");return}
- const command=getWarCouncilCommand(key);renderWarCouncilPanel();updateWarCouncilHud();showToast(`${command.icon} ${command.label} für Welle ${state.wave} gewählt`);saveGame(true);
+ const command=getWarCouncilCommand(key);updateWarCouncilHud();saveGame(true);closeWarCouncilPanel(true);showToast(`${command.icon} ${command.label} bleibt aktiv, bis du ihn änderst`);
 }
 
 function bonusObjectiveStatusLabel(status){
@@ -1504,9 +1515,16 @@ function updateRunnerWeakPoint(enemy,dt){
 function nearestRaidBuilding(enemy,maxRange=190){
  let best=null,bestDistance=maxRange;for(const building of state.buildings){if(building.hp<=0||building.base.kind==="tower"||building.base.decorative||building.key==="statue")continue;const d=Math.hypot(building.slot.x-enemy.x,building.slot.y-enemy.y);if(d<bestDistance){bestDistance=d;best=building}}return best;
 }
+function earlyLumberProtectionMultiplier(building){
+ if(building?.key!=="lumber"||state.wave>6)return 1;
+ const intactLumber=state.buildings.filter(candidate=>candidate.key==="lumber"&&candidate.hp>0).length;
+ // Der letzte Holzfäller verliert in den ersten sechs Wellen nicht sofort die
+ // gesamte Wirtschaft. Ein zweiter Holzfäller hebt den Anfängerschutz auf.
+ return intactLumber <= 1 ? 0.55 : 1;
+}
 function attackRaidBuilding(enemy,building,dt){
  if(!building)return false;const dx=building.slot.x-enemy.x,dy=building.slot.y-enemy.y,d=Math.max(1,Math.hypot(dx,dy));
- if(d<=40+(Number(enemy.radius)||12)){if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;const stone=isStoneBuilding(building);building.hp=Math.max(0,building.hp-enemyAttackDamage(enemy)*stonePlunderDamageMultiplier(building));burst(building.slot.x,building.slot.y,stone?"#aeb5b8":"#b56b32",7);if(building.hp<=0)showToast(`${buildingDisplayName(building)} wurde geplündert!`)}}else{const speed=getEffectiveEnemySpeed(enemy);enemy.x+=dx/d*speed*dt;enemy.y+=dy/d*speed*dt}return true;
+ if(d<=40+(Number(enemy.radius)||12)){if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;const stone=isStoneBuilding(building),supplyProtection=earlyLumberProtectionMultiplier(building);building.hp=Math.max(0,building.hp-enemyAttackDamage(enemy)*stonePlunderDamageMultiplier(building)*supplyProtection);burst(building.slot.x,building.slot.y,stone?"#aeb5b8":"#b56b32",7);if(building.hp<=0)showToast(`${buildingDisplayName(building)} wurde geplündert!`)}}else{const speed=getEffectiveEnemySpeed(enemy);enemy.x+=dx/d*speed*dt;enemy.y+=dy/d*speed*dt}return true;
 }
 function applyBossDeathShock(boss){
  let affected=0;for(const enemy of state.enemies){if(enemy===boss||enemy.hp<=0)continue;if(Math.hypot(enemy.x-boss.x,enemy.y-boss.y)<=190){enemy.moraleBreakTime=Math.max(Number(enemy.moraleBreakTime)||0,4);affected++}}
@@ -2142,14 +2160,14 @@ function update(dt){
   burst(e.x,e.y,e.color,8)
  }
  state.enemies=state.enemies.filter(e=>!e.dead);
- let supportBuildingDestroyed=false;
+ let supportBuildingDestroyed=false,lumberBuildingDestroyed=false;
  state.buildings=state.buildings.filter(b=>{
   if(b.hp<=0){
    burst(b.slot.x,b.slot.y,b.base.kind==="tower"?"#8c6543":"#9b5b35",16);
    b.slot.building=null;
    if(b.base.kind!=="tower"){
     releaseBuildingResidents(b,{displaced:state.inWave===true});
-    supportBuildingDestroyed=true;
+    supportBuildingDestroyed=true;if(b.key==="lumber")lumberBuildingDestroyed=true;
     state.craftsmen=state.craftsmen.filter(c=>c.home!==b&&c.homeId!==b.bid);
    }
    if(selected===b)selected=null;
@@ -2158,6 +2176,7 @@ function update(dt){
   return true;
  });
  if(supportBuildingDestroyed){syncResidents();assignCraftsmen()}
+ if(lumberBuildingDestroyed&&!state.buildings.some(b=>b.key==="lumber"&&b.hp>0))showToast("🪵 Holzfäller verloren – Burg-Sammeltrupp liefert Notfallholz bis 70");
  state.units=state.units.filter(u=>{if(u.hp<=0){burst(u.x,u.y,u.key==="hero"?"#ffd76e":"#47739c",u.key==="hero"?24:10);if(u.key==="hero"&&!state.heroFallen){state.heroFallen=true;showToast("Andreas, der große Held, ist im Kampf gefallen")};if(selected===u)selected=null;return false}return true});
  if(state.inWave){
   const objectiveStatusBefore=state.bonusObjective?.status;
@@ -2628,7 +2647,7 @@ function overviewStatsHtml(){
 }
 
 function totalWoodPerSecond(){
- return state.buildings.filter(b=>b.key==="lumber").reduce((sum,b)=>sum+supportProductionPerSecond(b),0);
+ return state.buildings.filter(b=>b.key==="lumber").reduce((sum,b)=>sum+supportProductionPerSecond(b),0)+getEmergencyWoodPerSecond(state);
 }
 function totalStonePerSecond(){
  return state.buildings.filter(b=>b.key==="quarry").reduce((sum,b)=>sum+supportProductionPerSecond(b),0);
@@ -2645,7 +2664,7 @@ function resourceDetailsHtml(){
  const woodRows=lumberjacks.length?lumberjacks.map((b,i)=>{const workers=buildingWorkerCount(b),capacity=workerCapacityForBuilding(b),efficiency=Math.round(buildingWorkforceEfficiency(b)*100);return `
   <div class="rosterItem"><div class="rosterIcon">🪵</div><div><b>Holzfäller ${i+1} · Stufe ${b.level||1}</b>
   <small>${workers?`${workers}/${capacity} Bewohner · ${efficiency} % Leistung · ${supportProductionPerSecond(b).toFixed(2)} Holz pro Sekunde im Kampf`:`0/${capacity} Bewohner · Produktion steht`}</small></div><div class="rosterBadge">${workers?`+${supportProductionPerSecond(b).toFixed(2)}/s`:"0 %"}</div></div>`}).join("")
-  :`<div class="statsHint">Noch kein Holzfäller gebaut. Ohne Holzfäller gibt es keine laufende Holzproduktion.</div>`;
+  :`<div class="statsHint warning">Kein intakter Holzfäller. Der Burg-Sammeltrupp liefert im Kampf +${getEmergencyWoodPerSecond(state).toFixed(2)} Holz/Sek. bis zu einem Vorrat von 70 Holz.</div>`;
  const stoneRows=quarries.length?quarries.map((b,i)=>{const workers=buildingWorkerCount(b),capacity=workerCapacityForBuilding(b),efficiency=Math.round(buildingWorkforceEfficiency(b)*100);return `
   <div class="rosterItem"><div class="rosterIcon">🪨</div><div><b>Steinbruch ${i+1} · Stufe ${b.level||1}</b>
   <small>${workers?`${workers}/${capacity} Bewohner · ${efficiency} % Leistung · ${supportProductionPerSecond(b).toFixed(2)} Stein pro Sekunde im Kampf`:`0/${capacity} Bewohner · Produktion steht`}</small></div><div class="rosterBadge">${workers?`+${supportProductionPerSecond(b).toFixed(2)}/s`:"0 %"}</div></div>`}).join("")

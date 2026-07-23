@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
-<title>Fortress Commander v1.17.4 – Mobile Bedienleisten-Fix</title>
+<title>Fortress Commander v1.17.5 – HUD-Ruhe & Versorgungsreserve</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,8 +20,8 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Kampagnenkarte öffnen">Spiel starten</button>
-  <div id="gameVersionBadge">v1.17.4</div>
-  <div id="developmentNotice"><strong>📱 Mobile Bedienleiste korrigiert</strong><span>Die untere Navigation bleibt nun auch auf Android-Handys vollständig oberhalb der Systemleiste sichtbar.</span></div>
+  <div id="gameVersionBadge">v1.17.5</div>
+  <div id="developmentNotice"><strong>🛡️ HUD & Versorgung verbessert</strong><span>Die mobile Oberfläche bleibt ruhig, der Kriegsrat merkt sich seine Wahl und Notfallholz verhindert frühe Wirtschafts-Blockaden.</span></div>
  </div>
 </div>
 
@@ -202,13 +202,13 @@
   <details class="guideSection">
    <summary>🛠️ Wirtschaft & Versorgung</summary>
    <div class="guideBody"><div class="guideGrid">
-    <article class="guideCard"><h3>🪵 Holzfäller</h3><p>Produziert Holz während aktiver Wellen. Im Holzbau erhöhen bis zu <b>4 Bewohner</b> die Leistung von 45 bis 120 %; das spätere Steinsägewerk besitzt einen fünften Arbeitsplatz.</p><div class="guideMeta"><span>70 Gold</span><span>4 Arbeitsplätze</span><span>Holzproduktion</span></div></article>
+    <article class="guideCard"><h3>🪵 Holzfäller</h3><p>Produziert Holz während aktiver Wellen. Im Holzbau erhöhen bis zu <b>4 Bewohner</b> die Leistung von 45 bis 120 %; das spätere Steinsägewerk besitzt einen fünften Arbeitsplatz. Der letzte Holzfäller ist bis Welle 6 besser geschützt.</p><div class="guideMeta"><span>70 Gold</span><span>4 Arbeitsplätze</span><span>Holzproduktion</span></div></article>
     <article class="guideCard"><h3>🪨 Steinbruch</h3><p>Produziert Stein während aktiver Wellen. Im Holzbau steigern bis zu <b>4 Steinmetze</b> die Leistung; der große Steinbruch besitzt später einen fünften Arbeitsplatz.</p><div class="guideMeta"><span>90 Gold</span><span>4 Arbeitsplätze</span><span>Steinproduktion</span></div></article>
     <article class="guideCard"><h3>🗿 Kriegerstatue</h3><p>Stärkt Einheiten innerhalb der Festung mit +5 % Schaden. Spende Gold, Holz oder Stein: Bei 2.000 Opferpunkten erscheint einmalig Andreas, der große Held.</p><div class="guideMeta"><span>45 Gold</span><span>15 Stein</span><span>Held bei 2.000 Punkten</span></div></article>
     <article class="guideCard"><h3>👷 Handwerkerhaus</h3><p>Bis zu <b>3 Handwerker</b> im Holzbau reparieren während eines Angriffs Mauern, Tore, Türme, Versorgungsgebäude und die Burg. Die Gesamtleistung des Hauses steigt mit der Besetzung und wird auf die sichtbaren Handwerker verteilt.</p><div class="guideMeta"><span>90 Gold</span><span>35 Holz</span><span>3 Arbeitsplätze</span></div></article>
     <article class="guideCard"><h3>⚒️ Werkstatt</h3><p>Öffnet das Forschungszentrum. Bis zu <b>3 Bewohner</b> im Holzbau beeinflussen die Forschungskosten: ohne Personal +25 %, mit einem +10 %, mit zwei normal und mit drei −10 %. Der Gebäudeausbau senkt zusätzlich den globalen Aufschlag.</p><div class="guideMeta"><span>110 Gold</span><span>3 Arbeitsplätze</span><span>Forschungskosten</span></div></article>
     <article class="guideCard"><h3>🏪 Marktplatz</h3><p>Spätes Wirtschaftsgebäude für zusätzliche Goldeinnahmen und Ressourcentausch. Zwei Händler erreichen den bisherigen vollen Marktertrag; das Handelshaus bietet später einen dritten Arbeitsplatz.</p><div class="guideMeta"><span>150 Gold</span><span>2 Arbeitsplätze</span><span>Ressourcentausch</span></div></article>
-   </div><div class="guideTip"><b>Freischaltfolge:</b> Zeltlager → Holzfäller → Steinbruch oder Handwerkerhaus → Werkstatt → Marktplatz.</div><div class="guideTip"><b>🏗 Umbauhinweis:</b> Beide Verteidigungsringe können mit Stein verstärkt werden. Der mittlere Ring besitzt acht und der äußere Ring zwölf feste Mauerturmplätze; intakte Holzpalisaden reichen bereits als Unterlage.</div></div>
+   </div><div class="guideTip"><b>Freischaltfolge:</b> Zeltlager → Holzfäller → Steinbruch oder Handwerkerhaus → Werkstatt → Marktplatz.</div><div class="guideTip"><b>🪵 Versorgungsreserve:</b> Wird der letzte Holzfäller zerstört, sammelt die Burg während aktiver Wellen 0,22 Notfallholz pro Sekunde, bis der Vorrat 70 Holz erreicht. Das ersetzt keinen Holzfäller, verhindert aber einen vollständigen Wirtschafts-Stillstand.</div><div class="guideTip"><b>🏗 Umbauhinweis:</b> Beide Verteidigungsringe können mit Stein verstärkt werden. Der mittlere Ring besitzt acht und der äußere Ring zwölf feste Mauerturmplätze; intakte Holzpalisaden reichen bereits als Unterlage.</div></div>
   </details>
 
   <details class="guideSection">
@@ -263,7 +263,7 @@
   <details class="guideSection">
    <summary>🗺️ Kriegsrat & Festungsbefehle</summary>
    <div class="guideBody">
-    <p>Während der Belagerungsphase zeigt der Kriegsrat Wellentyp, Hauptgegner und gefährlichste Front. Genau ein Befehl kann bis zum Angriffsbeginn gewählt oder geändert werden.</p>
+    <p>Während der Belagerungsphase zeigt der Kriegsrat Wellentyp, Hauptgegner und gefährlichste Front. Nach der Auswahl schließt sich das Fenster sofort. Die gewählte Vorgabe bleibt für folgende Wellen gespeichert und kann vor jedem Angriff geändert werden.</p>
     <div class="guideGrid">
      <article class="guideCard"><h3>🛡️ Mauern verstärken</h3><p>Mauern und Tore erleiden 25 % weniger Schaden, Reparaturholz sinkt um 20 %. Dafür produziert die Wirtschaft 20 % weniger.</p></article>
      <article class="guideCard"><h3>⚔️ Kampfbereitschaft</h3><p>Einheiten verursachen 15 % mehr Schaden, bewegen sich 10 % schneller und Türme laden schneller. Produktion −20 %.</p></article>
@@ -280,7 +280,7 @@
    <div class="guideBody">
     <div class="guideTip"><b>ⓘ Direktinfo:</b> In der Turm- und Einheitenauswahl öffnet das kleine Informationssymbol eine kompakte Übersicht mit Rolle, Stärken, Schwächen und empfohlenen Gegnerkontern.</div>
     <div class="guideGrid">
-     <article class="guideCard"><h3>🪓 Plünderer</h3><p>Verursachen im Innenhof 40 % zusätzlichen Schaden an Versorgungsgebäuden.</p><div class="guideMeta"><span>Konter: Bogenturm</span><span>Burgwache an Breschen</span></div></article>
+     <article class="guideCard"><h3>🪓 Plünderer</h3><p>Verursachen im Innenhof 40 % zusätzlichen Schaden an Versorgungsgebäuden. Der letzte Holzfäller erhält in Welle 1 bis 6 zusätzlichen Anfängerschutz.</p><div class="guideMeta"><span>Konter: Bogenturm</span><span>Burgwache an Breschen</span></div></article>
      <article class="guideCard"><h3>🥾 Clanspäher</h3><p>Suchen regelmäßig nach offenen oder beschädigten Toren und wechseln dafür ihre Angriffsfront.</p><div class="guideMeta"><span>Konter: Bogenturm</span><span>Ziel: schnelle Gegner</span></div></article>
      <article class="guideCard"><h3>🔱 Speerjäger</h3><p>Greifen Verteidiger aus der zweiten Reihe an und benötigen keinen direkten Nahkampfkontakt.</p><div class="guideMeta"><span>Konter: Bogenschützen</span><span>Katapult-Gruppenschaden</span></div></article>
      <article class="guideCard"><h3>🛡️ Eisenschild</h3><p>Schützt nahe Verbündete vor Projektilen. Katapult-Rüstungsbruch setzt die Schilddeckung vorübergehend außer Kraft.</p><div class="guideMeta"><span>Konter: Armbrust</span><span>Katapult</span></div></article>
@@ -411,7 +411,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.17.4 · Mobile Bedienleisten-Fix mit stabiler sichtbarer Höhe und kompakter Handy-Fußleiste.</div>
+  <div class="workshopFoot">v1.17.5 · HUD-Ruhe, dauerhafte Kriegsratswahl und Notfall-Holzversorgung.</div>
  </section>
 </div>
 
@@ -493,7 +493,7 @@
 <div id="warCouncilPanel" class="hidden" aria-label="Kriegsrat vor der Welle">
  <section class="warCouncilCard" role="dialog" aria-modal="true" aria-labelledby="warCouncilTitle">
   <button id="warCouncilCloseBtn" class="warCouncilClose" type="button" aria-label="Kriegsrat schließen">✕</button>
-  <div class="warCouncilHead"><span>🗺️</span><div><small>TAKTISCHE VORBEREITUNG</small><h2 id="warCouncilTitle">Kriegsrat</h2><p>Wähle genau einen Festungsbefehl. Vorteile und Nachteile gelten nur für die kommende Welle.</p></div></div>
+  <div class="warCouncilHead"><span>🗺️</span><div><small>TAKTISCHE VORBEREITUNG</small><h2 id="warCouncilTitle">Kriegsrat</h2><p>Wähle einen Festungsbefehl. Er bleibt für die folgenden Wellen vorgemerkt, bis du ihn wieder änderst.</p></div></div>
   <div class="warCouncilIntel"><article><span>NÄCHSTE WELLE</span><b id="warCouncilWave">Welle</b></article><article><span>HAUPTGEGNER</span><b id="warCouncilEnemySummary">Aufklärung läuft</b></article><article><span>GEFÄHRLICHSTE FRONT</span><b id="warCouncilFront">Unbekannt</b></article></div>
   <div id="warCouncilRecommendation" class="warCouncilRecommendation">Empfehlung wird berechnet.</div>
   <div id="warCouncilCommandGrid" class="warCouncilCommandGrid"></div>

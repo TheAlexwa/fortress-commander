@@ -1002,14 +1002,14 @@ header>#startWaveBtn{grid-column:4!important;width:100%!important;height:43px!im
 .stoneUpgradeButton:disabled{color:#d5c59c;background:linear-gradient(#514b3b,#302d26);border-color:#867753}
 
 
-/* v1.17.4 – Mobile Bedienleisten-Fix */
-:root{--app-height:100dvh}
-#app{height:var(--app-height,100dvh);max-height:var(--app-height,100dvh)}
-@supports not (height:100dvh){:root{--app-height:100vh}}
+/* v1.17.5 – HUD-Ruhe & Versorgungsreserve */
+:root{--app-height:100svh}
+#app{height:var(--app-height,100svh);max-height:var(--app-height,100svh)}
+@supports not (height:100svh){:root{--app-height:100vh}}
 @media(max-width:700px){
- html,body{height:var(--app-height,100dvh);max-height:var(--app-height,100dvh)}
+ html,body{height:var(--app-height,100svh);max-height:var(--app-height,100svh)}
  #app{overflow:hidden;grid-template-rows:auto minmax(0,1fr) auto}
- footer{grid-template-rows:82px auto;max-height:calc(var(--app-height,100dvh) - 84px);overflow:hidden!important;padding:0!important}
+ footer{grid-template-rows:82px auto;max-height:calc(var(--app-height,100svh) - 84px);overflow:hidden!important;padding:0!important}
  #buildTray{height:82px;min-height:82px!important;padding:5px 7px!important;gap:5px!important}
  .buildBtn{height:72px!important;flex-basis:108px}
  .buildBtn:after{height:31px;font-size:24px}

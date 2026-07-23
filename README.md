@@ -1,3 +1,9 @@
+## v1.17.5 – HUD-Ruhe & Versorgungsreserve
+
+- Die mobile Oberfläche nutzt eine stabile kleine Viewporthöhe, damit die obere Leiste beim Ein- und Ausblenden der Browserleiste ruhig bleibt.
+- Der Kriegsrat schließt sich direkt nach einer Auswahl; derselbe Befehl bleibt für kommende Wellen vorgemerkt, bis er geändert wird.
+- In den ersten sechs Wellen ist der letzte Holzfäller besser vor Plünderern geschützt. Ohne intakten Holzfäller liefert ein Burg-Sammeltrupp im Kampf 0,22 Holz pro Sekunde, bis 70 Holz erreicht sind.
+
 ## v1.17.4 – Mobile Bedienleisten-Fix
 
 - Die tatsächliche sichtbare Höhe des mobilen Browserfensters wird über `visualViewport` ermittelt und als feste Spielhöhe verwendet.

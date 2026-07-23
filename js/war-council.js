@@ -134,8 +134,13 @@ export function activateWarCouncilCommand(state) {
   return getWarCouncilCommand(council.active);
 }
 
-export function resetWarCouncilForWave(state, wave = state?.wave) {
+export function resetWarCouncilForWave(state, wave = state?.wave, { preserveSelection = true } = {}) {
+  const previous = state?.warCouncil || null;
+  const selected = preserveSelection
+    ? normalizeWarCouncilKey(previous?.selected || previous?.active)
+    : "none";
   state.warCouncil = createWarCouncilState(wave);
+  state.warCouncil.selected = selected;
   return state.warCouncil;
 }
 
