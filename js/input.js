@@ -196,13 +196,27 @@ export function attachGameInput({
     if (event.key.toLowerCase() === "r" && isGameOver()) resetGame();
   };
 
+  let lastResizeWidth = Math.round(window.innerWidth || document.documentElement.clientWidth || 0);
+  let lastResizeOrientation = window.matchMedia("(orientation: landscape)").matches ? "landscape" : "portrait";
+
   const onResize = () => {
     handleOrientationChange();
+    const width = Math.round(window.innerWidth || document.documentElement.clientWidth || 0);
+    const orientation = window.matchMedia("(orientation: landscape)").matches ? "landscape" : "portrait";
+    const realLayoutChange = orientation !== lastResizeOrientation || Math.abs(width - lastResizeWidth) >= 32;
+    if (!realLayoutChange) return;
+    lastResizeWidth = width;
+    lastResizeOrientation = orientation;
     if (!isPhoneLandscape()) setTimeout(resizeCanvas, 60);
   };
 
   const onOrientationChange = () => {
-    setTimeout(handleOrientationChange, 100);
+    setTimeout(() => {
+      handleOrientationChange();
+      lastResizeWidth = Math.round(window.innerWidth || document.documentElement.clientWidth || 0);
+      lastResizeOrientation = window.matchMedia("(orientation: landscape)").matches ? "landscape" : "portrait";
+      if (!isPhoneLandscape()) resizeCanvas();
+    }, 140);
   };
 
   canvas.addEventListener("wheel", onWheel, { passive: false });

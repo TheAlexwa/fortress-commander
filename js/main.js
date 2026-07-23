@@ -230,24 +230,28 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.5";
-const GAME_RELEASE_NAME="HUD-Ruhe & Versorgungsreserve";
+const GAME_VERSION="1.17.6";
+const GAME_RELEASE_NAME="Mobile Ruhe & Abstandsschützen";
 
 const SUPPORTS_STABLE_SMALL_VIEWPORT=Boolean(window.CSS?.supports?.("height: 100svh"));
 let lastViewportWidth=Math.round(window.innerWidth||document.documentElement.clientWidth||0);
 let lastViewportOrientation=window.matchMedia("(orientation: landscape)").matches?"landscape":"portrait";
 function syncVisibleViewportHeight(force=false){
- // Moderne Mobilbrowser erhalten mit 100svh eine stabile, kleine Viewporthoehe.
- // Die Chrome-Adressleiste darf dadurch nicht mehr bei jeder Animation das
- // komplette Spielfeld und die obere Bedienleiste verschieben.
+ // Breite und Hoehe werden nur bei einem echten Geraetewechsel neu gesetzt.
+ // Kleine Schwankungen der mobilen Browseroberflaeche duerfen weder HUD noch
+ // Canvas seitlich verschieben oder die Kamera fortlaufend neu berechnen.
+ const width=Math.max(320,Math.round(window.innerWidth||document.documentElement.clientWidth||0));
+ const orientation=window.matchMedia("(orientation: landscape)").matches?"landscape":"portrait";
+ const viewportChanged=force||orientation!==lastViewportOrientation||Math.abs(width-lastViewportWidth)>=32;
+ if(viewportChanged){
+  lastViewportWidth=width;lastViewportOrientation=orientation;
+  document.documentElement.style.setProperty("--app-width",`${width}px`);
+ }
  if(SUPPORTS_STABLE_SMALL_VIEWPORT){
   document.documentElement.style.removeProperty("--app-height");
   return;
  }
- const width=Math.round(window.innerWidth||document.documentElement.clientWidth||0);
- const orientation=window.matchMedia("(orientation: landscape)").matches?"landscape":"portrait";
- if(!force&&orientation===lastViewportOrientation&&Math.abs(width-lastViewportWidth)<32)return;
- lastViewportWidth=width;lastViewportOrientation=orientation;
+ if(!viewportChanged)return;
  const height=Math.max(320,Math.round(window.innerHeight||document.documentElement.clientHeight||0));
  document.documentElement.style.setProperty("--app-height",`${height}px`);
 }
@@ -530,6 +534,9 @@ const SIEGE_CAMPS=getSiegeCampPositions({WORLD_W,WORLD_H});
 const WALL_R=355,WALL_SEGMENTS=MIDDLE_WALL_SEGMENT_COUNT,WALL_MAX_HP=MIDDLE_WALL_WOOD_MAX_HP;
 const OUTER_WALL_R=WALL_R+OUTER_WALL_OFFSET;
 const ARCHER_ZONE_RADII={inner:Math.max(110,FIXED_INNER_WALL_RADIUS-18),middle:WALL_R-26,outer:OUTER_WALL_R-26};
+const ARCHER_RETREAT_TRIGGER=104;
+const ARCHER_SAFE_DISTANCE=122;
+const ARCHER_MELEE_THREAT_TYPES=new Set(["raider","runner","shield","berserker","boss"]);
 const HERO_OFFERING_TARGET=2000;
 const HERO_AURA_RADIUS=155;
 const STATUE_MORALE_DAMAGE_BONUS=.05;
@@ -549,6 +556,7 @@ const CATAPULT_DEBUFF_DURATION=4;
 let warCouncilResumeAfterClose=false;
 let bonusObjectiveResumeAfterClose=false;
 let campaignResumeAfterClose=false;
+let marketResumeAfterClose=false;
 function warCouncilState(){return ensureWarCouncilState(state)}
 function warCouncilActiveCommand(){return getWarCouncilCommand(warCouncilState().active)}
 function warCouncilModifiers(){return getWarCouncilModifiers(state)}
@@ -575,6 +583,37 @@ function unitZoneLabel(unit){
  return zone==="inner"?"Innenring":zone==="outer"?"Außenring":"Mittelring";
 }
 function archerZoneRadius(unit){return ARCHER_ZONE_RADII[(unit&&unit.zoneMode)||"middle"]||ARCHER_ZONE_RADII.middle}
+function nearestArcherMeleeThreat(unit,maxRange=ARCHER_RETREAT_TRIGGER){
+ let best=null,bestDistance=maxRange;
+ for(const enemy of state.enemies){
+  if(!enemy||enemy.hp<=0||!ARCHER_MELEE_THREAT_TYPES.has(enemy.type)||!(enemy.phase==="inside"||enemy.phase==="core"))continue;
+  const distance=Math.hypot(enemy.x-unit.x,enemy.y-unit.y);
+  if(distance<bestDistance){bestDistance=distance;best=enemy}
+ }
+ return best;
+}
+function moveArcherAwayFromThreat(unit,threat,dt){
+ if(!unit||!threat)return false;
+ let dx=unit.x-threat.x,dy=unit.y-threat.y,d=Math.hypot(dx,dy);
+ if(d<.001){dx=unit.x-CX;dy=unit.y-CY;d=Math.hypot(dx,dy)||1}
+ const baseAngle=Math.atan2(dy,dx);
+ const step=Math.max(1,effectiveUnitSpeed(unit)*dt*1.12);
+ const minRadius=98,maxRadius=Math.max(minRadius+2,archerZoneRadius(unit)-4);
+ const currentThreatDistance=Math.hypot(unit.x-threat.x,unit.y-threat.y);
+ let bestX=unit.x,bestY=unit.y,bestScore=currentThreatDistance+Math.min(ARCHER_SAFE_DISTANCE,currentThreatDistance)*1.1;
+ for(const offset of [0,-.42,.42,-.82,.82,-1.2,1.2]){
+  let x=unit.x+Math.cos(baseAngle+offset)*step,y=unit.y+Math.sin(baseAngle+offset)*step;
+  let radius=Math.hypot(x-CX,y-CY);
+  if(radius>maxRadius){const a=Math.atan2(y-CY,x-CX);x=CX+Math.cos(a)*maxRadius;y=CY+Math.sin(a)*maxRadius;radius=maxRadius}
+  if(radius<minRadius){const a=Math.atan2(y-CY,x-CX);x=CX+Math.cos(a)*minRadius;y=CY+Math.sin(a)*minRadius}
+  const threatDistance=Math.hypot(x-threat.x,y-threat.y);
+  const safetyBonus=Math.min(ARCHER_SAFE_DISTANCE,threatDistance)*1.1;
+  const score=threatDistance+safetyBonus-Math.hypot(x-unit.x,y-unit.y)*.04;
+  if(score>bestScore){bestScore=score;bestX=x;bestY=y}
+ }
+ unit.x=bestX;unit.y=bestY;unit.targetX=bestX;unit.targetY=bestY;unit.evadingMelee=true;
+ return true;
+}
 function canPlaceMoveTarget(unit,x,y){
  const d=Math.hypot(x-CX,y-CY);
  if(!unit||unit.kind!=="unit")return false;
@@ -654,7 +693,7 @@ const BUILD_COMBAT_INFO=Object.freeze({
  archer:{icon:"🏹",name:"Bogenturm",role:"Schneller Konterturm gegen leichte Massen",strong:"Plünderer und Clanspäher · +35 % Schaden",weak:"Schwere Rüstung und Schilddeckung",tip:"An Flanken und vor erwarteten Späherangriffen bauen. Gegen Eisenschilde durch Armbrust oder Katapult ergänzen."},
  crossbow:{icon:"🎯",name:"Armbrustturm",role:"Präzisionsturm gegen schwere Einzelziele",strong:"Eisenschilde, Blutberserker und Häuptlinge · 50 % Rüstungsdurchdringung",weak:"Langsame Schussfolge und große leichte Gruppen",tip:"Auf Schwerpunktfronten und bei Schildwall- oder Häuptlingsangriffen einsetzen."},
  catapult:{icon:"🪨",name:"Katapult",role:"Flächenkontrolle gegen dichte Formationen",strong:"Gegnergruppen · Rüstungsbruch und Verlangsamung für 4 Sekunden",weak:"Einzelne schnelle Gegner und lange Nachladezeit",tip:"Öffnet Schildformationen für Bogentürme und Armbrüste. Besonders stark vor Toren mit mehreren Reihen."},
- soldier:{icon:"🏹",name:"Bogenschütze",role:"Flexible mobile Fernkampfeinheit",strong:"Zielpriorität frei wählbar: nächste, schnelle oder stärkste Gegner",weak:"Nahkampf und fehlender Schutz außerhalb der Ringe",tip:"Schnelle Priorität gegen Späher, stärkste Priorität gegen Berserker und Häuptlinge verwenden."},
+ soldier:{icon:"🏹",name:"Bogenschütze",role:"Flexible mobile Fernkampfeinheit",strong:"Zielpriorität frei wählbar und automatische Distanz zu nahen Nahkämpfern",weak:"Speerträger und eingekesselte Positionen",tip:"In der Automatik weicht der Schütze nahen Nahkämpfern aus. Manuelle Bewegungsbefehle bleiben bewusst positionsgetreu."},
  guard:{icon:"🛡️",name:"Burgwache",role:"Blockierer und Torverteidiger",strong:"Nahe intakten Toren +15 % Schaden und +15 Prozentpunkte Rüstung",weak:"Speerjäger aus zweiter Reihe und große Gegnergruppen",tip:"Direkt hinter gefährdeten Toren oder Breschen positionieren. Bogenschützen gegen Speerjäger ergänzen."}
 });
 function buildCombatInfoHtml(key){
@@ -1893,6 +1932,7 @@ function update(dt){
  }
  for(const u of state.units){
   if(u.hp<=0)continue;
+  const wasEvadingMelee=Boolean(u.evadingMelee);u.evadingMelee=false;
   u.attackCd-=dt;u.retargetCd=(u.retargetCd||0)-dt;
   if(isMeleeHeroUnit(u)){
    // Burgwachen halten ein gültiges Nahkampfziel fest, rücken bis zur
@@ -1951,22 +1991,21 @@ function update(dt){
     u.retargetCd=.38+Math.random()*.22;
    }
    const t=u.autoTarget;
-   if(t){
-    const distance=Math.hypot(t.x-u.x,t.y-u.y);
-    if(distance<=effectiveUnitRange(u)){
-     if(u.attackCd<=0){u.attackAngle=Math.atan2(t.y-u.y,t.x-u.x);u.attackCd=effectiveAttackCooldown(u);shoot(u,t,u.damage*unitDamageMultiplier(u,t)*bonus,480,0,"#bfe0ff")}
-    }else{
-     const dx=t.x-u.x,dy=t.y-u.y,d=Math.max(1,distance);
-     const moveSpeed=effectiveUnitSpeed(u);const desiredX=u.x+dx/d*moveSpeed*dt,desiredY=u.y+dy/d*moveSpeed*dt;
-     const dc=Math.hypot(desiredX-CX,desiredY-CY);
-     const zoneR=archerZoneRadius(u);
-     if(dc<zoneR&&dc>92){u.x=desiredX;u.y=desiredY}
-     else{
-      const a=Math.atan2(t.y-CY,t.x-CX),r=zoneR-4;
-      u.targetX=CX+Math.cos(a)*r;u.targetY=CY+Math.sin(a)*r;
-      const mdx=u.targetX-u.x,mdy=u.targetY-u.y,md=Math.hypot(mdx,mdy);
-      if(md>4){const step=Math.min(md,effectiveUnitSpeed(u)*dt);u.x+=mdx/md*step;u.y+=mdy/md*step}
-     }
+   const distance=t?Math.hypot(t.x-u.x,t.y-u.y):Infinity;
+   if(t&&distance<=effectiveUnitRange(u)&&u.attackCd<=0){u.attackAngle=Math.atan2(t.y-u.y,t.x-u.x);u.attackCd=effectiveAttackCooldown(u);shoot(u,t,u.damage*unitDamageMultiplier(u,t)*bonus,480,0,"#bfe0ff")}
+   const meleeThreat=nearestArcherMeleeThreat(u,wasEvadingMelee?ARCHER_SAFE_DISTANCE:ARCHER_RETREAT_TRIGGER);
+   if(meleeThreat){moveArcherAwayFromThreat(u,meleeThreat,dt);continue}
+   if(t&&distance>effectiveUnitRange(u)){
+    const dx=t.x-u.x,dy=t.y-u.y,d=Math.max(1,distance);
+    const moveSpeed=effectiveUnitSpeed(u);const desiredX=u.x+dx/d*moveSpeed*dt,desiredY=u.y+dy/d*moveSpeed*dt;
+    const dc=Math.hypot(desiredX-CX,desiredY-CY);
+    const zoneR=archerZoneRadius(u);
+    if(dc<zoneR&&dc>92){u.x=desiredX;u.y=desiredY}
+    else{
+     const a=Math.atan2(t.y-CY,t.x-CX),r=zoneR-4;
+     u.targetX=CX+Math.cos(a)*r;u.targetY=CY+Math.sin(a)*r;
+     const mdx=u.targetX-u.x,mdy=u.targetY-u.y,md=Math.hypot(mdx,mdy);
+     if(md>4){const step=Math.min(md,effectiveUnitSpeed(u)*dt);u.x+=mdx/md*step;u.y+=mdy/md*step}
     }
    }
   }else{
@@ -2541,7 +2580,7 @@ function unitStatsHtml(u){
  ${statRow("Tempo",fmt(base.speed),fmt(u.speed),pctDelta(base.speed,u.speed))}
  ${statRow("Reichweite",fmt(base.range),fmt(u.range),pctDelta(base.range,u.range))}
  ${statRow("Schüsse/Sek.",fmt(1/base.rate,2),fmt(1/u.rate,2),pctDelta(1/base.rate,1/u.rate))}</div>
- ${u.key==="soldier"?`<div class="statsHint">🎯 Zielpriorität: <b>${targetPriorityLabel(u)}</b>. Wechsel direkt über die Auswahlleiste zwischen nächsten, schnellen und stärksten Gegnern.</div>`:u.key==="guard"?`<div class="statsHint">🚪 Torwächter: In der Nähe eines intakten Tores erhält die Burgwache +15 % Schaden und +15 Prozentpunkte Rüstung und hält anrückende Feinde auf.</div>`:""}
+ ${u.key==="soldier"?`<div class="statsHint">🎯 Zielpriorität: <b>${targetPriorityLabel(u)}</b>. In der Automatik hält der Bogenschütze selbstständig Abstand zu nahen Nahkämpfern; manuelle Positionen bleiben unverändert.</div>`:u.key==="guard"?`<div class="statsHint">🚪 Torwächter: In der Nähe eines intakten Tores erhält die Burgwache +15 % Schaden und +15 Prozentpunkte Rüstung und hält anrückende Feinde auf.</div>`:""}
  ${veteranStatsHtml(u)}
  <div class="statsSection"><h3>Nächste Aufwertung</h3><div class="upgradeGrid">
  <div class="upgradeCard"><b>⚔ Schaden</b><small>${fmt(u.damage)} → ${fmt(u.damage*1.24)}<br>+24% Angriffsschaden</small><div class="level">Bisher: ${ups.damage||0}×</div></div>
@@ -2739,12 +2778,20 @@ function populationDetailsHtml(){
 function openMarketPanel(){
  if(!selected||selected.kind!=="building"||selected.key!=="market")return;
  const panel=document.getElementById("marketPanel"),grid=document.getElementById("marketTradeGrid");
+ if(!panel||!grid)return;
+ if(panel.classList.contains("hidden"))marketResumeAfterClose=!paused&&!gameOver;
  document.getElementById("marketGoldValue").textContent=Math.floor(state.gold);document.getElementById("marketWoodValue").textContent=Math.floor(state.wood);
  document.getElementById("marketRateText").textContent=`Stufe ${selected.level}: ${marketLossPercent(selected)}% Handelsabschlag. Goldproduktion ${supportProductionPerSecond(selected).toFixed(2)}/Sek. im Kampf.`;
  grid.innerHTML=[25,50,100].map(a=>`<button type="button" data-trade="wood-gold" data-amount="${a}">🪵 ${a} → 🪙 ${marketOutput(a,selected)}</button><button type="button" data-trade="gold-wood" data-amount="${a}">🪙 ${a} → 🪵 ${marketOutput(a,selected)}</button>`).join("");
- panel.classList.remove("hidden");paused=true;
+ panel.classList.remove("hidden");panel.style.display="grid";panel.style.visibility="visible";panel.style.pointerEvents="auto";
+ paused=true;state.supportTimer=0;last=performance.now();updateUI();
 }
-function closeMarketPanel(){document.getElementById("marketPanel").classList.add("hidden");if(!gameOver)paused=false;last=performance.now()}
+function closeMarketPanel(resume=true){
+ const panel=document.getElementById("marketPanel");
+ if(panel){panel.classList.add("hidden");panel.style.display="none";panel.style.visibility="hidden";panel.style.pointerEvents="none"}
+ if(resume&&marketResumeAfterClose&&!gameOver)paused=false;
+ marketResumeAfterClose=false;last=performance.now();updateUI();
+}
 function executeMarketTrade(type,amount){
  if(!selected||selected.key!=="market")return;const out=marketOutput(amount,selected);
  if(type==="wood-gold"){if(state.wood<amount)return showToast("Nicht genug Holz");state.wood-=amount;state.gold+=out;showToast(`${amount} Holz gegen ${out} Gold getauscht`)}
@@ -3094,7 +3141,7 @@ function updateSelectionHud(){
  if(isUnit){
   icon=selected.key==="hero"?"👑":selected.key==="guard"?"🛡️":"🏹";name=`${unitDisplayName(selected)} · Stufe ${selected.expLevel||1}`;
   const abilityStatus=selected.key==="hero"?(heroAbilityActive(selected)?` · 📯 Ruf aktiv ${Math.ceil(selected.heroAbilityTime)}s`:(Number(selected.heroAbilityCooldown)||0)>0?` · ⏳ Ruf ${Math.ceil(selected.heroAbilityCooldown)}s`:" · 📯 Ruf bereit"):"";
-  const tacticalStatus=selected.key==="soldier"?` · 🎯 ${targetPriorityLabel(selected)}`:selected.key==="guard"&&unitNearIntactGate(selected)?" · 🚪 Torbonus aktiv":"";
+  const tacticalStatus=selected.key==="soldier"?` · 🎯 ${targetPriorityLabel(selected)}${selected.evadingMelee?" · 🦶 Abstand halten":""}`:selected.key==="guard"&&unitNearIntactGate(selected)?" · 🚪 Torbonus aktiv":"";
   const veteranStatusText=isVeteranChoiceReady(selected)?" · ⭐ Veteranenpfad bereit":getVeteranSpecialization(selected)?` · ${veteranSpecializationLabel(selected)}`:"";
   details=`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · ${isMeleeHeroUnit(selected)?`🛡️ ${Math.round(effectiveUnitArmor(selected)*100)}% · ${selected.retreating?"Rückzug":unitZoneLabel(selected)} · `:`📍 ${unitZoneLabel(selected)} · `}🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||65)} EXP${selected.key==="hero"?" · ✨ Sammelruf-Aura":""}${tacticalStatus}${veteranStatusText}${abilityStatus}`;
  }else if(selected.kind==="building"){

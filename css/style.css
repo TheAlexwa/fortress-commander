@@ -635,7 +635,7 @@ header{grid-template-columns:minmax(0,1fr) auto!important}
 .buildBtn:disabled{filter:grayscale(.65);opacity:.36}.buildBtn.unlocked:not(:disabled){box-shadow:0 0 0 1px #f4d87944,inset 0 1px #ffffff18,0 4px 10px #0008}
 
 #marketPanel{position:fixed;inset:0;z-index:1150;display:grid;place-items:center;padding:16px;background:#050806d8;backdrop-filter:blur(7px)}
-#marketPanel.hidden{display:none}
+#marketPanel.hidden{display:none!important;pointer-events:none!important;visibility:hidden!important}
 .marketCard{width:min(520px,94vw);max-height:88vh;overflow:auto;background:linear-gradient(160deg,#2d3b31,#111915);border:1px solid #d8c47a88;border-radius:22px;padding:18px;box-shadow:0 22px 70px #000d,inset 0 1px #fff2}
 .marketCard h2{margin:0 0 5px;color:#ffe7a4}.marketCard p{margin:4px 0 12px;color:#cbd5cc;font-size:13px}.marketSummary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.marketStat{padding:9px;border-radius:12px;background:#08100dcc;border:1px solid #ffffff17;text-align:center}.marketStat span{display:block;font-size:10px;color:#b8c4bb}.marketStat b{font-size:18px}.tradeGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tradeGrid button{min-height:48px}.marketClose{width:100%;margin-top:12px;min-height:44px}
 
@@ -1026,4 +1026,15 @@ header>#startWaveBtn{grid-column:4!important;width:100%!important;height:43px!im
  .buildBtn:after{height:28px;font-size:22px}
  #bottomNav{min-height:54px;padding-top:3px}
  .navBtn{height:48px}
+}
+
+
+/* v1.17.6 – Mobile Ruhe, Marktplatz-Fix & Abstandsschützen */
+:root{--app-width:100vw}
+@media(max-width:700px){
+ html{width:100%;max-width:100%;min-width:0;overscroll-behavior-x:none}
+ body{width:var(--app-width,100vw);max-width:var(--app-width,100vw);min-width:0;overscroll-behavior-x:none}
+ #app{width:100%;max-width:100%;min-width:0;overflow:hidden}
+ header{width:100%;max-width:100%;overflow-x:clip!important;overscroll-behavior-x:none;contain:layout paint}
+ #gameWrap,footer{width:100%;max-width:100%;min-width:0}
 }

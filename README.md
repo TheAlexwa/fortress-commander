@@ -1,3 +1,10 @@
+## v1.17.6 – Mobile Ruhe & Abstandsschützen
+
+- Die mobile App-Breite bleibt bei kleinen Schwankungen der Chrome-Oberfläche fest; Canvas und obere Bedienleiste werden nur bei echtem Breiten- oder Orientierungswechsel neu berechnet.
+- Bogenschützen halten in der Automatik selbstständig Abstand zu nahen Nahkämpfern und können während des Rückzugs weiter schießen. Manuelle Bewegungsbefehle bleiben positionsgetreu.
+- Der Marktplatz setzt beim Öffnen alle Sichtbarkeitswerte zuverlässig zurück und merkt sich, ob das Spiel vorher bereits pausiert war.
+- Spielstände aus v1.17.5 bleiben kompatibel.
+
 ## v1.17.5 – HUD-Ruhe & Versorgungsreserve
 
 - Die mobile Oberfläche nutzt eine stabile kleine Viewporthöhe, damit die obere Leiste beim Ein- und Ausblenden der Browserleiste ruhig bleibt.
