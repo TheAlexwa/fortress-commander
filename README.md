@@ -1,3 +1,11 @@
+## v1.17.10 – Pause- & Mehr-Menü-Hotfix
+
+- Das Pausefenster setzt das Spiel über „Spiel fortsetzen“ oder den oberen Weiter-Knopf wieder zuverlässig fort.
+- Versteckte Fenster erhalten keine dauerhaften `display:none`- oder `visibility:hidden`-Inlinewerte mehr.
+- Das mobile Mehr-Menü wird nicht mehr bei jeder HUD-Aktualisierung sofort geschlossen.
+- Werte, Forschung und Anleitung bleiben nach dem Öffnen des Mehr-Menüs antippbar.
+- Spielstände aus v1.17.9 bleiben kompatibel.
+
 ## v1.17.9 – Mobile Bedienkomfort & Performance
 
 - Antippen und Ziehen sind sauber getrennt: Die Kamera bewegt sich erst nach Überschreiten einer klaren Ziehschwelle.

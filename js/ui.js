@@ -31,7 +31,6 @@ export function renderGameUI({
   gameOver,
   navResearch,
   navResearchBadge,
-  closeAllBlockingPanels,
   totalGoldPerSecond,
   totalWoodPerSecond,
   totalStonePerSecond,
@@ -58,8 +57,6 @@ export function renderGameUI({
   getStoneBuildingUpgrade,
   HERO_OFFERING_TARGET = 2000
 }) {
-  closeAllBlockingPanels();
-
   ui.gold.textContent = Math.floor(state.gold);
   ui.wood.textContent = Math.floor(state.wood);
   if (ui.stone) ui.stone.textContent = Math.floor(state.stone || 0);

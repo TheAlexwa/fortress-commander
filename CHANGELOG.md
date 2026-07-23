@@ -1,3 +1,12 @@
+## v1.17.10 – Pause- & Mehr-Menü-Hotfix
+
+- Fehler behoben, durch den die Partie nach dem Pausieren nicht mehr fortgesetzt werden konnte.
+- Das Pausefenster entfernt beim Öffnen veraltete Inline-Sichtbarkeitswerte und wird dadurch zuverlässig angezeigt.
+- Der obere Pause-/Weiter-Knopf schaltet jetzt robust zwischen Pause und Fortsetzen um.
+- Das mobile Mehr-Menü wird nicht mehr durch `renderGameUI()` bei jeder HUD-Aktualisierung geschlossen.
+- Sichtbarkeit und Pointer-Bedienung des Mehr-Menüs werden beim Öffnen und Schließen explizit synchronisiert.
+- Versionsangaben auf v1.17.10 aktualisiert.
+
 ## v1.17.9 – Mobile Bedienkomfort & Performance
 
 - Touch-Eingabe überarbeitet: Kleine Fingerbewegungen verschieben die Karte nicht mehr, bevor die Ziehschwelle erreicht ist.

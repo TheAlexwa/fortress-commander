@@ -230,8 +230,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.9";
-const GAME_RELEASE_NAME="Mobile Bedienkomfort & Performance";
+const GAME_VERSION="1.17.10";
+const GAME_RELEASE_NAME="Pause- & Mehr-Menü-Hotfix";
 
 const SUPPORTS_STABLE_SMALL_VIEWPORT=Boolean(window.CSS?.supports?.("height: 100svh"));
 let lastViewportWidth=Math.round(document.documentElement.clientWidth||window.innerWidth||0);
@@ -1356,7 +1356,7 @@ function updateUI(){
   builtMiddleGates:()=>getBuiltMiddleGateCount(state),
   builtOuterWallSegments:()=>getBuiltOuterWallSegmentCount(state),
   builtOuterGates:()=>getBuiltOuterGateCount(state),
-  navResearch,navResearchBadge,closeAllBlockingPanels,totalGoldPerSecond,
+  navResearch,navResearchBadge,totalGoldPerSecond,
   totalWoodPerSecond,totalStonePerSecond,syncResidents,assignedResidents,totalResidents,freeResidents,
   waveCount,buildRequirement,residentCapacityForHouse,buildingHasWorker,buildingWorkerCount,buildingWorkforceEfficiency,workerCapacityForBuilding,
   supportProductionPerSecond,repairHpPerTick,workshopLevels,
@@ -1381,11 +1381,15 @@ function isMoreNavOpen(){return Boolean(moreNavMenu&&!moreNavMenu.classList.cont
 function closeMoreNav(){
  if(!moreNavMenu||!navMore)return;
  moreNavMenu.classList.add("hidden");
+ moreNavMenu.style.removeProperty("display");
+ moreNavMenu.style.removeProperty("visibility");
  navMore.setAttribute("aria-expanded","false");
  navMore.classList.remove("menuOpen");
 }
 function openMoreNav(){
  if(!moreNavMenu||!navMore||!window.matchMedia("(max-width: 700px)").matches)return;
+ moreNavMenu.style.removeProperty("display");
+ moreNavMenu.style.removeProperty("visibility");
  moreNavMenu.classList.remove("hidden");
  navMore.setAttribute("aria-expanded","true");
  navMore.classList.add("menuOpen");
@@ -1416,7 +1420,10 @@ function closeAllBlockingPanels(){
  hideRepairDecision();
  ["statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","bonusObjectivePanel","campaignPanel","veteranPanel","enemyInfoOverlay","pauseMenu"].forEach(id=>{
   const el=document.getElementById(id);
-  if(el&&el.classList.contains("hidden")){el.style.display="none";el.style.pointerEvents="none";el.style.visibility="hidden"}
+  if(!el||!el.classList.contains("hidden"))return;
+  el.style.removeProperty("display");
+  el.style.removeProperty("visibility");
+  el.style.pointerEvents="none";
  });
  const ins=document.getElementById("instructionsScreen");
  if(ins&&ins.classList.contains("hidden"))ins.style.pointerEvents="none";
@@ -2446,12 +2453,21 @@ function showPauseMenu(){
  if(!menu)return;
  paused=true;state.supportTimer=0;last=performance.now();
  if(confirmBox)confirmBox.classList.add("hidden");
- menu.classList.remove("hidden");menu.style.pointerEvents="auto";refreshSaveStatus();
+ menu.style.removeProperty("display");
+ menu.style.removeProperty("visibility");
+ menu.style.pointerEvents="auto";
+ menu.classList.remove("hidden");
+ refreshSaveStatus();
  updateUI();
 }
 function hidePauseMenu(resume=false){
  const menu=document.getElementById("pauseMenu"),confirmBox=document.getElementById("pauseRestartConfirm");
- if(menu){menu.classList.add("hidden");menu.style.pointerEvents="none"}
+ if(menu){
+  menu.classList.add("hidden");
+  menu.style.removeProperty("display");
+  menu.style.removeProperty("visibility");
+  menu.style.pointerEvents="none";
+ }
  if(confirmBox)confirmBox.classList.add("hidden");
  if(resume&&!gameOver){paused=false;last=performance.now();showToast("Spiel fortgesetzt")}
  updateUI();
@@ -2500,7 +2516,13 @@ document.getElementById("veteranPanel").addEventListener("click",e=>{const choic
 document.getElementById("marketCloseBtn").addEventListener("click",closeMarketPanel);
 document.getElementById("marketTradeGrid").addEventListener("click",e=>{const b=e.target.closest("[data-trade]");if(b)executeMarketTrade(b.dataset.trade,Number(b.dataset.amount))});
 
-ui.start.onclick=startWave;ui.pause.onclick=()=>{if(gameOver)return;showPauseMenu()};ui.upgrade.onclick=upgradeSelected;ui.sell.onclick=sellSelected;ui.repairWall.onclick=repairSelectedWall;ui.craftsmanToggle.onclick=toggleCraftsmanWork;
+ui.start.onclick=startWave;ui.pause.onclick=()=>{
+ if(gameOver)return;
+ if(paused){
+  if(isPanelVisible("pauseMenu"))hidePauseMenu(true);
+  else{paused=false;last=performance.now();showToast("Spiel fortgesetzt");updateUI()}
+ }else showPauseMenu();
+};ui.upgrade.onclick=upgradeSelected;ui.sell.onclick=sellSelected;ui.repairWall.onclick=repairSelectedWall;ui.craftsmanToggle.onclick=toggleCraftsmanWork;
 document.getElementById("repairInfoCloseBtn").onclick=e=>{e.preventDefault();e.stopPropagation();hideRepairDecision();last=performance.now();updateUI()};
 document.getElementById("restartGameBtn").onclick=e=>{e.preventDefault();e.stopPropagation();reset()};
 document.getElementById("resumeGameBtn").onclick=e=>{e.preventDefault();e.stopPropagation();hidePauseMenu(true)};
