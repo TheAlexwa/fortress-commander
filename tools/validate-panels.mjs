@@ -9,7 +9,7 @@ const css=fs.readFileSync(path.join(root,"css","style.css"),"utf8");
 const expected=[
  "testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel",
  "warCouncilPanel","bonusObjectivePanel","campaignPanel","veteranPanel","enemyInfoOverlay",
- "pauseMenu","instructionsScreen","repairDecision","commanderCampPanel"
+ "pauseMenu","instructionsScreen","repairDecision","commanderCampPanel","displaySettingsPanel"
 ];
 const failures=[];
 const requireText=(source,text,label)=>{if(!source.includes(text))failures.push(`${label}: ${text}`)};
@@ -28,10 +28,10 @@ for(const text of [
  'panelPauseBefore'
 ])requireText(main,text,"Fenstersteuerung fehlt");
 for(const text of ["body.fcModalOpen",".fcPanelActive",".panelCornerClose"])requireText(css,text,"Fenster-CSS fehlt");
-for(const text of ['id="marketCloseIconBtn"','id="pauseCloseBtn"'])requireText(html,text,"Schließen-Knopf fehlt");
+for(const text of ['id="marketCloseIconBtn"','id="pauseCloseBtn"','id="displaySettingsCloseBtn"'])requireText(html,text,"Schließen-Knopf fehlt");
 for(const file of ["index.html","README.md","CHANGELOG.md","js/main.js"]){
  const content=fs.readFileSync(path.join(root,file),"utf8");
- requireText(content,"1.17.13",`Versionsangabe fehlt in ${file}`);
+ requireText(content,"1.17.14",`Versionsangabe fehlt in ${file}`);
 }
 const forbidden=[
  /panel\.style\.display\s*=/,
@@ -43,4 +43,4 @@ if(failures.length){
  console.error("Fensterprüfung fehlgeschlagen:\n- "+failures.join("\n- "));
  process.exit(1);
 }
-console.log(`Fensterprüfung erfolgreich: ${expected.length} Dialoge, zentrale Steuerung und Version 1.17.13 bestätigt.`);
+console.log(`Fensterprüfung erfolgreich: ${expected.length} Dialoge, zentrale Steuerung und Version 1.17.14 bestätigt.`);

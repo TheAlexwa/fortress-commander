@@ -1,3 +1,14 @@
+## v1.17.14 – Mobile Darstellung & Touchkomfort
+
+- Safe-Area-Unterstützung für obere, untere und seitliche Displayaussparungen ergänzt.
+- Querformat ist nicht mehr gesperrt und erhält ein kompaktes, angepasstes HUD.
+- Neues Anzeige- und Touchfenster mit drei HUD-Größen hinzugefügt.
+- Vibrationsrückmeldung ist optional und wird nur auf unterstützten Geräten verwendet.
+- Touchziele wichtiger Bedienelemente wurden auf mindestens etwa 44 Pixel vergrößert.
+- Ressourcen, Bevölkerung und Wellenanzeige sind auf kleinen Displays klarer lesbar.
+- Auswahlmarkierungen auf der Karte wurden verstärkt.
+- Anleitung, README, Startbildschirm und Versionsangaben auf v1.17.14 aktualisiert.
+
 ## v1.17.13 – Fenster- & Bedienungs-Stabilität
 
 - Zentrale Fensterverwaltung für Pause, Forschung, Werte/Bewohner, Markt, Opfergaben, Kriegsrat, Bonusziel, Kampagne, Veteranenwahl, Gegnerinfo, Anleitung, Testressourcen und Kommandantenlager eingeführt.

@@ -3,26 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
-<title>Fortress Commander v1.17.13 – Fenster- &amp; Bedienungs-Stabilität</title>
+<title>Fortress Commander v1.17.14 – Mobile Darstellung &amp; Touchkomfort</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/mobile.css">
 </head>
 <body>
 
-<div id="orientationGuard" role="alert" aria-live="assertive" aria-label="Gerät ins Hochformat drehen">
+<div id="orientationGuard" class="orientationHint hidden" role="status" aria-live="polite" aria-label="Hinweis zur Querformatansicht">
  <section class="orientationGuardCard">
-  <div class="orientationGuardIcon" aria-hidden="true">📱↻</div>
-  <h2>Bitte ins Hochformat drehen</h2>
-  <p>Fortress Commander ist für die aufrechte Handyansicht optimiert. Das Spiel wurde automatisch pausiert.</p>
-  <small>Nach dem Zurückdrehen wird die Ansicht sicher wiederhergestellt.</small>
+  <div class="orientationGuardIcon" aria-hidden="true">↔️</div>
+  <div><h2>Querformat aktiv</h2><p>Das HUD wurde kompakt angeordnet. Im Hochformat bleibt mehr Platz für Details.</p></div>
+  <button id="orientationHintCloseBtn" type="button" aria-label="Querformathinweis schließen">✕</button>
  </section>
 </div>
 <div id="startScreen" aria-label="Fortress Commander Startmenü">
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Kampagnenkarte öffnen">Spiel starten</button>
-  <div id="gameVersionBadge">v1.17.13</div>
-  <div id="developmentNotice"><strong>🪟 Fenster- &amp; Bedienungs-Stabilität</strong><span>Zentrale Fenstersteuerung mit sicherem Schließen, Escape- und Android-Zurück-Unterstützung.</span></div>
+  <div id="gameVersionBadge">v1.17.14</div>
+  <div id="developmentNotice"><strong>📱 Mobile Darstellung &amp; Touchkomfort</strong><span>Safe-Area, Querformat, HUD-Größe, größere Touchflächen und optionale Vibration.</span></div>
  </div>
 </div>
 
@@ -113,7 +112,7 @@
     <div class="guideGrid">
      <article class="guideCard"><h3>Karte bewegen</h3><p>Mit einem Finger auf freiem Gelände ziehen. Zoomen mit zwei Fingern; am Desktop funktioniert zusätzlich das Mausrad.</p></article>
      <article class="guideCard"><h3>Objekte auswählen</h3><p>Tippe Gebäude, Einheiten, Mauern oder Gegner an. Die untere Auswahlleiste zeigt Werte und verfügbare Aktionen.</p></article>
-     <article class="guideCard"><h3>Fenster schließen</h3><p>Alle wichtigen Fenster lassen sich über ✕, den dunklen Hintergrund, die Escape-Taste oder die Android-Zurück-Taste schließen. Der vorherige Pausenzustand bleibt erhalten.</p></article>
+     <article class="guideCard"><h3>Fenster schließen</h3><p>Alle wichtigen Fenster lassen sich über ✕, den dunklen Hintergrund, die Escape-Taste oder die Android-Zurück-Taste schließen. Der vorherige Pausenzustand bleibt erhalten.</p></article><article class="guideCard"><h3>Anzeige &amp; Touch</h3><p>Unter <b>Mehr → Anzeige</b> kannst du die HUD-Größe ändern, Vibration ein- oder ausschalten und den Querformat-Hinweis steuern. Das Spiel unterstützt Hoch- und Querformat.</p></article>
      <article class="guideCard"><h3>Reichweiten anzeigen</h3><p>Der Reichweiten-Schalter wechselt zwischen <b>Aus</b>, <b>Auswahl</b> und <b>Alle</b>. Blau steht für Türme, Grün für Bogenschützen.</p></article>
      <article class="guideCard"><h3>Aufwertungen</h3><p>Leuchtende Symbole rechts zeigen freie Aufwertungspunkte. Auf EXP-Stufe 3 erscheint zusätzlich eine goldene Veteranenwahl mit zwei dauerhaften Wegen.</p></article>
     </div>
@@ -410,12 +409,35 @@
   <div id="moreNavMenu" class="hidden" role="menu" aria-label="Weitere Funktionen">
    <button class="navBtn" id="navStats" type="button" role="menuitem"><span class="navIcon">📜</span>Werte</button>
    <button class="navBtn" id="navResearch" type="button" role="menuitem" disabled><span class="navIcon">🔬</span>Forschung<span class="researchBadge" id="navResearchBadge">0</span></button>
+   <button class="navBtn" id="navDisplay" type="button" role="menuitem"><span class="navIcon">📱</span>Anzeige</button>
    <button class="navBtn" id="navMenu" type="button" role="menuitem"><span class="navIcon">📖</span>Anleitung</button>
   </div>
  </nav>
 </footer>
 </div>
 
+
+
+<div id="displaySettingsPanel" class="hidden" aria-label="Anzeige und Touch einstellen">
+ <section class="displaySettingsCard" role="dialog" aria-modal="true" aria-labelledby="displaySettingsTitle">
+  <button id="displaySettingsCloseBtn" class="panelCornerClose" type="button" aria-label="Anzeigeeinstellungen schließen">✕</button>
+  <div class="displaySettingsHead"><span aria-hidden="true">📱</span><div><small>MOBILE BEDIENUNG</small><h2 id="displaySettingsTitle">Anzeige &amp; Touch</h2><p>Die Einstellungen werden auf diesem Gerät gespeichert und verändern keinen Spielstand.</p></div></div>
+  <div class="displaySettingsSection">
+   <h3>HUD-Größe</h3>
+   <div id="hudSizeChoices" class="hudSizeChoices" role="group" aria-label="HUD-Größe wählen">
+    <button type="button" data-hud-size="small" aria-pressed="false"><span>▱</span><b>Klein</b><small>Mehr Spielfläche</small></button>
+    <button type="button" data-hud-size="normal" aria-pressed="true"><span>▰</span><b>Normal</b><small>Ausgewogen</small></button>
+    <button type="button" data-hud-size="large" aria-pressed="false"><span>▣</span><b>Groß</b><small>Leichter lesbar</small></button>
+   </div>
+  </div>
+  <div class="displaySettingsSection displayToggleList">
+   <label><span><b>📳 Vibrationsrückmeldung</b><small>Kurzes Signal bei Bau, Upgrade, Angriff und ungültigem Befehl.</small></span><input id="hapticsToggle" type="checkbox" checked></label>
+   <label><span><b>↔️ Querformat-Hinweis</b><small>Zeigt beim Drehen einmal einen kompakten Bedienhinweis.</small></span><input id="landscapeHintToggle" type="checkbox" checked></label>
+  </div>
+  <button id="hapticsTestBtn" class="hapticsTestBtn" type="button">📳 Vibration testen</button>
+  <div id="displaySettingsStatus" class="displaySettingsStatus" aria-live="polite">HUD-Größe: Normal</div>
+ </section>
+</div>
 
 
 <div id="workshopPanel" class="hidden" aria-label="Werkstatt und Forschung">
@@ -428,7 +450,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.17.13 · Zentrale Fenstersteuerung und sichere Bedienung.</div>
+  <div class="workshopFoot">v1.17.14 · Mobile Darstellung, Touchkomfort und optionale Vibration.</div>
  </section>
 </div>
 

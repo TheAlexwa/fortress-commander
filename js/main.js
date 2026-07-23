@@ -230,8 +230,30 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.13";
-const GAME_RELEASE_NAME="Fenster- & Bedienungs-Stabilität";
+const GAME_VERSION="1.17.14";
+const GAME_RELEASE_NAME="Mobile Darstellung & Touchkomfort";
+
+const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
+const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true};
+function loadDisplayPreferences(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(DISPLAY_PREFERENCES_KEY)||"null");
+  const hudSize=["small","normal","large"].includes(saved?.hudSize)?saved.hudSize:DISPLAY_PREFERENCE_DEFAULTS.hudSize;
+  return {hudSize,haptics:saved?.haptics!==false,landscapeHint:saved?.landscapeHint!==false};
+ }catch{return {...DISPLAY_PREFERENCE_DEFAULTS}}
+}
+let displayPreferences=loadDisplayPreferences();
+function persistDisplayPreferences(){try{localStorage.setItem(DISPLAY_PREFERENCES_KEY,JSON.stringify(displayPreferences))}catch{}}
+function applyDisplayPreferences(){
+ document.documentElement.dataset.hudSize=displayPreferences.hudSize;
+ document.documentElement.dataset.haptics=displayPreferences.haptics?"on":"off";
+}
+function hapticFeedback(type="tap"){
+ if(!displayPreferences.haptics||typeof navigator.vibrate!=="function")return false;
+ const pattern={tap:10,success:[18,28,18],error:[38,35,38],wave:[24,30,52]}[type]||10;
+ try{return navigator.vibrate(pattern)}catch{return false}
+}
+applyDisplayPreferences();
 
 const SUPPORTS_STABLE_SMALL_VIEWPORT=Boolean(window.CSS?.supports?.("height: 100svh"));
 let lastViewportWidth=Math.round(document.documentElement.clientWidth||window.innerWidth||0);
@@ -286,31 +308,29 @@ const instructionsHotspot=document.getElementById("instructionsHotspot");
 const instructionsBackBtn=document.getElementById("instructionsBackBtn");
 const instructionsCloseBtn=document.getElementById("instructionsCloseBtn");
 const orientationGuard=document.getElementById("orientationGuard");
-let orientationPauseActive=false;
-let pausedBeforeOrientation=true;
+const orientationHintCloseBtn=document.getElementById("orientationHintCloseBtn");
+let orientationHintDismissed=false;
+try{orientationHintDismissed=sessionStorage.getItem("fortressCommander.orientationHintDismissed")==="1"}catch{}
 function isPhoneLandscape(){return window.matchMedia("(orientation: landscape)").matches&&window.innerHeight<=700}
-async function requestPortraitLock(){
- try{
-  if(screen.orientation&&typeof screen.orientation.lock==="function")await screen.orientation.lock("portrait-primary");
- }catch(_){/* Browser ohne erlaubte Orientation-Lock-API: Schutzansicht übernimmt. */}
+function syncOrientationHint(){
+ const show=gameSessionStarted&&isPhoneLandscape()&&displayPreferences.landscapeHint&&!orientationHintDismissed;
+ orientationGuard?.classList.toggle("orientationHintVisible",show);
+ orientationGuard?.classList.toggle("hidden",!show);
 }
 function handleOrientationChange(){
- const blocked=isPhoneLandscape();
- document.body.classList.toggle("orientationBlocked",blocked);
- if(orientationGuard)orientationGuard.style.display=blocked?"grid":"none";
- if(blocked){
-  if(!orientationPauseActive){pausedBeforeOrientation=paused;orientationPauseActive=true}
-  paused=true;
-  if(typeof state!=="undefined")state.supportTimer=0;
-  last=performance.now();
- }else if(orientationPauseActive){
-  syncVisibleViewportHeight();
-  orientationPauseActive=false;
-  paused=pausedBeforeOrientation||gameOver;
-  last=performance.now();
-  setTimeout(()=>resize(),80);
- }
+ const landscape=isPhoneLandscape();
+ document.body.classList.toggle("mobileLandscape",landscape);
+ document.body.classList.remove("orientationBlocked");
+ syncOrientationHint();
+ syncVisibleViewportHeight(true);
+ last=performance.now();
+ setTimeout(()=>resize(),80);
 }
+orientationHintCloseBtn?.addEventListener("click",()=>{
+ orientationHintDismissed=true;
+ try{sessionStorage.setItem("fortressCommander.orientationHintDismissed","1")}catch{}
+ syncOrientationHint();
+});
 
 let campaignMapHasLiveSession=false;
 let worldMapProfile=loadWorldMapProfile();
@@ -319,7 +339,6 @@ let selectedCampaignWorldId=worldMapProfile.selectedWorldId||ACTIVE_WORLD_ID;
 function beginGameSession(){
  syncVisibleViewportHeight();
  gameSessionStarted=true;
- requestPortraitLock();
  startScreen.classList.add("hidden");
  campaignMapScreen.classList.add("hidden");
  instructionsScreen.classList.add("hidden");
@@ -327,16 +346,14 @@ function beginGameSession(){
  last=performance.now();
  const recoverCanvas=()=>{
   handleOrientationChange();
-  if(!isPhoneLandscape()){
-   resize();
-   if(canvas.width<2||canvas.height<2){
+  resize();
+  if(canvas.width<2||canvas.height<2){
     canvas.width=Math.max(2,Math.floor(innerWidth*(devicePixelRatio||1)));
     canvas.height=Math.max(2,Math.floor(innerHeight*.65*(devicePixelRatio||1)));
     canvas.style.width="100%";canvas.style.height="100%";
     ctx.setTransform(Math.min(2,devicePixelRatio||1),0,0,Math.min(2,devicePixelRatio||1),0,0);
    }
-   draw();updateUI();
-  }
+  draw();updateUI();
  };
  requestAnimationFrame(recoverCanvas);
  setTimeout(recoverCanvas,180);
@@ -1364,14 +1381,14 @@ function buildRequirement(key){return getBuildRequirement(state,key)}
 const PANEL_IDS=[
  "testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel",
  "warCouncilPanel","bonusObjectivePanel","campaignPanel","veteranPanel","enemyInfoOverlay",
- "pauseMenu","instructionsScreen","repairDecision","commanderCampPanel"
+ "pauseMenu","instructionsScreen","repairDecision","commanderCampPanel","displaySettingsPanel"
 ];
 const PANEL_MESSAGES={
  testResourcePanel:"Testfenster geschlossen",statsScreen:"Fenster geschlossen",workshopPanel:"Forschung geschlossen",
  marketPanel:"Markt geschlossen",statueOfferingPanel:"Opfergaben geschlossen",warCouncilPanel:"Kriegsrat geschlossen",
  bonusObjectivePanel:"Bonusziel geschlossen",campaignPanel:"Kampagnenübersicht geschlossen",veteranPanel:"Veteranenwahl geschlossen",
  enemyInfoOverlay:"Gegnerinfo geschlossen",pauseMenu:"Pause geschlossen",instructionsScreen:"Anleitung geschlossen",
- repairDecision:"Hinweis geschlossen",commanderCampPanel:"Kommandantenlager geschlossen"
+ repairDecision:"Hinweis geschlossen",commanderCampPanel:"Kommandantenlager geschlossen",displaySettingsPanel:"Anzeigeeinstellungen geschlossen"
 };
 const panelPauseBefore=new Map();
 const panelFocusBefore=new Map();
@@ -1514,6 +1531,7 @@ function closePanelById(id,options={}){
   case "warCouncilPanel":closeWarCouncilPanel(true,options);break;
   case "bonusObjectivePanel":closeBonusObjectivePanel(true,options);break;
   case "commanderCampPanel":closeCommanderCamp(options);break;
+  case "displaySettingsPanel":closeDisplaySettings(options);break;
   case "campaignPanel":closeCampaignPanel(true,options);break;
   case "veteranPanel":closeVeteranPanel(true,options);break;
   case "workshopPanel":closeWorkshopPanel(true,options);break;
@@ -1582,7 +1600,8 @@ function startWave(){
   setBuildMode:value=>{buildMode=value},
   setSelected:value=>{selected=value}
  });
- if(!release){state.warCouncil.locked=false;state.warCouncil.active="none";return false}
+ if(!release){state.warCouncil.locked=false;state.warCouncil.active="none";hapticFeedback("error");return false}
+ hapticFeedback("wave");
  activateBonusObjective(state,{fullyGathered:release.reinforcements.length===0});
  closeWarCouncilPanel(false);
  closeBonusObjectivePanel(false);
@@ -1728,7 +1747,10 @@ function createAt(x,y,key){
   setBuildMode:value=>{buildMode=value},
   setSelected:value=>{selected=value}
  });
- if(created&&BUILD[key]?.kind==="inside")reapplyPopulationProfile();
+ if(created){
+  if(BUILD[key]?.kind==="inside")reapplyPopulationProfile();
+  hapticFeedback("success");
+ }else hapticFeedback("error");
  return created;
 }
 function upgradeSelected(){
@@ -1753,7 +1775,10 @@ function upgradeSelected(){
    }
   }else upgraded=upgradeEntity(selected,{state,syncResidents,showToast,globalResearchIncreaseRate});
  }
- if(upgraded&&upgradedEntity?.kind==="building"&&upgradedEntity.base?.kind!=="tower")reapplyPopulationProfile();
+ if(upgraded){
+  if(upgradedEntity?.kind==="building"&&upgradedEntity.base?.kind!=="tower")reapplyPopulationProfile();
+  hapticFeedback("success");
+ }else hapticFeedback("error");
  return upgraded;
 }
 function sellSelected(){
@@ -2725,6 +2750,7 @@ const navResearch=document.getElementById("navResearch"),navResearchBadge=docume
 const navUpgrade=document.getElementById("navUpgrade");
 const navStats=document.getElementById("navStats");
 const navMenu=document.getElementById("navMenu");
+const navDisplay=document.getElementById("navDisplay");
 const navMore=document.getElementById("navMore");
 const navMoreBadge=document.getElementById("navMoreBadge");
 const moreNavMenu=document.getElementById("moreNavMenu");
@@ -3128,6 +3154,28 @@ function upgradeCenterHtml(){
 function findUpgradeEntity(ref){const [kind,idRaw]=String(ref||"").split(":");const id=Number(idRaw);return kind==="building"?state.buildings.find(b=>b.bid===id):kind==="unit"?state.units.find(u=>u.uid===id):null}
 function openUpgradeCenter(){prepareStatsScreen();statsTitle.textContent="Upgrade-Zentrale";statsContent.innerHTML=upgradeCenterHtml()}
 
+function displayHudSizeLabel(size){return size==="small"?"Klein":size==="large"?"Groß":"Normal"}
+function refreshDisplaySettingsControls(){
+ document.querySelectorAll("[data-hud-size]").forEach(button=>{
+  const active=button.dataset.hudSize===displayPreferences.hudSize;
+  button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));
+ });
+ const hapticsToggle=document.getElementById("hapticsToggle");
+ const landscapeHintToggle=document.getElementById("landscapeHintToggle");
+ const hapticsTestBtn=document.getElementById("hapticsTestBtn");
+ if(hapticsToggle){hapticsToggle.checked=displayPreferences.haptics;hapticsToggle.disabled=typeof navigator.vibrate!=="function"}
+ if(landscapeHintToggle)landscapeHintToggle.checked=displayPreferences.landscapeHint;
+ if(hapticsTestBtn)hapticsTestBtn.disabled=typeof navigator.vibrate!=="function"||!displayPreferences.haptics;
+ const status=document.getElementById("displaySettingsStatus");
+ if(status)status.textContent=`HUD-Größe: ${displayHudSizeLabel(displayPreferences.hudSize)} · Vibration: ${displayPreferences.haptics?"Ein":"Aus"}`;
+}
+function updateDisplayPreference(key,value){
+ displayPreferences={...displayPreferences,[key]:value};persistDisplayPreferences();applyDisplayPreferences();refreshDisplaySettingsControls();syncOrientationHint();
+ requestAnimationFrame(()=>{resize();updateBuildTrayIndicators();updateSelectionHud()});
+}
+function openDisplaySettings(options={}){refreshDisplaySettingsControls();openBlockingPanel("displaySettingsPanel",{pauseGame:true,...options})}
+function closeDisplaySettings(options={}){closeBlockingPanel("displaySettingsPanel",{resume:true,...options})}
+
 function openStats(target=selected){
  prepareStatsScreen();
  if(target&&target.kind==="unit"){statsTitle.textContent="Einheitenwerte";statsContent.innerHTML=unitStatsHtml(target)}
@@ -3224,6 +3272,15 @@ testResourcePanel.addEventListener("click",e=>{
 });
 ui.resourceOverviewBtn.addEventListener("click",openResourceDetails);
 ui.populationOverviewBtn.addEventListener("click",openPopulationDetails);
+navDisplay?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();closeMoreNav();openDisplaySettings()});
+document.getElementById("displaySettingsCloseBtn")?.addEventListener("click",()=>closeDisplaySettings());
+document.getElementById("hudSizeChoices")?.addEventListener("click",event=>{
+ const button=event.target.closest("[data-hud-size]");if(!button)return;
+ updateDisplayPreference("hudSize",button.dataset.hudSize);hapticFeedback("tap");
+});
+document.getElementById("hapticsToggle")?.addEventListener("change",event=>updateDisplayPreference("haptics",Boolean(event.target.checked)));
+document.getElementById("landscapeHintToggle")?.addEventListener("change",event=>{orientationHintDismissed=false;try{sessionStorage.removeItem("fortressCommander.orientationHintDismissed")}catch{}updateDisplayPreference("landscapeHint",Boolean(event.target.checked))});
+document.getElementById("hapticsTestBtn")?.addEventListener("click",()=>{const worked=hapticFeedback("success");const status=document.getElementById("displaySettingsStatus");if(status)status.textContent=worked?"Vibrationstest ausgelöst":"Vibration wird von diesem Gerät oder Browser nicht unterstützt"});
 statsContent.addEventListener("click",e=>{
  const openTestResources=e.target.closest("[data-open-test-resources]");
  if(openTestResources){e.preventDefault();e.stopPropagation();openTestResourcePanel();return}

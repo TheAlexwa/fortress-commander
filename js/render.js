@@ -1572,6 +1572,20 @@ function drawEnemies(){
  }
 }
 
+function drawSelectionMarker(){
+ if(!selected)return;
+ let x=null,y=null,radius=34;
+ if(selected.kind==="building"&&selected.slot){x=selected.slot.x;y=selected.slot.y;radius=selected.base?.kind==="tower"?53:47}
+ else if(selected.kind==="unit"||selected.kind==="enemy"||selected.type){x=selected.x;y=selected.y;radius=Math.max(31,(Number(selected.radius)||18)+18)}
+ if(!Number.isFinite(x)||!Number.isFinite(y))return;
+ const time=performance.now(),pulse=.5+.5*Math.sin(time*.007);
+ ctx.save();ctx.translate(x,y);ctx.rotate(-time*.00045);
+ ctx.globalAlpha=.72+.22*pulse;ctx.strokeStyle="#fff0a0";ctx.shadowBlur=18+8*pulse;ctx.shadowColor="#ffd45c";ctx.lineWidth=3;ctx.setLineDash([11,8]);ctx.lineDashOffset=-time*.025;ctx.beginPath();ctx.arc(0,0,radius+3*pulse,0,TAU);ctx.stroke();ctx.setLineDash([]);ctx.shadowBlur=0;
+ ctx.rotate(time*.0009);ctx.fillStyle="#ffe786";
+ for(let index=0;index<4;index++){ctx.save();ctx.rotate(index*Math.PI/2);ctx.beginPath();ctx.moveTo(0,-radius-11);ctx.lineTo(6,-radius-3);ctx.lineTo(-6,-radius-3);ctx.closePath();ctx.fill();ctx.restore()}
+ ctx.restore();
+}
+
 function draw(){
  ctx.clearRect(0,0,vw,vh);
  // Bei starkem Herauszoomen bleibt der Bereich außerhalb der Welt grün statt schwarz.
@@ -1579,7 +1593,7 @@ function draw(){
  ctx.save();ctx.translate(vw/2,vh/2);ctx.scale(zoom,zoom);ctx.translate(-camX,-camY);
  drawGround();drawPaths();drawWorldDetails();drawSiegeCamps();drawCastle();drawFutureFortressLayout();drawSlots();drawRangeIndicators();drawBuildings();drawUnits();drawCraftsmen();
  for(const p of state.projectiles){ctx.save();ctx.translate(p.x,p.y);const t=p.target,ang=t?Math.atan2(t.y-p.y,t.x-p.x):0;ctx.rotate(ang);ctx.shadowBlur=14;ctx.shadowColor=p.color;ctx.strokeStyle=p.color;ctx.lineWidth=Math.max(2,p.radius*.7);ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(5,0);ctx.stroke();ctx.fillStyle="#eef6f8";ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(1,-3);ctx.lineTo(1,3);ctx.closePath();ctx.fill();ctx.restore()}
- drawEnemies();for(const p of state.particles){ctx.globalAlpha=Math.min(1,p.life*3);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,TAU);ctx.fill()}ctx.globalAlpha=1;ctx.restore();
+ drawEnemies();drawSelectionMarker();for(const p of state.particles){ctx.globalAlpha=Math.min(1,p.life*3);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,TAU);ctx.fill()}ctx.globalAlpha=1;ctx.restore();
  const vg=ctx.createRadialGradient(vw*.5,vh*.45,Math.min(vw,vh)*.12,vw*.5,vh*.5,Math.max(vw,vh)*.72);vg.addColorStop(0,"#00000000");vg.addColorStop(.72,"#00000010");vg.addColorStop(1,"#00000068");ctx.fillStyle=vg;ctx.fillRect(0,0,vw,vh);
  if(paused&&!gameOver&&!state.repairActive)overlay("PAUSE","Tippe auf Weiter");if(gameOver)overlay("DIE BURG IST GEFALLEN",`Welle ${state.wave} · ${state.kills} Gegner · R zum Neustart`);
 }

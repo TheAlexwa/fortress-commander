@@ -65,7 +65,7 @@ footer{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 .trayScrollPrev{left:3px}.trayScrollNext{right:3px}.trayScrollBtn.trayControlHidden{opacity:0;pointer-events:none;transform:translateY(-50%) scale(.86)}
 .trayEdge{position:absolute;z-index:6;top:0;bottom:0;width:39px;opacity:0;pointer-events:none;transition:opacity .16s ease}.trayEdge.visible{opacity:1}.trayEdgeLeft{left:0;background:linear-gradient(90deg,#080b0afa,transparent)}.trayEdgeRight{right:0;background:linear-gradient(270deg,#080b0afa,transparent)}
 #navMore .researchBadge{position:absolute;right:7px;top:4px;min-width:20px;height:20px;padding:0 5px;border-radius:11px;background:#bfeaff;color:#10262c;border:1px solid #effcff;font:bold 10px/18px system-ui;box-shadow:0 2px 5px #0008}#navMore .researchBadge.isEmpty{display:none}
-@media(min-width:701px){#bottomNav{grid-template-columns:repeat(7,minmax(72px,1fr))!important;overflow:visible!important;scroll-snap-type:none!important}#navMore{display:none!important}#moreNavMenu,#moreNavMenu.hidden{display:contents!important}}
+@media(min-width:701px){#bottomNav{grid-template-columns:repeat(8,minmax(68px,1fr))!important;overflow:visible!important;scroll-snap-type:none!important}#navMore{display:none!important}#moreNavMenu,#moreNavMenu.hidden{display:contents!important}}
 @media(max-width:700px){html,body,#app,#gameWrap,footer{width:100%;max-width:100%;min-width:0;overscroll-behavior-x:none}footer{overflow:visible!important}#bottomNav{position:relative;grid-template-columns:repeat(5,minmax(0,1fr))!important;justify-content:stretch!important;overflow:visible!important;scroll-snap-type:none!important;overscroll-behavior-x:none}#bottomNav>.navBtn{min-width:0!important;width:auto!important;scroll-snap-align:none!important}#navMore{display:flex!important}#moreNavMenu,#moreNavMenu.hidden{display:none!important}#moreNavMenu:not(.hidden){position:fixed;right:8px;bottom:calc(61px + max(4px,var(--safeB)));z-index:180;width:min(268px,calc(100vw - 16px));padding:8px;display:grid!important;gap:7px;border:1px solid #c9a45d88;border-radius:17px;background:linear-gradient(155deg,#27302ded,#0a0e0ced);box-shadow:0 -8px 30px #000d,inset 0 1px #fff2}#moreNavMenu .navBtn{width:100%!important;min-width:0!important;height:55px!important;display:grid!important;grid-template-columns:43px 1fr;justify-items:start;align-items:center;text-align:left;padding:5px 12px;font-size:12px;border-radius:12px}#moreNavMenu .navBtn .navIcon{font-size:24px;justify-self:center}#moreNavMenu .navBtn .researchBadge{right:10px;top:17px}#navMore.menuOpen{border-color:#f0c86a;background:linear-gradient(#655026,#21190d);box-shadow:0 0 15px #d69b3c55}.trayScrollBtn{width:29px;height:43px;font-size:25px}}
 @media(max-width:380px){#bottomNav{gap:3px!important;padding-left:3px!important;padding-right:3px!important}#bottomNav>.navBtn{font-size:8px!important;padding-left:1px!important;padding-right:1px!important}#bottomNav>.navBtn .navIcon{font-size:20px!important}}
 
@@ -141,4 +141,67 @@ header #populationOverviewBtn .popFree{display:block!important;width:auto!import
  .workshopPoints{grid-column:2/4;grid-row:2;margin-left:0;justify-self:start;min-width:0;padding:5px 8px}
  .workshopPoints b{font-size:16px}
  .workshopClose{grid-column:3;grid-row:1;justify-self:end;width:42px;height:42px;min-width:42px;position:relative;z-index:2}
+}
+
+
+/* v1.17.14 – Mobile Darstellung & Touchkomfort */
+:root{--fcHeaderControl:40px;--fcBuildTrayHeight:82px;--fcBuildButtonHeight:72px;--fcBottomNavHeight:52px}
+:root[data-hud-size="small"]{--fcHeaderControl:36px;--fcBuildTrayHeight:70px;--fcBuildButtonHeight:61px;--fcBottomNavHeight:46px}
+:root[data-hud-size="large"]{--fcHeaderControl:46px;--fcBuildTrayHeight:94px;--fcBuildButtonHeight:84px;--fcBottomNavHeight:60px}
+
+#orientationGuard{display:none!important;pointer-events:none!important}
+#orientationGuard.orientationHintVisible{position:fixed;z-index:4900;left:max(8px,var(--safeL));right:max(8px,var(--safeR));top:max(7px,var(--safeT));display:block!important;pointer-events:auto!important;padding:0;background:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+#orientationGuard .orientationGuardCard{width:min(520px,100%);min-height:58px;margin:0 auto;padding:8px 9px;display:grid;grid-template-columns:38px minmax(0,1fr) 38px;gap:8px;align-items:center;border:1px solid #d5b86f;border-radius:15px;background:linear-gradient(150deg,#263b32f5,#0b1511f5);box-shadow:0 10px 30px #000d;color:#f6f2e5;text-align:left}
+#orientationGuard .orientationGuardIcon{margin:0;font-size:27px;text-align:center}#orientationGuard h2{margin:0;color:#ffe3a0;font-size:13px}#orientationGuard p{margin:2px 0 0;color:#cbd6cf;font-size:9px;line-height:1.25}#orientationGuard small{display:none}#orientationHintCloseBtn{width:38px;height:38px;min-width:38px;padding:0;border-radius:50%;background:#321b17;font-size:16px}
+
+@media(max-width:900px){
+ header{padding-left:calc(7px + var(--safeL))!important;padding-right:calc(7px + var(--safeR))!important}
+ #resourceOverviewBtn{left:max(5px,var(--safeL))!important}
+ #tacticsDock{right:max(6px,var(--safeR))!important}
+ #levelUpDock{right:max(7px,var(--safeR))!important}
+ #selectionHud{left:max(7px,var(--safeL))!important;right:max(7px,var(--safeR))!important;max-width:none!important}
+ #bottomNav{padding-left:calc(5px + var(--safeL))!important;padding-right:calc(5px + var(--safeR))!important}
+ #buildTray{padding-left:calc(34px + var(--safeL))!important;padding-right:calc(34px + var(--safeR))!important}
+ .fcPanel{padding-left:max(7px,var(--safeL))!important;padding-right:max(7px,var(--safeR))!important}
+ .resourceCompact strong{font-size:12px!important}.populationCount{font-size:12px!important}.waveStat strong{font-size:17px!important}
+}
+
+@media(max-width:700px){
+ header>.waveStat,header>.grow,header>#pauseBtn,header>#startWaveBtn,header #populationOverviewBtn{height:var(--fcHeaderControl)!important}
+ footer{grid-template-rows:var(--fcBuildTrayHeight) auto!important}
+ #buildTray{height:var(--fcBuildTrayHeight)!important;min-height:var(--fcBuildTrayHeight)!important}
+ .buildBtn{height:var(--fcBuildButtonHeight)!important}
+ .navBtn{height:var(--fcBottomNavHeight)!important;min-height:var(--fcBottomNavHeight)!important}
+ :root[data-hud-size="small"] #bottomNav>.navBtn{font-size:8px!important}:root[data-hud-size="small"] #bottomNav>.navBtn .navIcon{font-size:19px!important}
+ :root[data-hud-size="large"] #bottomNav>.navBtn{font-size:10px!important}:root[data-hud-size="large"] #bottomNav>.navBtn .navIcon{font-size:25px!important}
+ :root[data-hud-size="large"] .buildBtn .name{font-size:11px!important}:root[data-hud-size="large"] .buildBtn .cost{font-size:9px!important}
+}
+
+@media(pointer:coarse){
+ button:not(.menuHotspot){min-height:44px}
+ .selectionAction{min-width:58px!important;min-height:44px!important}
+ .selectionCollapseBtn,.panelCornerClose,.workshopClose,.enemyClose,.offeringClose,.warCouncilClose,.bonusObjectiveClose,.campaignPanelClose,.veteranClose,.commanderCampClose{width:44px!important;height:44px!important;min-width:44px!important}
+ .populationReserve button,.populationStepper button{width:44px!important;height:44px!important}
+ .buildInfoBtn{width:44px!important;height:44px!important}
+}
+
+@media(orientation:landscape) and (max-height:700px){
+ :root{--fcHeaderControl:36px;--fcBuildTrayHeight:59px;--fcBuildButtonHeight:51px;--fcBottomNavHeight:44px}
+ :root[data-hud-size="large"]{--fcHeaderControl:38px;--fcBuildTrayHeight:66px;--fcBuildButtonHeight:58px;--fcBottomNavHeight:46px}
+ #app{height:100svh!important;max-height:100svh!important}
+ header{min-height:42px!important;padding-top:max(4px,var(--safeT))!important;padding-bottom:4px!important;gap:4px!important}
+ header>.waveStat{padding-left:7px!important;padding-right:7px!important}header>.waveStat span{display:none!important}
+ header #populationOverviewBtn{min-width:70px!important;max-width:82px!important;padding:2px 5px!important}.populationIcon{font-size:17px!important}header #populationOverviewBtn .popFree{display:none!important}
+ header>.grow{font-size:9px!important}header>#startWaveBtn{min-width:68px!important;font-size:9px!important}
+ footer{max-height:calc(var(--fcBuildTrayHeight) + var(--fcBottomNavHeight) + var(--safeB) + 9px)!important}
+ #buildTray{gap:4px!important;padding-top:4px!important;padding-bottom:4px!important}.buildBtn{flex-basis:94px!important;border-radius:10px!important}.buildBtn:after{height:23px!important;font-size:18px!important}.buildBtn .name{margin-top:2px!important;font-size:8px!important}.buildBtn .cost{font-size:7px!important}.buildBtn .desc{display:none!important}
+ #bottomNav{gap:3px!important;padding-top:3px!important;padding-bottom:calc(3px + var(--safeB))!important}.navBtn{border-radius:10px!important;font-size:8px!important}.navBtn .navIcon{font-size:18px!important}
+ #tacticsDock{top:47px!important}.tacticsMenuBtn{min-height:36px!important}.tacticsMenu{max-height:calc(100svh - 92px);overflow:auto}
+ #resourceOverviewBtn{top:4px!important;height:31px!important}.siegePhaseNotice{top:39px!important;max-height:52px!important;padding:4px 7px!important}.siegePhaseNotice span{font-size:8px!important}
+ #selectionHud{bottom:5px!important;padding-top:5px!important;padding-bottom:5px!important}.selectionAction{min-height:44px!important;height:44px!important}.selectionCollapseBtn{width:44px!important;height:44px!important;min-width:44px!important}
+ #levelUpDock{top:47px!important;max-height:calc(100svh - 165px)!important}.levelCard{width:48px!important;height:48px!important}
+}
+
+@media(max-width:520px){
+ .displaySettingsCard{padding:15px 10px}.displaySettingsHead{grid-template-columns:46px 1fr;gap:8px;padding-right:42px}.displaySettingsHead>span{width:46px;height:46px;font-size:27px}.displaySettingsHead h2{font-size:20px}.hudSizeChoices{gap:5px}.hudSizeChoices button{min-height:82px;padding:6px 3px}.displayToggleList label{min-height:66px;padding:8px}.displaySettingsSection{padding:9px}
 }

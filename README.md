@@ -1,3 +1,13 @@
+## v1.17.14 – Mobile Darstellung & Touchkomfort
+
+- Safe-Area-Unterstützung für abgerundete Displays, Kameralöcher und seitliche Aussparungen ergänzt.
+- Die bisherige Querformat-Sperre wurde durch eine kompakte, spielbare Querformatansicht ersetzt.
+- Neues Fenster „Anzeige & Touch“ unter Mehr mit HUD-Größe Klein, Normal oder Groß.
+- Optionale Vibrationsrückmeldung für Bau, Upgrade, Angriff und ungültige Befehle.
+- Wichtige HUD-Werte und Touchflächen wurden auf Mobilgeräten besser lesbar und leichter bedienbar gemacht.
+- Ausgewählte Einheiten, Gebäude und Gegner werden auf der Karte deutlicher hervorgehoben.
+- Anzeigeeinstellungen werden gerätebezogen im Browser gespeichert und verändern keine Spielstände.
+
 ## v1.17.13 – Fenster- & Bedienungs-Stabilität
 
 - Öffnen, Schließen, Fokus, Sichtbarkeit und Pausenzustand aller wichtigen Dialogfenster werden zentral gesteuert.

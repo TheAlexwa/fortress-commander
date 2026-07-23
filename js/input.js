@@ -278,7 +278,7 @@ export function attachGameInput({
     if (!realLayoutChange) return;
     lastResizeWidth = width;
     lastResizeOrientation = orientation;
-    if (!isPhoneLandscape()) setTimeout(resizeCanvas, 60);
+    setTimeout(resizeCanvas, 60);
   };
 
   const onOrientationChange = () => {
@@ -286,7 +286,7 @@ export function attachGameInput({
       handleOrientationChange();
       lastResizeWidth = Math.round(window.innerWidth || document.documentElement.clientWidth || 0);
       lastResizeOrientation = window.matchMedia("(orientation: landscape)").matches ? "landscape" : "portrait";
-      if (!isPhoneLandscape()) resizeCanvas();
+      resizeCanvas();
     }, 140);
   };
 
