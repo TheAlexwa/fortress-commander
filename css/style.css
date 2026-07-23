@@ -1000,3 +1000,13 @@ header>#startWaveBtn{grid-column:4!important;width:100%!important;height:43px!im
 .stoneUpgradeButton{background:linear-gradient(#88703f,#4e4025);border-color:#d5b76e;color:#fff1c8;font-weight:900}
 .stoneUpgradeButton:not(:disabled):hover{filter:brightness(1.08)}
 .stoneUpgradeButton:disabled{color:#d5c59c;background:linear-gradient(#514b3b,#302d26);border-color:#867753}
+
+/* v1.17.13 – zentrale Fenster- und Bedienungs-Stabilität */
+body.fcModalOpen{overflow:hidden;overscroll-behavior:none}
+body.fcModalOpen>#app,body.fcModalOpen>#startScreen,body.fcModalOpen>#campaignMapScreen{pointer-events:none;user-select:none}
+body.fcModalOpen>.fcPanelActive{pointer-events:auto!important;user-select:auto}
+.fcPanelActive{pointer-events:auto!important}
+.panelCornerClose{position:absolute;z-index:5;right:12px;top:12px;width:42px;height:42px;padding:0;border-radius:50%;display:grid;place-items:center;background:linear-gradient(#5b3029,#321916);border:1px solid #c68272;color:#fff3e5;font-size:19px;font-weight:950;box-shadow:0 5px 16px #0008}
+.panelCornerClose:focus-visible,.fcPanelActive button:focus-visible{outline:3px solid #ffe28a;outline-offset:3px}
+.marketCard,.pauseMenuCard{position:relative}
+.marketCard>h2,.pauseMenuCard>h2{padding-right:48px}

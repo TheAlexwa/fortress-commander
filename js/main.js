@@ -230,8 +230,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.12";
-const GAME_RELEASE_NAME="Forschungsfenster-Hotfix";
+const GAME_VERSION="1.17.13";
+const GAME_RELEASE_NAME="Fenster- & Bedienungs-Stabilität";
 
 const SUPPORTS_STABLE_SMALL_VIEWPORT=Boolean(window.CSS?.supports?.("height: 100svh"));
 let lastViewportWidth=Math.round(document.documentElement.clientWidth||window.innerWidth||0);
@@ -417,10 +417,11 @@ function renderCommanderCamp(){
 }
 function openCommanderCamp(){
  renderCommanderCamp();
- const panel=document.getElementById("commanderCampPanel");panel.classList.remove("hidden");panel.style.pointerEvents="auto";
+ openBlockingPanel("commanderCampPanel",{pauseGame:false});
 }
-function closeCommanderCamp(){
- const panel=document.getElementById("commanderCampPanel");panel.classList.add("hidden");panel.style.pointerEvents="none";renderCampaignWorldMap();
+function closeCommanderCamp(options={}){
+ closeBlockingPanel("commanderCampPanel",{resume:false,...options});
+ renderCampaignWorldMap();
 }
 function handleCommanderPerk(perkId){
  const unlocked=worldMapProfile.commander.unlockedPerks.includes(perkId);
@@ -480,23 +481,21 @@ function startNewCampaignWorld(){
 let instructionsOpenedFrom="title";
 function openInstructions(){
  instructionsOpenedFrom=!campaignMapScreen.classList.contains("hidden")?"map":startScreen.classList.contains("hidden")?"game":"title";
- startScreen.classList.add("hidden");campaignMapScreen.classList.add("hidden");instructionsScreen.classList.remove("hidden");
- instructionsScreen.style.pointerEvents="auto";
+ startScreen.classList.add("hidden");campaignMapScreen.classList.add("hidden");
+ openBlockingPanel("instructionsScreen",{pauseGame:true});
  const back=document.getElementById("instructionsBackBtn");if(back)back.textContent=instructionsOpenedFrom==="game"?"← Zurück zum Spiel":instructionsOpenedFrom==="map"?"← Zurück zur Kampagnenkarte":"← Zurück zum Startmenü";
  const book=instructionsScreen.querySelector(".instructionBook");if(book)book.scrollTop=0;
  renderBestiary();
- paused=true;
 }
-function returnToTitle(){
- instructionsScreen.classList.add("hidden");
- instructionsScreen.style.pointerEvents="none";
- if(instructionsOpenedFrom==="game"){
+function returnToTitle(options={}){
+ const returnTarget=instructionsOpenedFrom;
+ closeBlockingPanel("instructionsScreen",{resume:returnTarget==="game",...options});
+ if(returnTarget==="game"){
   startScreen.classList.add("hidden");campaignMapScreen.classList.add("hidden");
-  if(!gameOver){paused=false;last=performance.now()}
   const menuButton=document.getElementById("navMenu");if(menuButton)menuButton.classList.remove("active");
   navMore?.classList.remove("active");closeMoreNav();
   updateUI();
- }else if(instructionsOpenedFrom==="map"){
+ }else if(returnTarget==="map"){
   startScreen.classList.add("hidden");campaignMapScreen.classList.remove("hidden");paused=true;renderCampaignWorldMap();
  }else{
   campaignMapScreen.classList.add("hidden");startScreen.classList.remove("hidden");paused=true;gameSessionStarted=false;
@@ -511,11 +510,10 @@ document.querySelectorAll(".worldNode[data-world-id]").forEach(node=>node.addEve
 document.getElementById("worldPrimaryBtn").addEventListener("click",enterSelectedCampaignWorld);
 document.getElementById("worldNewGameBtn").addEventListener("click",startNewCampaignWorld);
 document.getElementById("commanderCampBtn").addEventListener("click",openCommanderCamp);
-document.getElementById("commanderCampCloseBtn").addEventListener("click",closeCommanderCamp);
-document.getElementById("commanderCampPanel").addEventListener("click",e=>{const button=e.target.closest("[data-commander-perk]");if(button){e.preventDefault();handleCommanderPerk(button.dataset.commanderPerk);return}if(e.target.id==="commanderCampPanel")closeCommanderCamp()});
-instructionsBackBtn.addEventListener("click",returnToTitle);
+document.getElementById("commanderCampCloseBtn").addEventListener("click",()=>closeCommanderCamp());
+document.getElementById("commanderCampPanel").addEventListener("click",e=>{const button=e.target.closest("[data-commander-perk]");if(button){e.preventDefault();handleCommanderPerk(button.dataset.commanderPerk)}});
+instructionsBackBtn.addEventListener("click",()=>returnToTitle());
 instructionsCloseBtn.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();returnToTitle()});
-instructionsScreen.addEventListener("click",e=>{if(e.target===instructionsScreen)returnToTitle()});
 
 const canvas=document.getElementById("game"),ctx=canvas.getContext("2d"),wrap=document.getElementById("gameWrap");
 const gameHeader=document.querySelector("#app > header");
@@ -559,10 +557,6 @@ const GUARD_GATE_DAMAGE_BONUS=.15;
 const CATAPULT_ARMOR_BREAK=.20;
 const CATAPULT_SLOW=.15;
 const CATAPULT_DEBUFF_DURATION=4;
-let warCouncilResumeAfterClose=false;
-let bonusObjectiveResumeAfterClose=false;
-let campaignResumeAfterClose=false;
-let marketResumeAfterClose=false;
 function warCouncilState(){return ensureWarCouncilState(state)}
 function warCouncilActiveCommand(){return getWarCouncilCommand(warCouncilState().active)}
 function warCouncilModifiers(){return getWarCouncilModifiers(state)}
@@ -862,26 +856,14 @@ function workshopStaffCostMultiplier(){
  return staffMultiplier*stoneResearchCostMultiplier(workshop);
 }
 function researchCost(tech){return Math.max(1,Math.ceil(getResearchCost(tech,state.research,globalResearchMultiplier(tech.id))*workshopStaffCostMultiplier()))}
-let workshopPausedBefore=false;
-function openWorkshopPanel(){
+function openWorkshopPanel(options={}){
  if(!state.buildings.some(b=>b.key==="workshop"))return showToast("Zuerst eine Werkstatt bauen");
- hideRepairDecision();
- workshopPausedBefore=paused;
- paused=true;last=performance.now();
- const panel=document.getElementById("workshopPanel");
- panel.style.removeProperty("display");
- panel.style.removeProperty("visibility");
- panel.style.removeProperty("pointer-events");
- panel.classList.remove("hidden");
+ hideRepairDecision({skipHistory:true});
+ openBlockingPanel("workshopPanel",{pauseGame:true,...options});
  renderWorkshop();
 }
-function closeWorkshopPanel(resume=true){
- const panel=document.getElementById("workshopPanel");
- panel.classList.add("hidden");
- panel.style.removeProperty("display");
- panel.style.removeProperty("visibility");
- panel.style.removeProperty("pointer-events");
- if(resume&&!gameOver&&!workshopPausedBefore){paused=false;last=performance.now()}
+function closeWorkshopPanel(resume=true,options={}){
+ closeBlockingPanel("workshopPanel",{resume,...options});
  updateUI();
 }
 function renderWorkshop(){
@@ -911,20 +893,17 @@ function buyResearch(techId){
  const cost=researchCost(tech);if((state.researchPoints||0)<cost)return showToast("Nicht genug Forschungspunkte");
  state.researchPoints-=cost;state.research[tech.id]=lv+1;applyResearchToExistingUnits(tech.id,lv,lv+1);applyResearchToExistingTowers(tech.id,lv,lv+1);showToast(`${tech.name}: Stufe ${lv+1} · andere Forschungen +${Math.round(globalResearchIncreaseRate()*100)} %`);renderWorkshop();updateUI();saveGame(true);
 }
-document.getElementById("workshopResearchBtn").addEventListener("click",openWorkshopPanel);
+document.getElementById("workshopResearchBtn").addEventListener("click",()=>openWorkshopPanel());
 document.getElementById("workshopCloseBtn").addEventListener("click",()=>closeWorkshopPanel(true));
-document.getElementById("workshopPanel").addEventListener("click",e=>{if(e.target.id==="workshopPanel")closeWorkshopPanel(true)});
 document.getElementById("workshopTabs").addEventListener("click",e=>{const b=e.target.closest("[data-research-tab]");if(!b)return;activeResearchTab=b.dataset.researchTab;renderWorkshop()});
 document.getElementById("techTree").addEventListener("click",e=>{const b=e.target.closest("[data-tech]");if(b)buyResearch(b.dataset.tech)});
 document.getElementById("statueOfferingCloseBtn").addEventListener("click",()=>closeStatueOfferingPanel(true));
 document.getElementById("statueOfferingPanel").addEventListener("click",e=>{
  const donate=e.target.closest("[data-offering-resource]");
- if(donate){e.preventDefault();donateToStatue(donate.dataset.offeringResource,donate.dataset.offeringAmount);return}
- if(e.target.id==="statueOfferingPanel")closeStatueOfferingPanel(true);
+ if(donate){e.preventDefault();donateToStatue(donate.dataset.offeringResource,donate.dataset.offeringAmount)}
 });
 
 
-let statueOfferingPausedBefore=false;
 let heroSummonNoticeTimer=0;
 function showHeroSummonNotice(){
  const notice=document.getElementById("heroSummonNotice");
@@ -998,16 +977,14 @@ function renderStatueOfferingPanel(){
    :"Die Opfergaben sind unwiderruflich. 1 Gold, 1 Holz oder 1 Stein entsprechen jeweils 1 Opferpunkt.";
  }
 }
-function openStatueOfferingPanel(){
+function openStatueOfferingPanel(options={}){
  if(!state.buildings.some(building=>building.key==="statue"))return showToast("Zuerst die Kriegerstatue errichten");
- const panel=document.getElementById("statueOfferingPanel");if(!panel)return;
- statueOfferingPausedBefore=paused;paused=true;last=performance.now();
- renderStatueOfferingPanel();panel.classList.remove("hidden");panel.style.display="grid";panel.style.visibility="visible";panel.style.pointerEvents="auto";
+ renderStatueOfferingPanel();
+ openBlockingPanel("statueOfferingPanel",{pauseGame:true,...options});
  updateUI();
 }
-function closeStatueOfferingPanel(resume=true){
- const panel=document.getElementById("statueOfferingPanel");if(panel){panel.classList.add("hidden");panel.style.display="none";panel.style.visibility="hidden";panel.style.pointerEvents="none"}
- if(resume&&!gameOver){paused=statueOfferingPausedBefore;last=performance.now()}
+function closeStatueOfferingPanel(resume=true,options={}){
+ closeBlockingPanel("statueOfferingPanel",{resume,...options});
  updateUI();
 }
 function donateToStatue(resource,requestedAmount){
@@ -1193,16 +1170,14 @@ function renderWarCouncilPanel(){
  status.textContent=state.inWave||council.locked?`${command.icon} ${command.label} ist für diese Welle festgelegt.`:`${command.icon} Gewählt: ${command.label}. Bleibt vorgemerkt, bis du den Befehl änderst.`;
  status.classList.toggle("locked",state.inWave||council.locked);
 }
-function openWarCouncilPanel(){
- const panel=document.getElementById("warCouncilPanel");if(!panel||gameOver)return;
- closeTacticsMenu();
- ensureCurrentSiege();warCouncilResumeAfterClose=!paused&&!gameOver;paused=true;state.supportTimer=0;
- renderWarCouncilPanel();panel.classList.remove("hidden");panel.style.display="grid";panel.style.visibility="visible";panel.style.pointerEvents="auto";updateWarCouncilHud();
+function openWarCouncilPanel(options={}){
+ if(gameOver)return;
+ closeTacticsMenu();ensureCurrentSiege();
+ renderWarCouncilPanel();openBlockingPanel("warCouncilPanel",{pauseGame:true,...options});updateWarCouncilHud();
 }
-function closeWarCouncilPanel(resume=true){
- const panel=document.getElementById("warCouncilPanel");if(panel){panel.classList.add("hidden");panel.style.display="none";panel.style.visibility="hidden";panel.style.pointerEvents="none"}
- if(resume&&warCouncilResumeAfterClose&&!gameOver){paused=false;last=performance.now()}
- warCouncilResumeAfterClose=false;updateWarCouncilHud();
+function closeWarCouncilPanel(resume=true,options={}){
+ closeBlockingPanel("warCouncilPanel",{resume,...options});
+ updateWarCouncilHud();
 }
 function chooseWarCouncilCommand(key){
  if(!selectWarCouncilCommand(state,key)){showToast("Der Festungsbefehl ist für diese Welle bereits festgelegt");return}
@@ -1236,16 +1211,14 @@ function renderBonusObjectivePanel(){
  statusBox.dataset.status=status;
  document.getElementById("bonusObjectiveStateBadge").textContent=bonusObjectiveStatusLabel(status);
 }
-function openBonusObjectivePanel(){
- const panel=document.getElementById("bonusObjectivePanel");if(!panel||gameOver)return;
- closeTacticsMenu();
- ensureCurrentSiege();bonusObjectiveResumeAfterClose=!paused&&!gameOver;paused=true;state.supportTimer=0;
- renderBonusObjectivePanel();panel.classList.remove("hidden");panel.style.display="grid";panel.style.visibility="visible";panel.style.pointerEvents="auto";updateBonusObjectiveHud();
+function openBonusObjectivePanel(options={}){
+ if(gameOver)return;
+ closeTacticsMenu();ensureCurrentSiege();
+ renderBonusObjectivePanel();openBlockingPanel("bonusObjectivePanel",{pauseGame:true,...options});updateBonusObjectiveHud();
 }
-function closeBonusObjectivePanel(resume=true){
- const panel=document.getElementById("bonusObjectivePanel");if(panel){panel.classList.add("hidden");panel.style.display="none";panel.style.visibility="hidden";panel.style.pointerEvents="none"}
- if(resume&&bonusObjectiveResumeAfterClose&&!gameOver){paused=false;last=performance.now()}
- bonusObjectiveResumeAfterClose=false;updateBonusObjectiveHud();
+function closeBonusObjectivePanel(resume=true,options={}){
+ closeBlockingPanel("bonusObjectivePanel",{resume,...options});
+ updateBonusObjectiveHud();
 }
 function applyBonusObjectiveRewards(result){
  if(!result?.success)return {summary:"",repaired:0};
@@ -1298,15 +1271,12 @@ function renderCampaignPanel(){
  else if(view.nextMilestone)next.textContent=`Nächster Meilenstein: ${view.nextMilestone.icon} Welle ${view.nextMilestone.wave} – ${view.nextMilestone.title}`;
  else next.textContent="Die letzte Schlacht steht bevor.";
 }
-function openCampaignPanel(){
- const panel=document.getElementById("campaignPanel");if(!panel)return;
- campaignResumeAfterClose=!paused&&!gameOver&&!isCampaignChoiceRequired(state);paused=true;state.supportTimer=0;
- renderCampaignPanel();panel.classList.remove("hidden");panel.style.display="grid";panel.style.visibility="visible";panel.style.pointerEvents="auto";updateCampaignHud();
+function openCampaignPanel(options={}){
+ renderCampaignPanel();openBlockingPanel("campaignPanel",{pauseGame:true,...options});updateCampaignHud();
 }
-function closeCampaignPanel(resume=true){
- const panel=document.getElementById("campaignPanel");if(panel){panel.classList.add("hidden");panel.style.display="none";panel.style.visibility="hidden";panel.style.pointerEvents="none"}
- if(resume&&campaignResumeAfterClose&&!gameOver&&!isCampaignChoiceRequired(state)){paused=false;last=performance.now()}
- campaignResumeAfterClose=false;updateCampaignHud();
+function closeCampaignPanel(resume=true,options={}){
+ closeBlockingPanel("campaignPanel",{resume:resume&&!isCampaignChoiceRequired(state),...options});
+ updateCampaignHud();
 }
 function campaignVictoryStatsHtml(){
  const view=getCampaignView(state);
@@ -1318,9 +1288,9 @@ function showCampaignVictoryScreen(finalized=false){
  document.getElementById("campaignVictoryStats").innerHTML=campaignVictoryStatsHtml();
  document.getElementById("campaignVictoryChoice").classList.toggle("hidden",finalized);
  document.getElementById("campaignVictoryFinal").classList.toggle("hidden",!finalized);
- screen.classList.remove("hidden");screen.style.display="grid";screen.style.pointerEvents="auto";
+ setPanelVisibility(screen,true);
 }
-function hideCampaignVictoryScreen(){const screen=document.getElementById("campaignVictoryScreen");if(screen){screen.classList.add("hidden");screen.style.display="none";screen.style.pointerEvents="none"}}
+function hideCampaignVictoryScreen(){setPanelVisibility(document.getElementById("campaignVictoryScreen"),false)}
 function continueIntoEndlessMode(){
  continueCampaignInEndlessMode(state);hideCampaignVictoryScreen();gameOver=false;paused=false;last=performance.now();
  ensureWarCouncilState(state);ensureBonusObjectiveState(state);prepareSiegePhase(state,siegeContext());
@@ -1344,14 +1314,14 @@ function renderVeteranPanel(){
  veteranStatus.textContent=active?`${active.icon} ${active.name} ist dauerhaft aktiv.`:locked?`Noch EXP-Stufe ${VETERAN_UNLOCK_LEVEL} erreichen.`:"Wähle genau einen dauerhaften Veteranenpfad. Diese Entscheidung kann nicht rückgängig gemacht werden.";
  veteranStatus.classList.toggle("locked",locked);
 }
-function openVeteranPanel(entity=selected){
+function openVeteranPanel(entity=selected,options={}){
  if(!entity||!getVeteranOptions(entity).length)return;
- veteranPanelEntity=entity;veteranResumeAfterClose=!paused&&!gameOver;paused=true;state.supportTimer=0;
- renderVeteranPanel();veteranPanel.classList.remove("hidden");veteranPanel.style.display="grid";veteranPanel.style.visibility="visible";veteranPanel.style.pointerEvents="auto";
+ veteranPanelEntity=entity;renderVeteranPanel();
+ openBlockingPanel("veteranPanel",{pauseGame:true,...options});
 }
-function closeVeteranPanel(resume=true){
- if(veteranPanel){veteranPanel.classList.add("hidden");veteranPanel.style.display="none";veteranPanel.style.visibility="hidden";veteranPanel.style.pointerEvents="none"}
- veteranPanelEntity=null;if(resume&&veteranResumeAfterClose&&!gameOver){paused=false;last=performance.now()}veteranResumeAfterClose=false;updateUI();
+function closeVeteranPanel(resume=true,options={}){
+ closeBlockingPanel("veteranPanel",{resume,...options});
+ veteranPanelEntity=null;updateUI();
 }
 function selectVeteranPath(id){
  if(!veteranPanelEntity)return;
@@ -1391,7 +1361,101 @@ function updateUI(){
 
 function buildRequirement(key){return getBuildRequirement(state,key)}
 
-function isPanelVisible(id){const el=document.getElementById(id);return !!(el&&!el.classList.contains("hidden"));}
+const PANEL_IDS=[
+ "testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel",
+ "warCouncilPanel","bonusObjectivePanel","campaignPanel","veteranPanel","enemyInfoOverlay",
+ "pauseMenu","instructionsScreen","repairDecision","commanderCampPanel"
+];
+const PANEL_MESSAGES={
+ testResourcePanel:"Testfenster geschlossen",statsScreen:"Fenster geschlossen",workshopPanel:"Forschung geschlossen",
+ marketPanel:"Markt geschlossen",statueOfferingPanel:"Opfergaben geschlossen",warCouncilPanel:"Kriegsrat geschlossen",
+ bonusObjectivePanel:"Bonusziel geschlossen",campaignPanel:"Kampagnenübersicht geschlossen",veteranPanel:"Veteranenwahl geschlossen",
+ enemyInfoOverlay:"Gegnerinfo geschlossen",pauseMenu:"Pause geschlossen",instructionsScreen:"Anleitung geschlossen",
+ repairDecision:"Hinweis geschlossen",commanderCampPanel:"Kommandantenlager geschlossen"
+};
+const panelPauseBefore=new Map();
+const panelFocusBefore=new Map();
+const panelStack=[];
+let suppressedPanelPopstates=0;
+
+function isPanelVisible(id){
+ const el=document.getElementById(id);
+ return Boolean(el&&!el.classList.contains("hidden"));
+}
+function setPanelVisibility(panel,visible){
+ if(!panel)return;
+ panel.style.removeProperty("display");
+ panel.style.removeProperty("visibility");
+ panel.style.removeProperty("pointer-events");
+ panel.classList.toggle("hidden",!visible);
+ panel.classList.toggle("fcPanelActive",visible);
+ panel.setAttribute("aria-hidden",visible?"false":"true");
+ panel.inert=!visible;
+}
+function removePanelFromStack(id){
+ for(let index=panelStack.length-1;index>=0;index--)if(panelStack[index]===id)panelStack.splice(index,1);
+}
+function visiblePausingPanelExists(excludeId=""){
+ return panelStack.some(id=>id!==excludeId&&isPanelVisible(id)&&panelPauseBefore.has(id));
+}
+function syncModalDocumentState(){
+ const active=panelStack.some(isPanelVisible);
+ document.body.classList.toggle("fcModalOpen",active);
+}
+function panelHistoryState(id){
+ return {...(history.state&&typeof history.state==="object"?history.state:{}),fcPanelId:id,fcPanelVersion:GAME_VERSION};
+}
+function focusPanel(panel){
+ requestAnimationFrame(()=>{
+  if(!panel||panel.classList.contains("hidden"))return;
+  const target=panel.querySelector('[autofocus],button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])');
+  target?.focus({preventScroll:true});
+ });
+}
+function openBlockingPanel(id,{pauseGame=true,fromPanel="",historyMode="push"}={}){
+ const panel=document.getElementById(id);if(!panel)return null;
+ closeMoreNav();closeTacticsMenu();
+ let transferredPause,transferredFocus;
+ if(fromPanel&&fromPanel!==id&&isPanelVisible(fromPanel)){
+  transferredPause=panelPauseBefore.get(fromPanel);transferredFocus=panelFocusBefore.get(fromPanel);
+  setPanelVisibility(document.getElementById(fromPanel),false);
+  panelPauseBefore.delete(fromPanel);panelFocusBefore.delete(fromPanel);removePanelFromStack(fromPanel);
+  historyMode=historyMode==="push"?"replace":historyMode;
+ }
+ if(!isPanelVisible(id)){
+  panelFocusBefore.set(id,transferredFocus||(document.activeElement instanceof HTMLElement?document.activeElement:null));
+  if(pauseGame&&!panelPauseBefore.has(id))panelPauseBefore.set(id,typeof transferredPause==="boolean"?transferredPause:paused);
+ }
+ if(pauseGame){paused=true;state.supportTimer=0;last=performance.now()}
+ setPanelVisibility(panel,true);removePanelFromStack(id);panelStack.push(id);syncModalDocumentState();focusPanel(panel);
+ if(historyMode!=="none"){
+  try{
+   if(historyMode==="replace"||history.state?.fcPanelId===fromPanel)history.replaceState(panelHistoryState(id),"");
+   else if(history.state?.fcPanelId!==id)history.pushState(panelHistoryState(id),"");
+  }catch{}
+ }
+ return panel;
+}
+function closeBlockingPanel(id,{resume=true,fromHistory=false,skipHistory=false}={}){
+ const panel=document.getElementById(id);if(!panel)return false;
+ const wasVisible=isPanelVisible(id);
+ const pausedBefore=panelPauseBefore.get(id);
+ setPanelVisibility(panel,false);panelPauseBefore.delete(id);removePanelFromStack(id);syncModalDocumentState();
+ if(resume&&typeof pausedBefore==="boolean"&&!gameOver&&!visiblePausingPanelExists(id)){
+  paused=pausedBefore;last=performance.now();
+ }
+ const focusTarget=panelFocusBefore.get(id);panelFocusBefore.delete(id);
+ if(focusTarget?.isConnected)requestAnimationFrame(()=>focusTarget.focus({preventScroll:true}));
+ if(wasVisible&&!fromHistory&&!skipHistory&&history.state?.fcPanelId===id){
+  suppressedPanelPopstates++;
+  try{history.back()}catch{suppressedPanelPopstates=Math.max(0,suppressedPanelPopstates-1)}
+ }
+ return wasVisible;
+}
+function topBlockingPanelId(){
+ for(let index=panelStack.length-1;index>=0;index--){const id=panelStack[index];if(isPanelVisible(id))return id}
+ return PANEL_IDS.find(isPanelVisible)||"";
+}
 function isMoreNavOpen(){return Boolean(moreNavMenu&&!moreNavMenu.classList.contains("hidden")&&window.matchMedia("(max-width: 700px)").matches)}
 function closeMoreNav(){
  if(!moreNavMenu||!navMore)return;
@@ -1439,39 +1503,45 @@ function updateTacticsDock(){
  }
 }
 function isBlockingPanelOpen(){
- return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","bonusObjectivePanel","campaignPanel","veteranPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision","campaignVictoryScreen","commanderCampPanel"].some(isPanelVisible);
+ return PANEL_IDS.some(isPanelVisible)||isPanelVisible("campaignVictoryScreen")||isPanelVisible("endScreen");
 }
-function closeTopBlockingPanel(){
+function closePanelById(id,options={}){
+ switch(id){
+  case "testResourcePanel":closeTestResourcePanel(options);break;
+  case "enemyInfoOverlay":closeEnemyInfo(true,options);break;
+  case "marketPanel":closeMarketPanel(true,options);break;
+  case "statueOfferingPanel":closeStatueOfferingPanel(true,options);break;
+  case "warCouncilPanel":closeWarCouncilPanel(true,options);break;
+  case "bonusObjectivePanel":closeBonusObjectivePanel(true,options);break;
+  case "commanderCampPanel":closeCommanderCamp(options);break;
+  case "campaignPanel":closeCampaignPanel(true,options);break;
+  case "veteranPanel":closeVeteranPanel(true,options);break;
+  case "workshopPanel":closeWorkshopPanel(true,options);break;
+  case "statsScreen":closeStats(options);break;
+  case "pauseMenu":hidePauseMenu(true,options);break;
+  case "instructionsScreen":returnToTitle(options);break;
+  case "repairDecision":hideRepairDecision(options);break;
+  default:return false;
+ }
+ return true;
+}
+function closeTopBlockingPanel(options={}){
  if(isTacticsMenuOpen()){closeTacticsMenu();return "Taktikmenü geschlossen"}
  if(isMoreNavOpen()){closeMoreNav();return "Mehr-Menü geschlossen"}
- if(isPanelVisible("testResourcePanel")){closeTestResourcePanel();return "Testfenster geschlossen"}
- if(isPanelVisible("enemyInfoOverlay")){closeEnemyInfo(true);return "Fenster geschlossen"}
- if(isPanelVisible("marketPanel")){closeMarketPanel();return "Fenster geschlossen"}
- if(isPanelVisible("statueOfferingPanel")){closeStatueOfferingPanel(true);return "Opfergaben geschlossen"}
- if(isPanelVisible("warCouncilPanel")){closeWarCouncilPanel(true);return "Kriegsrat geschlossen"}
- if(isPanelVisible("bonusObjectivePanel")){closeBonusObjectivePanel(true);return "Bonusziel geschlossen"}
- if(isPanelVisible("commanderCampPanel")){closeCommanderCamp();return "Kommandantenlager geschlossen"}
- if(isPanelVisible("campaignPanel")){closeCampaignPanel(true);return "Kampagnenübersicht geschlossen"}
- if(isPanelVisible("veteranPanel")){closeVeteranPanel(true);return "Veteranenwahl geschlossen"}
- if(isPanelVisible("workshopPanel")){closeWorkshopPanel(true);return "Fenster geschlossen"}
- if(isPanelVisible("statsScreen")){closeStats();return "Fenster geschlossen"}
- if(isPanelVisible("pauseMenu")){hidePauseMenu(true);return "Pause geschlossen"}
- if(isPanelVisible("instructionsScreen")){returnToTitle();return "Anleitung geschlossen"}
- if(isPanelVisible("repairDecision")){hideRepairDecision();return "Hinweis geschlossen"}
- return "";
+ const id=topBlockingPanelId();
+ if(!id)return "";
+ closePanelById(id,options);
+ return PANEL_MESSAGES[id]||"Fenster geschlossen";
 }
 function closeAllBlockingPanels(){
  closeMoreNav();closeTacticsMenu();
- hideRepairDecision();
- ["statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","bonusObjectivePanel","campaignPanel","veteranPanel","enemyInfoOverlay","pauseMenu"].forEach(id=>{
-  const el=document.getElementById(id);
-  if(!el||!el.classList.contains("hidden"))return;
-  el.style.removeProperty("display");
-  el.style.removeProperty("visibility");
-  el.style.pointerEvents="none";
- });
- const ins=document.getElementById("instructionsScreen");
- if(ins&&ins.classList.contains("hidden"))ins.style.pointerEvents="none";
+ for(const id of [...panelStack].reverse())closeBlockingPanel(id,{resume:false,skipHistory:true});
+ for(const id of PANEL_IDS){
+  const panel=document.getElementById(id);
+  if(panel&&!panel.classList.contains("hidden"))setPanelVisibility(panel,false);
+ }
+ panelPauseBefore.clear();panelFocusBefore.clear();panelStack.length=0;suppressedPanelPopstates=0;syncModalDocumentState();
+ if(history.state?.fcPanelId){try{const next={...history.state};delete next.fcPanelId;history.replaceState(next,"")}catch{}}
 }
 function cancelActiveAction(source=""){
  const panelMessage=closeTopBlockingPanel();
@@ -1958,7 +2028,7 @@ function updateCraftsmen(dt){
   }
  }
 }
-function hideRepairDecision(){const p=document.getElementById("repairDecision");if(p){p.classList.add("hidden");p.style.pointerEvents="none"}}
+function hideRepairDecision(options={}){closeBlockingPanel("repairDecision",{resume:false,...options})}
 
 function update(dt){
  if(gameOver)return;
@@ -2404,9 +2474,10 @@ function openEnemyInfo(e){
  document.getElementById("enemyHpText").textContent=`Leben ${Math.max(0,Math.ceil(e.hp))} / ${Math.ceil(e.maxHp)}`;document.getElementById("enemyHpFill").style.width=`${Math.max(0,Math.min(100,e.hp/e.maxHp*100))}%`;
  const activeAbility=e.type==="berserker"&&enemyIsEnraged(e)?"Raserei aktiv":e.bossAura?"Häuptlingsaura aktiv":e.shieldProtected?"Schilddeckung aktiv":(e.moraleBreakTime||0)>0?"Moral gebrochen":codex.ability||codex.strength||"–";
  document.getElementById("enemyStatsGrid").innerHTML=`<div class="enemyStatTile"><span>Schaden</span><b>⚔ ${Math.round(enemyAttackDamage(e))}</b></div><div class="enemyStatTile"><span>Rüstung</span><b>🛡 ${armorLabel(getEffectiveEnemyArmor(e))}</b></div><div class="enemyStatTile"><span>Geschwindigkeit</span><b>➤ ${speedLabel(getEffectiveEnemySpeed(e))}</b></div><div class="enemyStatTile"><span>Angriffstakt</span><b>⏱ ${enemyAttackInterval(e).toFixed(2)} s</b></div><div class="enemyStatTile"><span>Fähigkeit</span><b>${activeAbility}</b></div><div class="enemyStatTile"><span>Empfohlener Konter</span><b>${codex.weakness||"–"}</b></div>`;
- document.getElementById("enemyInfoLore").innerHTML=`${codex.lore||"Krieger der Eisenclans."}<br><br><b>Konter:</b> ${codex.counter||codex.weakness||"–"}`;overlay.classList.remove("hidden");paused=true;last=performance.now();
+ document.getElementById("enemyInfoLore").innerHTML=`${codex.lore||"Krieger der Eisenclans."}<br><br><b>Konter:</b> ${codex.counter||codex.weakness||"–"}`;
+ openBlockingPanel("enemyInfoOverlay",{pauseGame:true});
 }
-function closeEnemyInfo(resume=true){const o=document.getElementById("enemyInfoOverlay");if(o)o.classList.add("hidden");if(resume&&!gameOver){paused=false;last=performance.now()}}
+function closeEnemyInfo(resume=true,options={}){closeBlockingPanel("enemyInfoOverlay",{resume,...options})}
 function pickAt(x,y){
  let best=null,bd=34;
  for(const u of state.units){const d=Math.hypot(x-u.x,y-u.y);if(d<Math.max(24,bd)){bd=d;best=u}}
@@ -2493,28 +2564,17 @@ function worldTap(x,y){
  selected=null;unitCommandMode=null;
 }
 
-function showPauseMenu(){
- const menu=document.getElementById("pauseMenu"),confirmBox=document.getElementById("pauseRestartConfirm");
- if(!menu)return;
- paused=true;state.supportTimer=0;last=performance.now();
+function showPauseMenu(options={}){
+ const confirmBox=document.getElementById("pauseRestartConfirm");
  if(confirmBox)confirmBox.classList.add("hidden");
- menu.style.removeProperty("display");
- menu.style.removeProperty("visibility");
- menu.style.pointerEvents="auto";
- menu.classList.remove("hidden");
- refreshSaveStatus();
- updateUI();
+ openBlockingPanel("pauseMenu",{pauseGame:true,...options});
+ refreshSaveStatus();updateUI();
 }
-function hidePauseMenu(resume=false){
- const menu=document.getElementById("pauseMenu"),confirmBox=document.getElementById("pauseRestartConfirm");
- if(menu){
-  menu.classList.add("hidden");
-  menu.style.removeProperty("display");
-  menu.style.removeProperty("visibility");
-  menu.style.pointerEvents="none";
- }
+function hidePauseMenu(resume=false,options={}){
+ const confirmBox=document.getElementById("pauseRestartConfirm");
  if(confirmBox)confirmBox.classList.add("hidden");
- if(resume&&!gameOver){paused=false;last=performance.now();showToast("Spiel fortgesetzt")}
+ closeBlockingPanel("pauseMenu",{resume,...options});
+ if(resume&&!gameOver)showToast("Spiel fortgesetzt");
  updateUI();
 }
 function showEndScreen(){
@@ -2523,13 +2583,13 @@ function showEndScreen(){
  if(!screen||!box)return;
  const completed=Math.max(0,state.wave-1);
  box.innerHTML=`<div class="endStat"><span>Wellen geschafft</span><b>${completed}</b></div><div class="endStat"><span>Gegner besiegt</span><b>${state.kills}</b></div><div class="endStat"><span>Reparierte HP</span><b>${Math.round(state.repairedHp||0)}</b></div><div class="endStat"><span>Gebäude erhalten</span><b>${state.buildings.length}</b></div><div class="endStat"><span>Gold übrig</span><b>${Math.floor(state.gold)}</b></div><div class="endStat"><span>Holz übrig</span><b>${Math.floor(state.wood)}</b></div>`;
- screen.classList.remove("hidden");screen.style.pointerEvents="auto";
+ setPanelVisibility(screen,true);
 }
-function hideEndScreen(){const screen=document.getElementById("endScreen");if(screen){screen.classList.add("hidden");screen.style.pointerEvents="none"}}
+function hideEndScreen(){setPanelVisibility(document.getElementById("endScreen"),false)}
 function reset(){
  const startBonuses=getActiveStartBonuses(worldMapProfile);
  state.gold=210+startBonuses.gold;state.wood=105+startBonuses.wood;state.stone=startBonuses.stone;state.researchPoints=startBonuses.researchPoints;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0,stone_building:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.nextEnemyId=0;state.nextResidentId=0;state.population=createPopulationState();state.heroOffering=startBonuses.heroOffering;state.heroSummoned=false;state.heroFallen=false;state.warCouncil=createWarCouncilState(1);state.bonusObjective=null;state.campaign=createCampaignState(1);state.worldRun=createWorldRunStats();
- state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.residents=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision();hideEndScreen();hideCampaignVictoryScreen();hidePauseMenu(false);closeEnemyInfo(false);for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeOuterWallSegments(state.outerWalls,{built:false});initializeOuterGates(state.outerGates,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
+ state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.residents=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision({skipHistory:true});hideEndScreen();hideCampaignVictoryScreen();hidePauseMenu(false,{skipHistory:true});closeEnemyInfo(false,{skipHistory:true});closeAllBlockingPanels();for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeOuterWallSegments(state.outerWalls,{built:false});initializeOuterGates(state.outerGates,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
  selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();syncWorldMapFromCurrentState();showToast("Neue Belagerung beginnt");
 }
 
@@ -2539,7 +2599,6 @@ document.querySelectorAll(".buildInfoBtn").forEach(info=>{
  info.addEventListener("click",open);info.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")open(e)});
 });
 document.getElementById("enemyInfoClose").addEventListener("click",()=>closeEnemyInfo(true));
-document.getElementById("enemyInfoOverlay").addEventListener("click",e=>{if(e.target.id==="enemyInfoOverlay")closeEnemyInfo(true)});
 renderBestiary();refreshSaveStatus();renderCampaignWorldMap();
 window.setInterval(()=>saveGame(true),AUTOSAVE_INTERVAL_MS);
 let lastBackgroundSaveAt=0;
@@ -2551,25 +2610,55 @@ function saveBeforeBackground(){
 }
 document.addEventListener("visibilitychange",()=>{if(document.hidden)saveBeforeBackground()});
 window.addEventListener("pagehide",saveBeforeBackground);
-document.getElementById("marketTradeBtn").addEventListener("click",openMarketPanel);
-document.getElementById("statueOfferingBtn").addEventListener("click",openStatueOfferingPanel);
+
+for(const id of PANEL_IDS){
+ const panel=document.getElementById(id);if(!panel)continue;
+ panel.classList.add("fcPanel");panel.tabIndex=-1;
+ if(!panel.hasAttribute("role"))panel.setAttribute("role","dialog");
+ panel.setAttribute("aria-modal","true");
+ setPanelVisibility(panel,isPanelVisible(id));
+ panel.addEventListener("click",event=>{
+  if(event.target===panel)closePanelById(id);
+ });
+}
+document.addEventListener("keydown",event=>{
+ if(event.key==="Escape"){
+  const message=closeTopBlockingPanel();
+  if(message){event.preventDefault();event.stopPropagation();showToast(message)}
+  return;
+ }
+ if(event.key!=="Tab")return;
+ const id=topBlockingPanelId();if(!id)return;
+ const panel=document.getElementById(id);if(!panel)return;
+ const focusable=[...panel.querySelectorAll('button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(el=>!el.hidden&&el.offsetParent!==null);
+ if(!focusable.length){event.preventDefault();panel.focus();return}
+ const first=focusable[0],lastFocusable=focusable[focusable.length-1];
+ if(event.shiftKey&&document.activeElement===first){event.preventDefault();lastFocusable.focus()}
+ else if(!event.shiftKey&&document.activeElement===lastFocusable){event.preventDefault();first.focus()}
+});
+window.addEventListener("popstate",()=>{
+ if(suppressedPanelPopstates>0){suppressedPanelPopstates--;return}
+ const id=topBlockingPanelId();
+ if(id){closePanelById(id,{fromHistory:true});showToast(PANEL_MESSAGES[id]||"Fenster geschlossen")}
+});
+document.getElementById("marketTradeBtn").addEventListener("click",()=>openMarketPanel());
+document.getElementById("statueOfferingBtn").addEventListener("click",()=>openStatueOfferingPanel());
 ui.tacticsMenuBtn?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();if(isTacticsMenuOpen())closeTacticsMenu();else openTacticsMenu()});
 ui.tacticsMenu?.addEventListener("click",event=>event.stopPropagation());
-ui.warCouncilBtn.addEventListener("click",openWarCouncilPanel);
+ui.warCouncilBtn.addEventListener("click",()=>openWarCouncilPanel());
 document.getElementById("warCouncilCloseBtn").addEventListener("click",()=>closeWarCouncilPanel(true));
-document.getElementById("warCouncilPanel").addEventListener("click",e=>{const command=e.target.closest("[data-war-command]");if(command){e.preventDefault();chooseWarCouncilCommand(command.dataset.warCommand);return}if(e.target.id==="warCouncilPanel")closeWarCouncilPanel(true)});
-ui.bonusObjectiveBtn.addEventListener("click",openBonusObjectivePanel);
+document.getElementById("warCouncilPanel").addEventListener("click",e=>{const command=e.target.closest("[data-war-command]");if(command){e.preventDefault();chooseWarCouncilCommand(command.dataset.warCommand)}});
+ui.bonusObjectiveBtn.addEventListener("click",()=>openBonusObjectivePanel());
 document.getElementById("bonusObjectiveCloseBtn").addEventListener("click",()=>closeBonusObjectivePanel(true));
-document.getElementById("bonusObjectivePanel").addEventListener("click",e=>{if(e.target.id==="bonusObjectivePanel")closeBonusObjectivePanel(true)});
-ui.campaignBtn.addEventListener("click",openCampaignPanel);
+ui.campaignBtn.addEventListener("click",()=>openCampaignPanel());
 document.getElementById("campaignPanelCloseBtn").addEventListener("click",()=>closeCampaignPanel(true));
-document.getElementById("campaignPanel").addEventListener("click",e=>{if(e.target.id==="campaignPanel")closeCampaignPanel(true)});
 document.getElementById("campaignContinueEndlessBtn").addEventListener("click",continueIntoEndlessMode);
 document.getElementById("campaignFinishBtn").addEventListener("click",completeCampaignRun);
 document.getElementById("campaignNewGameBtn").addEventListener("click",reset);
 document.getElementById("veteranCloseBtn").addEventListener("click",()=>closeVeteranPanel(true));
-document.getElementById("veteranPanel").addEventListener("click",e=>{const choice=e.target.closest("[data-veteran-choice]");if(choice){e.preventDefault();selectVeteranPath(choice.dataset.veteranChoice);return}if(e.target.id==="veteranPanel")closeVeteranPanel(true)});
-document.getElementById("marketCloseBtn").addEventListener("click",closeMarketPanel);
+document.getElementById("veteranPanel").addEventListener("click",e=>{const choice=e.target.closest("[data-veteran-choice]");if(choice){e.preventDefault();selectVeteranPath(choice.dataset.veteranChoice)}});
+document.getElementById("marketCloseBtn").addEventListener("click",()=>closeMarketPanel(true));
+document.getElementById("marketCloseIconBtn").addEventListener("click",()=>closeMarketPanel(true));
 document.getElementById("marketTradeGrid").addEventListener("click",e=>{const b=e.target.closest("[data-trade]");if(b)executeMarketTrade(b.dataset.trade,Number(b.dataset.amount))});
 
 ui.start.onclick=startWave;ui.pause.onclick=()=>{
@@ -2582,6 +2671,7 @@ ui.start.onclick=startWave;ui.pause.onclick=()=>{
 document.getElementById("repairInfoCloseBtn").onclick=e=>{e.preventDefault();e.stopPropagation();hideRepairDecision();last=performance.now();updateUI()};
 document.getElementById("restartGameBtn").onclick=e=>{e.preventDefault();e.stopPropagation();reset()};
 document.getElementById("resumeGameBtn").onclick=e=>{e.preventDefault();e.stopPropagation();hidePauseMenu(true)};
+document.getElementById("pauseCloseBtn").onclick=e=>{e.preventDefault();e.stopPropagation();hidePauseMenu(true)};
 document.getElementById("saveGameBtn").onclick=e=>{e.preventDefault();e.stopPropagation();saveGame(false)};
 document.getElementById("loadGameBtn").onclick=e=>{e.preventDefault();e.stopPropagation();loadGame()};
 document.getElementById("returnCampaignMapBtn").onclick=e=>{e.preventDefault();e.stopPropagation();openCampaignMap(true)};
@@ -2663,7 +2753,6 @@ const veteranEntitySummary=document.getElementById("veteranEntitySummary");
 const veteranOptionGrid=document.getElementById("veteranOptionGrid");
 const veteranStatus=document.getElementById("veteranStatus");
 let veteranPanelEntity=null;
-let veteranResumeAfterClose=false;
 let selectionHudCollapsed=false;
 let rangeDisplayMode=0; // 0=Aus, 1=Auswahl, 2=Alle
 
@@ -2887,22 +2976,16 @@ function populationDetailsHtml(){
  <div class="populationColumns"><div class="statsSection"><h3>🧑‍🏭 Zivile Berufe</h3>${jobCounts}</div><div class="statsSection"><h3>⚔️ Militär</h3><div class="populationMiniRow"><span>🏹 Bogenschützen</span><b>${soldierCount}</b></div><div class="populationMiniRow"><span>🛡️ Burgwachen</span><b>${guardCount}</b></div><div class="populationMiniRow"><span>👑 Andreas</span><b>${heroCount}</b></div><div class="statsHint">Militäreinheiten werden getrennt von den Bewohnern geführt und belegen keine Arbeitsplätze.</div></div></div>
  ${displaced?`<div class="statsHint warning">${displaced} Bewohner sind nach der Zerstörung ihres Arbeitsplatzes geflohen. Nach Ende der Welle kehren sie als freie Bewohner zurück.</div>`:""}`;
 }
-function openMarketPanel(){
- if(!selected||selected.kind!=="building"||selected.key!=="market")return;
- const panel=document.getElementById("marketPanel"),grid=document.getElementById("marketTradeGrid");
- if(!panel||!grid)return;
- if(panel.classList.contains("hidden"))marketResumeAfterClose=!paused&&!gameOver;
+function openMarketPanel(options={}){
+ if(!selected||selected.kind!=="building"||selected.key!=="market")return showToast("Marktplatz auswählen");
+ const grid=document.getElementById("marketTradeGrid");if(!grid)return;
  document.getElementById("marketGoldValue").textContent=Math.floor(state.gold);document.getElementById("marketWoodValue").textContent=Math.floor(state.wood);
  document.getElementById("marketRateText").textContent=`Stufe ${selected.level}: ${marketLossPercent(selected)}% Handelsabschlag. Goldproduktion ${supportProductionPerSecond(selected).toFixed(2)}/Sek. im Kampf.`;
  grid.innerHTML=[25,50,100].map(a=>`<button type="button" data-trade="wood-gold" data-amount="${a}">🪵 ${a} → 🪙 ${marketOutput(a,selected)}</button><button type="button" data-trade="gold-wood" data-amount="${a}">🪙 ${a} → 🪵 ${marketOutput(a,selected)}</button>`).join("");
- panel.classList.remove("hidden");panel.style.display="grid";panel.style.visibility="visible";panel.style.pointerEvents="auto";
- paused=true;state.supportTimer=0;last=performance.now();updateUI();
+ openBlockingPanel("marketPanel",{pauseGame:true,...options});updateUI();
 }
-function closeMarketPanel(resume=true){
- const panel=document.getElementById("marketPanel");
- if(panel){panel.classList.add("hidden");panel.style.display="none";panel.style.visibility="hidden";panel.style.pointerEvents="none"}
- if(resume&&marketResumeAfterClose&&!gameOver)paused=false;
- marketResumeAfterClose=false;last=performance.now();updateUI();
+function closeMarketPanel(resume=true,options={}){
+ closeBlockingPanel("marketPanel",{resume,...options});updateUI();
 }
 function executeMarketTrade(type,amount){
  if(!selected||selected.key!=="market")return;const out=marketOutput(amount,selected);
@@ -2910,7 +2993,7 @@ function executeMarketTrade(type,amount){
  else{if(state.gold<amount)return showToast("Nicht genug Gold");state.gold-=amount;state.wood+=out;showToast(`${amount} Gold gegen ${out} Holz getauscht`)}
  openMarketPanel();updateUI();
 }
-function prepareStatsScreen(){hideRepairDecision();statsScreen.classList.remove("hidden");statsScreen.style.display="flex";statsScreen.style.pointerEvents="auto";statsScreen.style.visibility="visible"}
+function prepareStatsScreen(options={}){hideRepairDecision({skipHistory:true});openBlockingPanel("statsScreen",{pauseGame:true,...options})}
 function openPopulationDetails(){prepareStatsScreen();statsTitle.textContent="Bevölkerung & Arbeitsverteilung";statsContent.innerHTML=populationDetailsHtml()}
 function refreshPopulationDetails(){statsContent.innerHTML=populationDetailsHtml();updateUI()}
 function changePopulationGroup(key,delta){
@@ -2933,12 +3016,8 @@ function redistributePopulation(){
  if(mode==="manual")return showToast("Wähle zuerst einen automatischen Verteilungsmodus");
  if(autoDistributeResidents(state,mode,{assignCraftsmen,showToast})){saveGame(true);refreshPopulationDetails()}
 }
-function openTestResourcePanel(){
- testResourcePanel.classList.remove("hidden");
-}
-function closeTestResourcePanel(){
- testResourcePanel.classList.add("hidden");
-}
+function openTestResourcePanel(options={}){openBlockingPanel("testResourcePanel",{pauseGame:true,...options})}
+function closeTestResourcePanel(options={}){closeBlockingPanel("testResourcePanel",{resume:true,...options})}
 function grantTestResource(type){
  const grants={
   gold:{label:"Gold",icon:"🪙",apply:()=>state.gold+=500},
@@ -3056,7 +3135,7 @@ function openStats(target=selected){
  else if(target&&(target.kind==="gate"||target.kind==="wall-section"||target.kind==="wall")&&target.maxHp){statsTitle.textContent=target.kind==="gate"?"Torwerte":target.ring==="inner"?"Innerer Mauerring":"Palisadenwerte";statsContent.innerHTML=wallStatsHtml(target)}
  else{statsTitle.textContent="Festungsstatistiken";statsContent.innerHTML=overviewStatsHtml()}
 }
-function closeStats(){statsScreen.classList.add("hidden");statsScreen.style.pointerEvents="none";statsScreen.style.visibility="hidden";statsScreen.style.display="none";last=performance.now();updateUI()}
+function closeStats(options={}){closeBlockingPanel("statsScreen",{resume:true,...options});updateUI()}
 
 const BUILD_TRAY_SCROLL_KEY="fortressCommander.buildTrayScroll.v1";
 let activeBuildTab="towers";
@@ -3137,12 +3216,11 @@ buildTray?.addEventListener("scroll",()=>{rememberBuildTrayScroll();updateBuildT
 buildTrayPrev?.addEventListener("click",()=>buildTray.scrollBy({left:-Math.max(170,buildTray.clientWidth*.72),behavior:"smooth"}));
 buildTrayNext?.addEventListener("click",()=>buildTray.scrollBy({left:Math.max(170,buildTray.clientWidth*.72),behavior:"smooth"}));
 window.addEventListener("resize",()=>requestAnimationFrame(updateBuildTrayIndicators));
-statsCloseBtn.addEventListener("click",closeStats);
-testResourceCloseBtn.addEventListener("click",closeTestResourcePanel);
+statsCloseBtn.addEventListener("click",()=>closeStats());
+testResourceCloseBtn.addEventListener("click",()=>closeTestResourcePanel());
 testResourcePanel.addEventListener("click",e=>{
  const grant=e.target.closest("[data-test-resource]");
  if(grant){e.preventDefault();grantTestResource(grant.dataset.testResource);return}
- if(e.target===testResourcePanel)closeTestResourcePanel();
 });
 ui.resourceOverviewBtn.addEventListener("click",openResourceDetails);
 ui.populationOverviewBtn.addEventListener("click",openPopulationDetails);
@@ -3153,7 +3231,7 @@ statsContent.addEventListener("click",e=>{
  if(buyUpgrade){e.preventDefault();e.stopPropagation();const entity=findUpgradeEntity(buyUpgrade.dataset.upgradeBuy);if(entity?.kind==="building"){selected=entity;upgradeSelected();updateUI();statsContent.innerHTML=upgradeCenterHtml()}return}
  const focusUpgrade=e.target.closest("[data-upgrade-focus]");
  if(focusUpgrade){e.preventDefault();e.stopPropagation();const entity=findUpgradeEntity(focusUpgrade.dataset.upgradeFocus);if(entity){selected=entity;closeStats();camX=entity.x;camY=entity.y;clampCamera();updateUI();showToast(`${upgradeEntityName(entity)} ausgewählt`)}return}
- const openWorkshop=e.target.closest("[data-open-workshop]");if(openWorkshop){e.preventDefault();e.stopPropagation();closeStats();openWorkshopPanel();return}
+ const openWorkshop=e.target.closest("[data-open-workshop]");if(openWorkshop){e.preventDefault();e.stopPropagation();openWorkshopPanel({fromPanel:"statsScreen"});return}
  const popMode=e.target.closest("[data-pop-mode]");
  if(popMode){e.preventDefault();e.stopPropagation();choosePopulationMode(popMode.dataset.popMode);return}
  const popReserve=e.target.closest("[data-pop-reserve]");
@@ -3167,15 +3245,14 @@ statsContent.addEventListener("click",e=>{
  const repair=e.target.closest("[data-building-repair]");
  if(repair){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(repair.dataset.buildingRepair));if(b){selected=b;toggleCraftsmanWork();openStats(b)}return}
  const offering=e.target.closest("[data-building-offering]");
- if(offering){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(offering.dataset.buildingOffering));if(b){selected=b;closeStats();openStatueOfferingPanel()}return}
+ if(offering){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(offering.dataset.buildingOffering));if(b){selected=b;openStatueOfferingPanel({fromPanel:"statsScreen"})}return}
  const market=e.target.closest("[data-building-market]");
- if(market){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(market.dataset.buildingMarket));if(b){selected=b;closeStats();openMarketPanel()}return}
+ if(market){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(market.dataset.buildingMarket));if(b){selected=b;openMarketPanel({fromPanel:"statsScreen"})}return}
  const stoneUpgradeButton=e.target.closest("[data-building-stone-upgrade]");
  if(stoneUpgradeButton){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(stoneUpgradeButton.dataset.buildingStoneUpgrade));if(b){selected=b;upgradeSelected();openStats(b);updateUI();saveGame(true)}return}
  const upgrade=e.target.closest("[data-building-upgrade]");
  if(upgrade){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(upgrade.dataset.buildingUpgrade));if(b){selected=b;upgradeSelected();openStats(b);updateUI()}return}
 });
-statsScreen.addEventListener("click",e=>{if(e.target===statsScreen)closeStats()});
 selectionCollapseBtn?.addEventListener("click",event=>{
  event.preventDefault();event.stopPropagation();
  if(!selected||selected.kind!=="unit")return;
@@ -3294,7 +3371,7 @@ selectionTalentBar.addEventListener("click",e=>{
 });
 statsContent.addEventListener("click",e=>{
  const veteran=e.target.closest("[data-open-veteran]");
- if(veteran&&selected){e.preventDefault();e.stopPropagation();closeStats();openVeteranPanel(selected);return}
+ if(veteran&&selected){e.preventDefault();e.stopPropagation();openVeteranPanel(selected,{fromPanel:"statsScreen"});return}
  const row=e.target.closest("[data-unit-stat]");if(!row)return;const u=state.units.find(x=>x.uid===Number(row.dataset.unitStat));if(u){selected=u;openStats(u)}
 });
 navMenu.addEventListener("click",()=>{

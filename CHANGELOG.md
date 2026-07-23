@@ -1,3 +1,15 @@
+## v1.17.13 – Fenster- & Bedienungs-Stabilität
+
+- Zentrale Fensterverwaltung für Pause, Forschung, Werte/Bewohner, Markt, Opfergaben, Kriegsrat, Bonusziel, Kampagne, Veteranenwahl, Gegnerinfo, Anleitung, Testressourcen und Kommandantenlager eingeführt.
+- Alle registrierten Fenster bereinigen ihre Sichtbarkeit über dieselbe Funktion; widersprüchliche Inline-Werte können die `hidden`-Klasse nicht mehr überstimmen.
+- Escape-Taste, Hintergrundklick und Android-Zurück schließen jeweils das oberste bedienbare Fenster.
+- Fokusfalle und Fokuswiederherstellung für Tastaturbedienung ergänzt.
+- Pausenzustand wird pro Fenster gespeichert und bei verschachtelten Fenstern sowie Übergängen zwischen Dialogen korrekt weitergegeben.
+- Durchklicken auf die Spielfläche oder Kampagnenkarte hinter einem Dialog wird blockiert.
+- Zusätzliche X-Schaltflächen für Pause und Marktplatz ergänzt.
+- Abhängigkeitsfreier Node-Prüflauf `tools/validate-panels.mjs` für alle 14 registrierten Dialoge ergänzt.
+- Anleitung, README, Startbildschirm und Versionsangaben auf v1.17.13 aktualisiert.
+
 ## v1.17.12 – Forschungsfenster-Hotfix
 
 - Fehler behoben, durch den das Forschungsfenster trotz gesetzter `hidden`-Klasse sichtbar blieb.

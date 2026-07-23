@@ -1,3 +1,16 @@
+## v1.17.13 – Fenster- & Bedienungs-Stabilität
+
+- Öffnen, Schließen, Fokus, Sichtbarkeit und Pausenzustand aller wichtigen Dialogfenster werden zentral gesteuert.
+- Direkte Inline-Werte für `display`, `visibility` und `pointer-events` wurden aus den Fensterfunktionen entfernt.
+- Fenster lassen sich einheitlich über Schließen-Knopf, dunklen Hintergrund und Escape schließen.
+- Die Android-Zurück-Taste schließt zuerst das oberste geöffnete Fenster, bevor die Seite verlassen wird.
+- Der vorherige Pausenzustand wird auch bei bereits pausierten Partien und bei Wechseln zwischen Werte-, Forschungs-, Markt-, Opfergaben- und Veteranenfenstern korrekt übernommen.
+- Fokus bleibt innerhalb des aktiven Fensters und kehrt nach dem Schließen zum vorherigen Bedienelement zurück.
+- Während eines geöffneten Fensters sind Startmenü, Kampagnenkarte und Spielfläche gegen unbeabsichtigtes Durchklicken gesperrt.
+- Marktplatz und Pausemenü besitzen zusätzlich einen gut erreichbaren X-Knopf.
+- `node tools/validate-panels.mjs` prüft alle registrierten Fenster, Schließen-Zuordnungen und zentralen Sicherheitsfunktionen automatisch.
+- Spielstände aus v1.17.12 bleiben vollständig kompatibel.
+
 ## v1.17.12 – Forschungsfenster-Hotfix
 
 - Das Forschungsfenster entfernt beim Schließen seine Inline-Sichtbarkeitswerte und wird dadurch wieder zuverlässig ausgeblendet.
