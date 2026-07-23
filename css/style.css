@@ -1029,7 +1029,7 @@ header>#startWaveBtn{grid-column:4!important;width:100%!important;height:43px!im
 }
 
 
-/* v1.17.6 – Mobile Ruhe, Marktplatz-Fix & Abstandsschützen */
+/* v1.17.7 – Mobile Ruhe, Marktplatz-Fix & Abstandsschützen */
 :root{--app-width:100vw}
 @media(max-width:700px){
  html{width:100%;max-width:100%;min-width:0;overscroll-behavior-x:none}

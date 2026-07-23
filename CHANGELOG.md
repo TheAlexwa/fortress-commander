@@ -1,12 +1,10 @@
-## v1.17.6 – Mobile Ruhe & Abstandsschützen
+## v1.17.7 – Steingrafiken für Gebäude
 
-- Unbeabsichtigte Canvas-Neuberechnungen bei kleinen mobilen Browser-Resizes entfernt; nur Orientierungswechsel oder Breitenänderungen ab 32 px lösen ein Resize aus.
-- Mobile App-Breite über `--app-width` stabilisiert und horizontales Überrollen des Kopfbereichs unterbunden.
-- Bogenschützen erkennen nahe Nahkämpfer in der Innen- und Kernzone, weichen innerhalb ihres gewählten Rings aus und feuern während des Abstandhaltens weiter.
-- Manuelle Bogenschützenbefehle werden nicht durch die neue Automatik überschrieben.
-- Marktplatzfenster repariert: alte Inline-Werte für `display`, `visibility` und `pointer-events` werden beim Öffnen sicher zurückgesetzt.
-- Der Marktplatz stellt beim Schließen nur dann den Spielablauf wieder her, wenn die Partie vor dem Öffnen lief.
-- README, Startbildschirm und Versionsangaben wurden auf v1.17.6 aktualisiert.
+- Eigene Gebäudegrafiken für alle Steinaufwertungen von Versorgungsgebäuden hinterlegt.
+- Neue Assets eingebunden für **Steinhaus**, **Steinsägewerk**, **Großer Steinbruch**, **Steinwerkstatt**, **Steinmetzhütte** und **Handelshaus**.
+- Die Renderlogik erkennt das Material eines Gebäudes und nutzt bei `stone` automatisch den passenden Steinsprite.
+- Vorhandene Holzgebäude und Spielstände bleiben unverändert kompatibel; nur die Darstellung der aufgewerteten Gebäude wechselt.
+- README, Startbildschirm und Versionsangaben wurden auf v1.17.7 aktualisiert.
 
 ## v1.17.5 – HUD-Ruhe & Versorgungsreserve
 

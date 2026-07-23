@@ -81,11 +81,17 @@ const unitMotionStates=new WeakMap();
 const BUILDING_SPRITE_DEFS = {
   house_1: { src: "assets/buildings/tent-camp.webp", width: 70, height: 70, offsetY: -2 },
   house_2: { src: "assets/buildings/wood-house.webp", width: 63, height: 72, offsetY: -2 },
+  house_stone: { src: "assets/buildings/stone-house.webp", width: 67, height: 76, offsetY: -5 },
   lumber: { src: "assets/buildings/lumber-camp.webp", width: 68, height: 70, offsetY: -2 },
+  lumber_stone: { src: "assets/buildings/stone-lumber-camp.webp", width: 74, height: 76, offsetY: -6 },
   quarry: { src: "assets/buildings/quarry-site.webp", width: 82, height: 76, offsetY: 0 },
+  quarry_stone: { src: "assets/buildings/stone-quarry-site.webp", width: 86, height: 79, offsetY: -3 },
   workshop: { src: "assets/buildings/workshop-house.webp", width: 72, height: 74, offsetY: -1 },
+  workshop_stone: { src: "assets/buildings/stone-workshop-house.webp", width: 76, height: 80, offsetY: -6 },
   repair: { src: "assets/buildings/repair-house.webp", width: 78, height: 80, offsetY: -2 },
+  repair_stone: { src: "assets/buildings/stone-repair-house.webp", width: 74, height: 78, offsetY: -4 },
   market: { src: "assets/buildings/market-shop.webp", width: 72, height: 72, offsetY: -2 },
+  market_stone: { src: "assets/buildings/stone-market-shop.webp", width: 78, height: 78, offsetY: -5 },
   archer: { src: "assets/buildings/archer-tower.webp", width: 86, height: 128, offsetY: -10 },
   crossbow: { src: "assets/buildings/crossbow-tower.webp", width: 88, height: 120, offsetY: -8 },
   catapult: { src: "assets/buildings/catapult-tower.webp", width: 96, height: 144, offsetY: -16 },
@@ -95,6 +101,17 @@ const BUILDING_SPRITE_DEFS = {
 const buildingSprites = Object.fromEntries(
   Object.entries(BUILDING_SPRITE_DEFS).map(([key, def]) => [key, { image: loadUnitSprite(def.src), def }])
 );
+
+function supportBuildingSpriteKey(building){
+ const key=building?.key;
+ if(!key)return null;
+ if(building.material==="stone"){
+  if(key==="house")return "house_stone";
+  if(["lumber","quarry","workshop","repair","market"].includes(key))return `${key}_stone`;
+ }
+ if(key==="house")return Math.max(1,Number(building?.level)||1)>=2?"house_2":"house_1";
+ return key;
+}
 
 const ENEMY_SPRITE_DEFS = {
   raider: { src: "assets/enemies/raider.webp", width: 46, height: 48, offsetY: -2 },
@@ -808,7 +825,7 @@ function drawRangeIndicators(){
 }
 
 function drawHouseBuildingSprite(building, level){
- const sprite=buildingSprites[level>=2?"house_2":"house_1"];
+ const sprite=buildingSprites[supportBuildingSpriteKey(building)||(level>=2?"house_2":"house_1")];
  if(!sprite||!sprite.image.complete||!sprite.image.naturalWidth)return false;
  const {width,height,offsetY=0}=sprite.def;
  ctx.fillStyle="#403529";ctx.globalAlpha=.28;ctx.beginPath();ctx.ellipse(2,22,28,10,0,0,TAU);ctx.fill();ctx.globalAlpha=1;
@@ -818,7 +835,7 @@ function drawHouseBuildingSprite(building, level){
 }
 
 function drawUtilityBuildingSprite(building){
- const sprite=buildingSprites[building.key];
+ const sprite=buildingSprites[supportBuildingSpriteKey(building)||building.key];
  if(!sprite||!sprite.image.complete||!sprite.image.naturalWidth)return false;
  const {width,height,offsetY=0}=sprite.def;
  const hpRatio=Math.max(0,Math.min(1,building.hp/Math.max(1,building.maxHp)));

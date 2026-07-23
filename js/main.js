@@ -230,8 +230,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.6";
-const GAME_RELEASE_NAME="Mobile Ruhe & Abstandsschützen";
+const GAME_VERSION="1.17.7";
+const GAME_RELEASE_NAME="Steingrafiken für Gebäude";
 
 const SUPPORTS_STABLE_SMALL_VIEWPORT=Boolean(window.CSS?.supports?.("height: 100svh"));
 let lastViewportWidth=Math.round(window.innerWidth||document.documentElement.clientWidth||0);
