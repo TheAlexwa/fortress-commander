@@ -1,3 +1,12 @@
+## v1.17.12 – Forschungsfenster-Hotfix
+
+- Fehler behoben, durch den das Forschungsfenster trotz gesetzter `hidden`-Klasse sichtbar blieb.
+- Ursache war ein beim Öffnen gesetzter Inline-Wert `display:grid`, der die CSS-Regel zum Ausblenden überstimmte.
+- Öffnen und Schließen bereinigen jetzt `display`, `visibility` und `pointer-events` zuverlässig.
+- Vorheriger Pausenzustand wird beim Öffnen gespeichert und beim Schließen korrekt berücksichtigt.
+- Mobile Kopfzeile des Forschungsfensters neu angeordnet, damit der X-Knopf auch auf schmalen Displays sichtbar bleibt.
+- README, Startbildschirm und Versionsangaben auf v1.17.12 aktualisiert.
+
 ## v1.17.11 – Mobile Feinschliff & Akkuschutz
 
 - Sicherungsaufrufe für `visibilitychange` und `pagehide` ergänzt; gespeichert wird weiterhin ausschließlich zwischen Angriffswellen.

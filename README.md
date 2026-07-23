@@ -1,3 +1,11 @@
+## v1.17.12 – Forschungsfenster-Hotfix
+
+- Das Forschungsfenster entfernt beim Schließen seine Inline-Sichtbarkeitswerte und wird dadurch wieder zuverlässig ausgeblendet.
+- Der vorherige Pausenzustand wird gespeichert: War das Spiel vor dem Öffnen bereits pausiert, bleibt es nach dem Schließen pausiert.
+- Auf schmalen Handys bleibt der Schließen-Knopf fest sichtbar und gut erreichbar.
+- Schließen über das X, einen Klick auf den Hintergrund und die allgemeine Zurück-/Abbrechen-Funktion wird unterstützt.
+- Spielstände aus v1.17.11 bleiben vollständig kompatibel.
+
 ## v1.17.11 – Mobile Feinschliff & Akkuschutz
 
 - Zwischen den Wellen wird beim Wechsel in den Hintergrund, beim Ausschalten des Bildschirms und beim Verlassen des Tabs zusätzlich gespeichert.

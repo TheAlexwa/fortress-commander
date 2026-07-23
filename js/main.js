@@ -230,8 +230,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.11";
-const GAME_RELEASE_NAME="Mobile Feinschliff & Akkuschutz";
+const GAME_VERSION="1.17.12";
+const GAME_RELEASE_NAME="Forschungsfenster-Hotfix";
 
 const SUPPORTS_STABLE_SMALL_VIEWPORT=Boolean(window.CSS?.supports?.("height: 100svh"));
 let lastViewportWidth=Math.round(document.documentElement.clientWidth||window.innerWidth||0);
@@ -862,17 +862,28 @@ function workshopStaffCostMultiplier(){
  return staffMultiplier*stoneResearchCostMultiplier(workshop);
 }
 function researchCost(tech){return Math.max(1,Math.ceil(getResearchCost(tech,state.research,globalResearchMultiplier(tech.id))*workshopStaffCostMultiplier()))}
+let workshopPausedBefore=false;
 function openWorkshopPanel(){
  if(!state.buildings.some(b=>b.key==="workshop"))return showToast("Zuerst eine Werkstatt bauen");
- hideRepairDecision();paused=true;last=performance.now();
+ hideRepairDecision();
+ workshopPausedBefore=paused;
+ paused=true;last=performance.now();
  const panel=document.getElementById("workshopPanel");
+ panel.style.removeProperty("display");
+ panel.style.removeProperty("visibility");
+ panel.style.removeProperty("pointer-events");
  panel.classList.remove("hidden");
- panel.style.display="grid";
- panel.style.pointerEvents="auto";
- panel.style.visibility="visible";
  renderWorkshop();
 }
-function closeWorkshopPanel(resume=true){document.getElementById("workshopPanel").classList.add("hidden");if(resume&&!gameOver){paused=false;last=performance.now()}updateUI()}
+function closeWorkshopPanel(resume=true){
+ const panel=document.getElementById("workshopPanel");
+ panel.classList.add("hidden");
+ panel.style.removeProperty("display");
+ panel.style.removeProperty("visibility");
+ panel.style.removeProperty("pointer-events");
+ if(resume&&!gameOver&&!workshopPausedBefore){paused=false;last=performance.now()}
+ updateUI();
+}
 function renderWorkshop(){
  const tabs=document.getElementById("workshopTabs"),tree=document.getElementById("techTree"),points=document.getElementById("workshopPointsValue");
  points.textContent=Math.floor(state.researchPoints||0);
