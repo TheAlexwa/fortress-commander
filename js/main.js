@@ -230,8 +230,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.10";
-const GAME_RELEASE_NAME="Pause- & Mehr-Menü-Hotfix";
+const GAME_VERSION="1.17.11";
+const GAME_RELEASE_NAME="Mobile Feinschliff & Akkuschutz";
 
 const SUPPORTS_STABLE_SMALL_VIEWPORT=Boolean(window.CSS?.supports?.("height: 100svh"));
 let lastViewportWidth=Math.round(document.documentElement.clientWidth||window.innerWidth||0);
@@ -524,6 +524,7 @@ gameHeader?.addEventListener("scroll",resetGameHeaderScroll,{passive:true});
 const ui={
  gold:document.getElementById("gold"),wood:document.getElementById("wood"),stone:document.getElementById("stone"),goldRate:document.getElementById("goldRate"),woodRate:document.getElementById("woodRate"),stoneRate:document.getElementById("stoneRate"),
  resourceOverviewBtn:document.getElementById("resourceOverviewBtn"),populationOverviewBtn:document.getElementById("populationOverviewBtn"),populationBusy:document.getElementById("populationBusy"),populationTotal:document.getElementById("populationTotal"),populationFree:document.getElementById("populationFree"),
+ tacticsMenuBtn:document.getElementById("tacticsMenuBtn"),tacticsMenu:document.getElementById("tacticsMenu"),tacticsMenuIcon:document.getElementById("tacticsMenuIcon"),tacticsMenuBadge:document.getElementById("tacticsMenuBadge"),
  wave:document.getElementById("wave"),status:document.getElementById("waveStatus"),
  start:document.getElementById("startWaveBtn"),pause:document.getElementById("pauseBtn"),toast:document.getElementById("toast"),
  warCouncilBtn:document.getElementById("warCouncilBtn"),warCouncilIcon:document.getElementById("warCouncilIcon"),warCouncilLabel:document.getElementById("warCouncilLabel"),
@@ -1183,6 +1184,7 @@ function renderWarCouncilPanel(){
 }
 function openWarCouncilPanel(){
  const panel=document.getElementById("warCouncilPanel");if(!panel||gameOver)return;
+ closeTacticsMenu();
  ensureCurrentSiege();warCouncilResumeAfterClose=!paused&&!gameOver;paused=true;state.supportTimer=0;
  renderWarCouncilPanel();panel.classList.remove("hidden");panel.style.display="grid";panel.style.visibility="visible";panel.style.pointerEvents="auto";updateWarCouncilHud();
 }
@@ -1225,6 +1227,7 @@ function renderBonusObjectivePanel(){
 }
 function openBonusObjectivePanel(){
  const panel=document.getElementById("bonusObjectivePanel");if(!panel||gameOver)return;
+ closeTacticsMenu();
  ensureCurrentSiege();bonusObjectiveResumeAfterClose=!paused&&!gameOver;paused=true;state.supportTimer=0;
  renderBonusObjectivePanel();panel.classList.remove("hidden");panel.style.display="grid";panel.style.visibility="visible";panel.style.pointerEvents="auto";updateBonusObjectiveHud();
 }
@@ -1366,6 +1369,7 @@ function updateUI(){
  updateWarCouncilHud();
  updateBonusObjectiveHud();
  updateCampaignHud();
+ updateTacticsDock();
  if(navMoreBadge){
   navMoreBadge.textContent=Math.floor(state.researchPoints||0);
   navMoreBadge.classList.toggle("isEmpty",Math.floor(state.researchPoints||0)<=0);
@@ -1388,16 +1392,46 @@ function closeMoreNav(){
 }
 function openMoreNav(){
  if(!moreNavMenu||!navMore||!window.matchMedia("(max-width: 700px)").matches)return;
+ closeTacticsMenu();
  moreNavMenu.style.removeProperty("display");
  moreNavMenu.style.removeProperty("visibility");
  moreNavMenu.classList.remove("hidden");
  navMore.setAttribute("aria-expanded","true");
  navMore.classList.add("menuOpen");
 }
+function isTacticsMenuOpen(){return Boolean(ui.tacticsMenu&&!ui.tacticsMenu.classList.contains("hidden"))}
+function closeTacticsMenu(){
+ if(!ui.tacticsMenu||!ui.tacticsMenuBtn)return;
+ ui.tacticsMenu.classList.add("hidden");
+ ui.tacticsMenuBtn.setAttribute("aria-expanded","false");
+ ui.tacticsMenuBtn.classList.remove("menuOpen");
+}
+function openTacticsMenu(){
+ if(!ui.tacticsMenu||!ui.tacticsMenuBtn||gameOver)return;
+ closeMoreNav();
+ ui.tacticsMenu.classList.remove("hidden");
+ ui.tacticsMenuBtn.setAttribute("aria-expanded","true");
+ ui.tacticsMenuBtn.classList.add("menuOpen");
+}
+function updateTacticsDock(){
+ if(!ui.tacticsMenuBtn)return;
+ const bonus=getBonusObjectiveView(state);
+ const bonusStatus=bonus.objective.status;
+ const campaign=getCampaignView(state);
+ ui.tacticsMenuBtn.hidden=gameOver;
+ if(gameOver)closeTacticsMenu();
+ ui.tacticsMenuBtn.classList.toggle("hasAlert",bonusStatus==="active"||bonusStatus==="success"||isCampaignChoiceRequired(state));
+ if(ui.tacticsMenuIcon)ui.tacticsMenuIcon.textContent=isCampaignChoiceRequired(state)?"🏆":bonusStatus==="active"?bonus.definition.icon:"🧭";
+ if(ui.tacticsMenuBadge){
+  const badge=isCampaignChoiceRequired(state)?"Wahl":bonusStatus==="active"?"Ziel":campaign.campaign.mode==="endless"?`∞${campaign.endlessWave}`:`${campaign.completed}/${campaign.total}`;
+  ui.tacticsMenuBadge.textContent=badge;
+ }
+}
 function isBlockingPanelOpen(){
  return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","bonusObjectivePanel","campaignPanel","veteranPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision","campaignVictoryScreen","commanderCampPanel"].some(isPanelVisible);
 }
 function closeTopBlockingPanel(){
+ if(isTacticsMenuOpen()){closeTacticsMenu();return "Taktikmenü geschlossen"}
  if(isMoreNavOpen()){closeMoreNav();return "Mehr-Menü geschlossen"}
  if(isPanelVisible("testResourcePanel")){closeTestResourcePanel();return "Testfenster geschlossen"}
  if(isPanelVisible("enemyInfoOverlay")){closeEnemyInfo(true);return "Fenster geschlossen"}
@@ -1416,7 +1450,7 @@ function closeTopBlockingPanel(){
  return "";
 }
 function closeAllBlockingPanels(){
- closeMoreNav();
+ closeMoreNav();closeTacticsMenu();
  hideRepairDecision();
  ["statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","bonusObjectivePanel","campaignPanel","veteranPanel","enemyInfoOverlay","pauseMenu"].forEach(id=>{
   const el=document.getElementById(id);
@@ -2497,8 +2531,19 @@ document.getElementById("enemyInfoClose").addEventListener("click",()=>closeEnem
 document.getElementById("enemyInfoOverlay").addEventListener("click",e=>{if(e.target.id==="enemyInfoOverlay")closeEnemyInfo(true)});
 renderBestiary();refreshSaveStatus();renderCampaignWorldMap();
 window.setInterval(()=>saveGame(true),AUTOSAVE_INTERVAL_MS);
+let lastBackgroundSaveAt=0;
+function saveBeforeBackground(){
+ const now=Date.now();
+ if(now-lastBackgroundSaveAt<750)return;
+ lastBackgroundSaveAt=now;
+ if(!state.inWave&&!gameOver)saveGame(true);
+}
+document.addEventListener("visibilitychange",()=>{if(document.hidden)saveBeforeBackground()});
+window.addEventListener("pagehide",saveBeforeBackground);
 document.getElementById("marketTradeBtn").addEventListener("click",openMarketPanel);
 document.getElementById("statueOfferingBtn").addEventListener("click",openStatueOfferingPanel);
+ui.tacticsMenuBtn?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();if(isTacticsMenuOpen())closeTacticsMenu();else openTacticsMenu()});
+ui.tacticsMenu?.addEventListener("click",event=>event.stopPropagation());
 ui.warCouncilBtn.addEventListener("click",openWarCouncilPanel);
 document.getElementById("warCouncilCloseBtn").addEventListener("click",()=>closeWarCouncilPanel(true));
 document.getElementById("warCouncilPanel").addEventListener("click",e=>{const command=e.target.closest("[data-war-command]");if(command){e.preventDefault();chooseWarCouncilCommand(command.dataset.warCommand);return}if(e.target.id==="warCouncilPanel")closeWarCouncilPanel(true)});
@@ -2598,6 +2643,7 @@ const selectionUpgradeBtn=document.getElementById("selectionUpgradeBtn");
 const selectionDetailsBtn=document.getElementById("selectionDetailsBtn");
 const selectionRangeBtn=document.getElementById("selectionRangeBtn");
 const selectionTalentBar=document.getElementById("selectionTalentBar");
+const selectionCollapseBtn=document.getElementById("selectionCollapseBtn");
 const activeModeBanner=document.getElementById("activeModeBanner");
 const activeModeText=document.getElementById("activeModeText");
 const activeModeCancelBtn=document.getElementById("activeModeCancelBtn");
@@ -2607,6 +2653,7 @@ const veteranOptionGrid=document.getElementById("veteranOptionGrid");
 const veteranStatus=document.getElementById("veteranStatus");
 let veteranPanelEntity=null;
 let veteranResumeAfterClose=false;
+let selectionHudCollapsed=false;
 let rangeDisplayMode=0; // 0=Aus, 1=Auswahl, 2=Alle
 
 
@@ -3073,6 +3120,7 @@ navMore?.addEventListener("click",event=>{
 moreNavMenu?.addEventListener("click",event=>event.stopPropagation());
 document.addEventListener("pointerdown",event=>{
  if(isMoreNavOpen()&&!moreNavMenu.contains(event.target)&&!navMore.contains(event.target))closeMoreNav();
+ if(isTacticsMenuOpen()&&!ui.tacticsMenu.contains(event.target)&&!ui.tacticsMenuBtn.contains(event.target))closeTacticsMenu();
 });
 buildTray?.addEventListener("scroll",()=>{rememberBuildTrayScroll();updateBuildTrayIndicators()},{passive:true});
 buildTrayPrev?.addEventListener("click",()=>buildTray.scrollBy({left:-Math.max(170,buildTray.clientWidth*.72),behavior:"smooth"}));
@@ -3117,6 +3165,12 @@ statsContent.addEventListener("click",e=>{
  if(upgrade){e.preventDefault();e.stopPropagation();const b=state.buildings.find(x=>x.bid===Number(upgrade.dataset.buildingUpgrade));if(b){selected=b;upgradeSelected();openStats(b);updateUI()}return}
 });
 statsScreen.addEventListener("click",e=>{if(e.target===statsScreen)closeStats()});
+selectionCollapseBtn?.addEventListener("click",event=>{
+ event.preventDefault();event.stopPropagation();
+ if(!selected||selected.kind!=="unit")return;
+ selectionHudCollapsed=!selectionHudCollapsed;
+ updateSelectionHud();
+});
 selectionMoveBtn.addEventListener("click",e=>{
  e.stopPropagation();
  if(!selected||selected.kind!=="unit")return;
@@ -3246,13 +3300,21 @@ function updateActionBanner(){
 
 function updateSelectionHud(){
  if(!selected){
-  ui.selectionHud.classList.remove("show");
+  ui.selectionHud.classList.remove("show","unitCollapsed");
   selectionTalentBar.classList.add("hidden");
+  if(selectionCollapseBtn)selectionCollapseBtn.hidden=true;
   return;
  }
  ui.selectionHud.classList.add("show");
  let icon="🏰",name="Auswahl",details="";
  const isUnit=selected.kind==="unit";
+ if(selectionCollapseBtn){
+  selectionCollapseBtn.hidden=!isUnit;
+  selectionCollapseBtn.setAttribute("aria-expanded",String(!(isUnit&&selectionHudCollapsed)));
+  selectionCollapseBtn.setAttribute("aria-label",selectionHudCollapsed?"Einheitenfenster erweitern":"Einheitenfenster minimieren");
+  selectionCollapseBtn.textContent=selectionHudCollapsed?"⌃":"⌄";
+ }
+ ui.selectionHud.classList.toggle("unitCollapsed",isUnit&&selectionHudCollapsed);
  if(isUnit){
   icon=selected.key==="hero"?"👑":selected.key==="guard"?"🛡️":"🏹";name=`${unitDisplayName(selected)} · Stufe ${selected.expLevel||1}`;
   const abilityStatus=selected.key==="hero"?(heroAbilityActive(selected)?` · 📯 Ruf aktiv ${Math.ceil(selected.heroAbilityTime)}s`:(Number(selected.heroAbilityCooldown)||0)>0?` · ⏳ Ruf ${Math.ceil(selected.heroAbilityCooldown)}s`:" · 📯 Ruf bereit"):"";
@@ -3296,7 +3358,7 @@ function updateSelectionHud(){
  ui.selectionPortrait.classList.toggle("heroPortrait",heroSelected);
  if(heroSelected)ui.selectionPortrait.innerHTML='<img src="assets/ui/andreas-portrait.webp" alt="">';
  else ui.selectionPortrait.textContent=icon;
- ui.selectionText.innerHTML=`<b>${name}</b><br>${details}`;
+ ui.selectionText.innerHTML=`<b>${name}</b><span>${details}</span>`;
  selectionMoveBtn.classList.toggle("hidden",!isUnit);
  selectionAutoBtn.classList.toggle("hidden",!isUnit);
  selectionModeBtn.classList.toggle("hidden",!isUnit);
@@ -3428,12 +3490,37 @@ function updateSelectionHud(){
 
 
 
+let gameFrameTimer=null;
+let gameFrameRequest=null;
+function cancelScheduledGameFrame(){
+ if(gameFrameTimer!==null){clearTimeout(gameFrameTimer);gameFrameTimer=null}
+ if(gameFrameRequest!==null){cancelAnimationFrame(gameFrameRequest);gameFrameRequest=null}
+}
+function scheduleGameFrame(delay=0){
+ if(gameFrameTimer!==null||gameFrameRequest!==null)return;
+ if(delay>0){
+  gameFrameTimer=window.setTimeout(()=>{gameFrameTimer=null;loop(performance.now())},delay);
+ }else{
+  gameFrameRequest=requestAnimationFrame(now=>{gameFrameRequest=null;loop(now)});
+ }
+}
+function nextFrameDelay(){
+ if(document.hidden)return 1000;
+ if(paused||isBlockingPanelOpen())return 125;
+ return 0;
+}
 function loop(now){
+ if(document.hidden){last=now;scheduleGameFrame(nextFrameDelay());return}
  const dt=Math.min(.04,Math.max(0,(now-last)/1000));last=now;
  try{update(dt);draw();renderLevelUpDock();updateSelectionHud();updateActionBanner();updateUI()}
  catch(err){console.error("Spielschleife abgefangen:",err);closeAllBlockingPanels();canvas.style.pointerEvents="auto";showToast("Darstellungsfehler abgefangen – Spiel läuft weiter")}
- requestAnimationFrame(loop)
+ scheduleGameFrame(nextFrameDelay());
 }
+document.addEventListener("visibilitychange",()=>{
+ cancelScheduledGameFrame();
+ last=performance.now();
+ scheduleGameFrame(document.hidden?1000:0);
+});
 try{
  initMap();
  ensureCurrentSiege();
@@ -3446,6 +3533,6 @@ try{
  console.error("Start-Hotfix:",err);
  try{initMap();ensureCurrentSiege();resize();draw();updateUI()}catch(_){}
 }
-requestAnimationFrame(loop);
+scheduleGameFrame();
 })();
 

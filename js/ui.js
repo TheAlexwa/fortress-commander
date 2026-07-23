@@ -80,14 +80,17 @@ export function renderGameUI({
   const busyResidents = assignedResidents();
   const residentTotal = totalResidents();
   const availableResidents = freeResidents();
-  ui.populationBusy.textContent = busyResidents;
-  ui.populationTotal.textContent = residentTotal;
-  ui.populationFree.textContent = availableResidents > 0 ? "•" : "";
+  const residentCapacity = state.buildings
+    .filter((building) => building.key === "house")
+    .reduce((sum, house) => sum + residentCapacityForHouse(house), 0);
+  ui.populationBusy.textContent = residentTotal;
+  ui.populationTotal.textContent = residentCapacity;
+  ui.populationFree.textContent = availableResidents > 0 ? `${availableResidents} frei` : "";
   ui.populationOverviewBtn.classList.toggle("hasFreeResidents", availableResidents > 0);
   const reserve = Math.max(0, Number(state.population?.reserve) || 0);
   const mode = state.population?.mode || "manual";
-  ui.populationOverviewBtn.title = `${busyResidents} beschäftigt · ${availableResidents} frei · Reserve ${reserve} · Modus ${mode}`;
-  ui.populationOverviewBtn.setAttribute("aria-label", `Bevölkerungsverwaltung öffnen: ${busyResidents} beschäftigt, ${availableResidents} frei, ${residentTotal} gesamt`);
+  ui.populationOverviewBtn.title = `${residentTotal}/${residentCapacity} Bewohner · ${busyResidents} beschäftigt · ${availableResidents} frei · Reserve ${reserve} · Modus ${mode}`;
+  ui.populationOverviewBtn.setAttribute("aria-label", `Bevölkerungsverwaltung öffnen: ${residentTotal} von ${residentCapacity} Bewohnerplätzen belegt, ${busyResidents} beschäftigt, ${availableResidents} frei`);
 
   const campaignView = getCampaignView(state);
   const campaignChoiceRequired = isCampaignChoiceRequired(state);

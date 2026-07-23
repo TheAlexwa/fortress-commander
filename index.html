@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
-<title>Fortress Commander v1.17.10 – Pause- & Mehr-Menü-Hotfix</title>
+<title>Fortress Commander v1.17.11 – Mobile Feinschliff & Akkuschutz</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/mobile.css">
 </head>
@@ -21,8 +21,8 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Kampagnenkarte öffnen">Spiel starten</button>
-  <div id="gameVersionBadge">v1.17.10</div>
-  <div id="developmentNotice"><strong>🛠️ Pause- & Mehr-Menü-Hotfix</strong><span>Das Pausefenster lässt sich zuverlässig fortsetzen und das mobile Mehr-Menü bleibt nach dem Öffnen sichtbar und bedienbar.</span></div>
+  <div id="gameVersionBadge">v1.17.11</div>
+  <div id="developmentNotice"><strong>🔋 Mobile Feinschliff & Akkuschutz</strong><span>Autosave beim Hintergrundwechsel, akkuschonende Bildrate, kompaktes Taktikmenü und sichtbare Bevölkerungsanzeige.</span></div>
  </div>
 </div>
 
@@ -197,7 +197,7 @@
    <div class="guideBody"><div class="guideGrid">
     <article class="guideCard"><h3>⛺ Zeltlager</h3><p>Deine erste Unterkunft. Stellt <b>2 Bewohner</b> bereit und erzeugt während aktiver Wellen Gold.</p><div class="guideMeta"><span>65 Gold</span><span>20 Holz</span><span>2 Bewohner</span></div></article>
     <article class="guideCard"><h3>🏠 Holzhaus</h3><p>Die aufgewertete Unterkunft bietet Platz für <b>4 Bewohner</b>. Mehr Bewohner ermöglichen mehr Produktionsgebäude.</p><div class="guideMeta"><span>Stufe 2</span><span>4 Bewohner</span><span>Mehr Goldeinnahmen</span></div></article>
-   </div><p>Ein Klick auf die Bewohneranzeige öffnet die zentrale Arbeitsverteilung. Bewohner können manuell oder über die Profile Ausgewogen, Ausbau, Verteidigung und Rohstoffe verteilt werden. Eine einstellbare Mindestreserve bleibt für Neubauten und Notfälle frei.</p><div class="guideTip"><b>Leistung:</b> 1 Bewohner = 45 %, 2 = 75 %, 3 = 100 %, 4 = 120 %, ein fünfter Arbeitsplatz im Steingebäude erreicht 135 %. Änderungen sind nur zwischen Angriffswellen möglich. Wird ein Arbeitsplatz zerstört, kehren die geflohenen Bewohner nach der Welle zurück.</div></div>
+   </div><p>Die eigene Bevölkerungs-Kachel oben im HUD zeigt aktuelle Bewohner, Wohnkapazität und freie Arbeiter. Ein Klick öffnet die zentrale Arbeitsverteilung. Bewohner können manuell oder über die Profile Ausgewogen, Ausbau, Verteidigung und Rohstoffe verteilt werden. Eine einstellbare Mindestreserve bleibt für Neubauten und Notfälle frei.</p><div class="guideTip"><b>Leistung:</b> 1 Bewohner = 45 %, 2 = 75 %, 3 = 100 %, 4 = 120 %, ein fünfter Arbeitsplatz im Steingebäude erreicht 135 %. Änderungen sind nur zwischen Angriffswellen möglich. Wird ein Arbeitsplatz zerstört, kehren die geflohenen Bewohner nach der Welle zurück.</div></div>
   </details>
 
   <details class="guideSection">
@@ -264,7 +264,7 @@
   <details class="guideSection">
    <summary>🗺️ Kriegsrat & Festungsbefehle</summary>
    <div class="guideBody">
-    <p>Während der Belagerungsphase zeigt der Kriegsrat Wellentyp, Hauptgegner und gefährlichste Front. Nach der Auswahl schließt sich das Fenster sofort. Die gewählte Vorgabe bleibt für folgende Wellen gespeichert und kann vor jedem Angriff geändert werden.</p>
+    <p>Das kompakte Taktikmenü rechts bündelt Kriegsrat, Bonusziel und Kampagnenfortschritt. Während der Belagerungsphase zeigt der Kriegsrat Wellentyp, Hauptgegner und gefährlichste Front. Nach der Auswahl schließt sich das Fenster sofort. Die gewählte Vorgabe bleibt für folgende Wellen gespeichert und kann vor jedem Angriff geändert werden.</p>
     <div class="guideGrid">
      <article class="guideCard"><h3>🛡️ Mauern verstärken</h3><p>Mauern und Tore erleiden 25 % weniger Schaden, Reparaturholz sinkt um 20 %. Dafür produziert die Wirtschaft 20 % weniger.</p></article>
      <article class="guideCard"><h3>⚔️ Kampfbereitschaft</h3><p>Einheiten verursachen 15 % mehr Schaden, bewegen sich 10 % schneller und Türme laden schneller. Produktion −20 %.</p></article>
@@ -312,6 +312,7 @@
 <header>
  <div class="brand">🏰 FORTRESS COMMANDER</div>
  <div class="stat waveStat">🌊 <span>Welle</span> <strong id="wave">1</strong></div>
+ <button id="populationOverviewBtn" type="button" aria-label="Bewohnerübersicht öffnen"><span class="populationIcon">👥</span><span class="populationCount"><span class="popBusy" id="populationBusy">0</span>/<span id="populationTotal">0</span></span><span class="popFree" id="populationFree" aria-hidden="true"></span></button>
  <div class="grow" id="waveStatus">⛺ Vorbereitung</div>
  <button id="pauseBtn">Ⅱ Pause</button>
  <button class="primary" id="startWaveBtn">⚔ Angriff</button>
@@ -320,9 +321,14 @@
 <div id="gameWrap">
  <canvas id="game"></canvas>
  <div id="siegePhaseNotice" class="siegePhaseNotice hidden" role="status" aria-live="polite"><strong id="siegePhaseTitle">⛺ Belagerungsphase</strong><span id="siegePhaseText">Die nächste Armee sammelt sich in den Außenlagern.</span></div>
- <button id="warCouncilBtn" class="warCouncilBtn" type="button" aria-label="Kriegsrat öffnen"><span id="warCouncilIcon">⚪</span><strong id="warCouncilLabel">Kriegsrat</strong></button>
- <button id="bonusObjectiveBtn" class="bonusObjectiveBtn" type="button" aria-label="Bonusziel öffnen"><span id="bonusObjectiveIcon">🎯</span><strong id="bonusObjectiveLabel">Bonusziel</strong></button>
- <button id="campaignProgressBtn" class="campaignProgressBtn" type="button" aria-label="Kampagnenfortschritt öffnen"><span>🏆</span><strong id="campaignProgressLabel">0/32</strong><i><b id="campaignProgressFill"></b></i></button>
+ <div id="tacticsDock" aria-label="Taktische Schnellzugriffe">
+  <button id="tacticsMenuBtn" class="tacticsMenuBtn" type="button" aria-expanded="false" aria-controls="tacticsMenu"><span id="tacticsMenuIcon">🧭</span><strong>Taktik</strong><small id="tacticsMenuBadge"></small></button>
+  <div id="tacticsMenu" class="tacticsMenu hidden">
+   <button id="warCouncilBtn" class="warCouncilBtn" type="button" aria-label="Kriegsrat öffnen"><span id="warCouncilIcon">⚪</span><strong id="warCouncilLabel">Kriegsrat</strong></button>
+   <button id="bonusObjectiveBtn" class="bonusObjectiveBtn" type="button" aria-label="Bonusziel öffnen"><span id="bonusObjectiveIcon">🎯</span><strong id="bonusObjectiveLabel">Bonusziel</strong></button>
+   <button id="campaignProgressBtn" class="campaignProgressBtn" type="button" aria-label="Kampagnenfortschritt öffnen"><span>🏆</span><strong id="campaignProgressLabel">0/32</strong><i><b id="campaignProgressFill"></b></i></button>
+  </div>
+ </div>
  <button id="resourceOverviewBtn" type="button" aria-label="Rohstoffübersicht öffnen">
   <span class="resourceCompact"><span>🪙</span><strong id="gold">0</strong></span>
   <span class="resourceDivider"></span>
@@ -332,9 +338,9 @@
   <span class="resourceChevron">⌄</span>
   <span id="goldRate" hidden>+0/Sek.</span><span id="woodRate" hidden>+0/Sek.</span><span id="stoneRate" hidden>+0/Sek.</span>
  </button>
- <button id="populationOverviewBtn" type="button" aria-label="Bewohnerübersicht öffnen"><span>👥</span><span class="popBusy" id="populationBusy">0</span>/<span id="populationTotal">0</span><span class="popFree" id="populationFree" aria-hidden="true"></span></button>
  <div id="levelUpDock" aria-label="Einheiten mit Aufwertung"></div>
  <div id="selectionHud">
+  <button id="selectionCollapseBtn" class="selectionCollapseBtn" type="button" hidden aria-expanded="true" aria-label="Einheitenfenster minimieren">⌄</button>
   <div id="selectionPortrait">🏹</div>
   <div id="selectionMain">
    <div id="selectionText"></div>
@@ -421,7 +427,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.17.10 · Pause und mobiles Mehr-Menü zuverlässig bedienbar.</div>
+  <div class="workshopFoot">v1.17.11 · Mobile Feinschliff, Akkuschutz und sichtbare Bevölkerungsanzeige.</div>
  </section>
 </div>
 

@@ -1,3 +1,14 @@
+## v1.17.11 – Mobile Feinschliff & Akkuschutz
+
+- Zwischen den Wellen wird beim Wechsel in den Hintergrund, beim Ausschalten des Bildschirms und beim Verlassen des Tabs zusätzlich gespeichert.
+- Die Spielschleife läuft im aktiven Kampf weiterhin flüssig, reduziert die Bildrate aber bei Pause und geöffneten Fenstern deutlich und ruht im Browserhintergrund nahezu vollständig.
+- Kriegsrat, Bonusziel und Kampagnenfortschritt befinden sich in einem kompakten aufklappbaren **Taktik**-Menü.
+- Das Auswahlfenster von Einheiten kann minimiert werden, ohne die Einheit abzuwählen.
+- Informationssymbole auf Baukarten besitzen am Handy eine deutlich größere Touchfläche bei unverändert kompakter Darstellung.
+- Die Bevölkerungsanzeige wurde aus der unauffälligen rechten Kartenecke in das obere HUD verschoben und zeigt Bewohnerplätze sowie freie Arbeiter an.
+- Antippen der Bevölkerungsanzeige öffnet weiterhin direkt die zentrale Bewohnerverwaltung.
+- Spielstände aus v1.17.10 bleiben vollständig kompatibel.
+
 ## v1.17.10 – Pause- & Mehr-Menü-Hotfix
 
 - Das Pausefenster setzt das Spiel über „Spiel fortsetzen“ oder den oberen Weiter-Knopf wieder zuverlässig fort.

@@ -1,3 +1,13 @@
+## v1.17.11 – Mobile Feinschliff & Akkuschutz
+
+- Sicherungsaufrufe für `visibilitychange` und `pagehide` ergänzt; gespeichert wird weiterhin ausschließlich zwischen Angriffswellen.
+- Aktive Kämpfe verwenden die normale Browser-Bildrate, Pause und Dialogfenster etwa 8 Bilder pro Sekunde; im Hintergrund wird die Darstellung nahezu vollständig angehalten.
+- Drei rechte Taktikknöpfe in ein kompaktes Taktikmenü mit Statusanzeige zusammengeführt.
+- Minimierfunktion für das Einheiten-Auswahlfenster ergänzt.
+- Touchbereich der Baukarten-Informationssymbole auf bis zu 42 Pixel vergrößert, während der sichtbare Kreis kompakt bleibt.
+- Bevölkerungsanzeige in den oberen HUD-Header verschoben: aktuelle Bewohner / Wohnkapazität sowie freie Bewohner werden direkt angezeigt.
+- README, Anleitung, Startbildschirm und Versionsangaben auf v1.17.11 aktualisiert.
+
 ## v1.17.10 – Pause- & Mehr-Menü-Hotfix
 
 - Fehler behoben, durch den die Partie nach dem Pausieren nicht mehr fortgesetzt werden konnte.
