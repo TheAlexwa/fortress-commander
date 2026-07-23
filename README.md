@@ -1,3 +1,11 @@
+## v1.17.8 – Stabiles HUD & Flacker-Fix
+
+- Die obere Spielleiste ist kein horizontaler Scroll- oder Snap-Bereich mehr und kann daher nicht mehr zwischen zwei Scrollpositionen springen.
+- Eine feste Grid-Anordnung hält Wellenanzeige, Status, Pause und Angriff unabhängig von wechselnden Statuswerten an stabilen Positionen.
+- Die feste Pixelbreite aus v1.17.7 wurde entfernt; die App verwendet wieder exakt 100 % der aktuellen Layoutbreite ohne horizontalen Überlauf.
+- GPU-Blur und die Glanzanimation des Angriffsknopfs wurden entfernt, um Flackern in Chrome auf Laptop und Handy zu vermeiden.
+- Spielstände aus v1.17.7 bleiben vollständig kompatibel.
+
 ## v1.17.7 – Steingrafiken für Gebäude
 
 - Steinaufgewertete Versorgungsgebäude verwenden jetzt eigene Grafiken statt der bisherigen Holzgebäude mit Fundament-Overlay.

@@ -1038,3 +1038,33 @@ header>#startWaveBtn{grid-column:4!important;width:100%!important;height:43px!im
  header{width:100%;max-width:100%;overflow-x:clip!important;overscroll-behavior-x:none;contain:layout paint}
  #gameWrap,footer{width:100%;max-width:100%;min-width:0}
 }
+
+/* v1.17.8 – Stabiles HUD & Flacker-Fix */
+:root{--app-width:100%}
+html,body,#app{width:100%;max-width:100%;min-width:0;overflow-x:hidden!important}
+header{
+ display:grid!important;
+ grid-template-columns:max-content minmax(0,1fr) 52px max-content;
+ align-items:center;
+ width:100%;max-width:100%;min-width:0;
+ overflow:hidden!important;overflow-x:hidden!important;
+ scroll-snap-type:none!important;overscroll-behavior-x:none;
+ contain:none!important;
+ backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+header>.brand{display:none!important}
+header>*{min-width:0;scroll-snap-align:none!important}
+header .waveStat{justify-self:start;white-space:nowrap}
+header .grow{
+ width:100%;min-width:0!important;max-width:none!important;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+header #pauseBtn{width:52px;min-width:52px}
+header #startWaveBtn{justify-self:end;white-space:nowrap}
+footer{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+#startWaveBtn:before{content:none!important;display:none!important;animation:none!important;transform:none!important}
+@media(max-width:520px){
+ header{grid-template-columns:max-content minmax(0,1fr) 45px 76px;padding-left:7px;padding-right:7px;gap:5px}
+ header #pauseBtn{width:45px;min-width:45px}
+ header #startWaveBtn{width:76px;min-width:76px;max-width:76px;padding-left:5px;padding-right:5px}
+}

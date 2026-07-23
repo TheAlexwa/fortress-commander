@@ -230,29 +230,30 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.7";
-const GAME_RELEASE_NAME="Steingrafiken für Gebäude";
+const GAME_VERSION="1.17.8";
+const GAME_RELEASE_NAME="Stabiles HUD & Flacker-Fix";
 
 const SUPPORTS_STABLE_SMALL_VIEWPORT=Boolean(window.CSS?.supports?.("height: 100svh"));
-let lastViewportWidth=Math.round(window.innerWidth||document.documentElement.clientWidth||0);
+let lastViewportWidth=Math.round(document.documentElement.clientWidth||window.innerWidth||0);
 let lastViewportOrientation=window.matchMedia("(orientation: landscape)").matches?"landscape":"portrait";
 function syncVisibleViewportHeight(force=false){
- // Breite und Hoehe werden nur bei einem echten Geraetewechsel neu gesetzt.
- // Kleine Schwankungen der mobilen Browseroberflaeche duerfen weder HUD noch
- // Canvas seitlich verschieben oder die Kamera fortlaufend neu berechnen.
- const width=Math.max(320,Math.round(window.innerWidth||document.documentElement.clientWidth||0));
+ // Die Breite bleibt immer bei 100 %. Eine festgeschriebene Pixelbreite kann
+ // bei kleinen Chrome-Schwankungen horizontalen Ueberlauf erzeugen und den
+ // HUD-Scrollstand zwischen zwei Positionen springen lassen.
+ const width=Math.max(320,Math.round(document.documentElement.clientWidth||window.innerWidth||0));
  const orientation=window.matchMedia("(orientation: landscape)").matches?"landscape":"portrait";
  const viewportChanged=force||orientation!==lastViewportOrientation||Math.abs(width-lastViewportWidth)>=32;
  if(viewportChanged){
-  lastViewportWidth=width;lastViewportOrientation=orientation;
-  document.documentElement.style.setProperty("--app-width",`${width}px`);
+  lastViewportWidth=width;
+  lastViewportOrientation=orientation;
  }
+ document.documentElement.style.removeProperty("--app-width");
  if(SUPPORTS_STABLE_SMALL_VIEWPORT){
   document.documentElement.style.removeProperty("--app-height");
   return;
  }
  if(!viewportChanged)return;
- const height=Math.max(320,Math.round(window.innerHeight||document.documentElement.clientHeight||0));
+ const height=Math.max(320,Math.round(document.documentElement.clientHeight||window.innerHeight||0));
  document.documentElement.style.setProperty("--app-height",`${height}px`);
 }
 syncVisibleViewportHeight(true);
@@ -516,6 +517,9 @@ instructionsCloseBtn.addEventListener("click",e=>{e.preventDefault();e.stopPropa
 instructionsScreen.addEventListener("click",e=>{if(e.target===instructionsScreen)returnToTitle()});
 
 const canvas=document.getElementById("game"),ctx=canvas.getContext("2d"),wrap=document.getElementById("gameWrap");
+const gameHeader=document.querySelector("#app > header");
+function resetGameHeaderScroll(){if(gameHeader&&gameHeader.scrollLeft!==0)gameHeader.scrollLeft=0}
+gameHeader?.addEventListener("scroll",resetGameHeaderScroll,{passive:true});
 const ui={
  gold:document.getElementById("gold"),wood:document.getElementById("wood"),stone:document.getElementById("stone"),goldRate:document.getElementById("goldRate"),woodRate:document.getElementById("woodRate"),stoneRate:document.getElementById("stoneRate"),
  resourceOverviewBtn:document.getElementById("resourceOverviewBtn"),populationOverviewBtn:document.getElementById("populationOverviewBtn"),populationBusy:document.getElementById("populationBusy"),populationTotal:document.getElementById("populationTotal"),populationFree:document.getElementById("populationFree"),
@@ -1361,6 +1365,7 @@ function updateUI(){
  updateWarCouncilHud();
  updateBonusObjectiveHud();
  updateCampaignHud();
+ resetGameHeaderScroll();
  return result;
 }
 

@@ -1,3 +1,12 @@
+## v1.17.8 – Stabiles HUD & Flacker-Fix
+
+- Das im Handyvideo sichtbare Springen wurde auf zwei wechselnde horizontale Scrollpositionen der oberen Leiste zurückgeführt.
+- Header von Flex-Scroll-/Scroll-Snap-Verhalten auf eine feste, überlauffreie Grid-Anordnung umgestellt.
+- `overflow-x`, Scroll-Snap und die festgeschriebene `--app-width`-Pixelbreite entfernt beziehungsweise deaktiviert.
+- Statusfeld darf seine Breite nicht mehr durch wechselnde Gegnerzahlen auf die Nachbarfelder übertragen.
+- `backdrop-filter` im Haupt-HUD und die animierte Glanzfläche des Angriffsknopfs entfernt, um GPU-Flackern in Chrome zu vermeiden.
+- Versionsangaben, README und Startbildschirm auf v1.17.8 aktualisiert.
+
 ## v1.17.7 – Steingrafiken für Gebäude
 
 - Eigene Gebäudegrafiken für alle Steinaufwertungen von Versorgungsgebäuden hinterlegt.
