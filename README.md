@@ -1,3 +1,14 @@
+## v1.17.9 – Mobile Bedienkomfort & Performance
+
+- Antippen und Ziehen sind sauber getrennt: Die Kamera bewegt sich erst nach Überschreiten einer klaren Ziehschwelle.
+- Zwei-Finger-Zoom folgt dem aktuellen Fingermittelpunkt und ermöglicht gleichzeitiges Verschieben der Karte.
+- Ein Kartentipp setzt ein pausiertes Spiel nicht mehr unbeabsichtigt fort; fortgesetzt wird ausschließlich über „Weiter“.
+- Die mobile Navigation zeigt fünf feste Hauptknöpfe. Werte, Forschung und Anleitung befinden sich unter **Mehr**; am Desktop bleiben alle sieben Bereiche direkt sichtbar.
+- Baukarten besitzen Pfeile und Randverläufe, merken sich ihre Position pro Reiter und zentrieren eine gewählte Karte.
+- Die sechs Steingebäude-Grafiken wurden von insgesamt rund 7,4 MB auf rund 0,25 MB reduziert, ohne sichtbaren Qualitätsverlust im Spiel.
+- Viewport- und mobile HUD-Regeln liegen jetzt gesammelt in `css/mobile.css`; allgemeine Komponenten bleiben in `css/style.css`.
+- Spielstände aus v1.17.8 bleiben vollständig kompatibel.
+
 ## v1.17.8 – Stabiles HUD & Flacker-Fix
 
 - Die obere Spielleiste ist kein horizontaler Scroll- oder Snap-Bereich mehr und kann daher nicht mehr zwischen zwei Scrollpositionen springen.

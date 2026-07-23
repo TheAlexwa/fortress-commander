@@ -1,3 +1,14 @@
+## v1.17.9 – Mobile Bedienkomfort & Performance
+
+- Touch-Eingabe überarbeitet: Kleine Fingerbewegungen verschieben die Karte nicht mehr, bevor die Ziehschwelle erreicht ist.
+- Pinch-Zoom verankert den Weltpunkt unter dem aktuellen Fingermittelpunkt und unterstützt gleichzeitiges Zwei-Finger-Verschieben.
+- Pausierte Partien werden nicht mehr durch einen beliebigen Kartentipp fortgesetzt.
+- Mobile Hauptnavigation auf fünf feste Schaltflächen mit zusätzlichem Mehr-Menü umgestellt; Desktop-Navigation bleibt vollständig direkt erreichbar.
+- Baukarten-Navigation um Pfeile, Randverläufe, Zentrierung der Auswahl und gespeicherte Scrollposition pro Reiter erweitert.
+- Sechs Steingebäude-WebP-Dateien auf maximal 384 Pixel optimiert; Gesamtgröße von etwa 7,4 MB auf etwa 0,25 MB reduziert.
+- Mobile und viewportkritische CSS-Regeln aus `style.css` in die neu eingebundene `mobile.css` ausgelagert.
+- Anleitung, README, Startbildschirm und Versionsangaben auf v1.17.9 aktualisiert.
+
 ## v1.17.8 – Stabiles HUD & Flacker-Fix
 
 - Das im Handyvideo sichtbare Springen wurde auf zwei wechselnde horizontale Scrollpositionen der oberen Leiste zurückgeführt.

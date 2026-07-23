@@ -37,10 +37,33 @@ export function attachGameInput({
 }) {
   let pointerDown = null;
   let dragged = false;
+  let dragActive = false;
   const touches = new Map();
-  let pinchStart = 0;
-  let pinchZoom = getZoom();
-  let pinchCenter = null;
+  let pinchState = null;
+  let pinchActive = false;
+
+  const pointerPosition = event => ({
+    x: event.clientX,
+    y: event.clientY,
+    pointerType: event.pointerType || "mouse"
+  });
+
+  const beginPinch = () => {
+    if (touches.size < 2) return;
+    const rect = canvas.getBoundingClientRect();
+    const points = [...touches.values()].slice(0, 2);
+    const centerX = (points[0].x + points[1].x) / 2 - rect.left;
+    const centerY = (points[0].y + points[1].y) / 2 - rect.top;
+    pinchState = {
+      distance: Math.max(1, Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y)),
+      zoom: getZoom(),
+      anchorWorld: screenToWorld(centerX, centerY)
+    };
+    pinchActive = true;
+    dragged = true;
+    dragActive = false;
+    pointerDown = null;
+  };
 
   const onWheel = event => {
     event.preventDefault();
@@ -53,88 +76,136 @@ export function attachGameInput({
   };
 
   const onPointerDown = event => {
-    canvas.setPointerCapture(event.pointerId);
-    touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    const camera = getCamera();
-    pointerDown = {
-      id: event.pointerId,
-      x: event.clientX,
-      y: event.clientY,
-      camX: camera.x,
-      camY: camera.y
-    };
-    dragged = false;
+    try { canvas.setPointerCapture(event.pointerId); } catch {}
+    touches.set(event.pointerId, pointerPosition(event));
 
-    if (touches.size === 2) {
-      const points = [...touches.values()];
-      pinchStart = Math.hypot(
-        points[0].x - points[1].x,
-        points[0].y - points[1].y
-      );
-      pinchZoom = getZoom();
-      pinchCenter = {
-        x: (points[0].x + points[1].x) / 2,
-        y: (points[0].y + points[1].y) / 2
+    if (touches.size === 1) {
+      const camera = getCamera();
+      pointerDown = {
+        id: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        camX: camera.x,
+        camY: camera.y,
+        pointerType: event.pointerType || "mouse"
       };
+      dragged = false;
+      dragActive = false;
+      pinchState = null;
+      pinchActive = false;
+      return;
     }
+
+    if (touches.size === 2) beginPinch();
   };
 
   const onPointerMove = event => {
     if (!touches.has(event.pointerId)) return;
-    touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    touches.set(event.pointerId, pointerPosition(event));
 
-    if (touches.size === 2) {
-      const points = [...touches.values()];
-      const distance = Math.hypot(
+    if (touches.size >= 2) {
+      if (!pinchState) beginPinch();
+      const points = [...touches.values()].slice(0, 2);
+      const distance = Math.max(1, Math.hypot(
         points[0].x - points[1].x,
         points[0].y - points[1].y
-      );
+      ));
       const rect = canvas.getBoundingClientRect();
-      if (pinchStart > 0 && pinchCenter) {
+      const centerX = (points[0].x + points[1].x) / 2 - rect.left;
+      const centerY = (points[0].y + points[1].y) / 2 - rect.top;
+
+      if (pinchState) {
         setZoom(
-          pinchZoom * distance / pinchStart,
-          pinchCenter.x - rect.left,
-          pinchCenter.y - rect.top
+          pinchState.zoom * distance / pinchState.distance,
+          centerX,
+          centerY
         );
+        const actualZoom = Math.max(0.01, getZoom());
+        setCamera(
+          pinchState.anchorWorld.x - (centerX - rect.width / 2) / actualZoom,
+          pinchState.anchorWorld.y - (centerY - rect.height / 2) / actualZoom
+        );
+        clampCamera();
       }
+      dragged = true;
+      pinchActive = true;
+      return;
+    }
+
+    if (!pointerDown || pointerDown.id !== event.pointerId) return;
+
+    const dx = event.clientX - pointerDown.x;
+    const dy = event.clientY - pointerDown.y;
+    const dragThreshold = pointerDown.pointerType === "touch" ? 14 : 8;
+
+    if (!dragActive) {
+      if (Math.hypot(dx, dy) <= dragThreshold) return;
+      const camera = getCamera();
+      pointerDown.x = event.clientX;
+      pointerDown.y = event.clientY;
+      pointerDown.camX = camera.x;
+      pointerDown.camY = camera.y;
+      dragActive = true;
       dragged = true;
       return;
     }
 
-    if (pointerDown && pointerDown.id === event.pointerId) {
-      const dx = event.clientX - pointerDown.x;
-      const dy = event.clientY - pointerDown.y;
-      const dragThreshold = event.pointerType === "touch" ? 14 : 8;
-      if (Math.hypot(dx, dy) > dragThreshold) dragged = true;
-      const zoom = getZoom();
-      setCamera(pointerDown.camX - dx / zoom, pointerDown.camY - dy / zoom);
-      clampCamera();
-    }
+    const zoom = Math.max(0.01, getZoom());
+    setCamera(pointerDown.camX - dx / zoom, pointerDown.camY - dy / zoom);
+    clampCamera();
   };
 
-  const onPointerEnd = event => {
+  const finishPointer = (event, allowTap) => {
     if (!touches.has(event.pointerId)) return;
+    const endedDuringPinch = pinchActive || touches.size >= 2;
     touches.delete(event.pointerId);
 
-    if (pointerDown && pointerDown.id === event.pointerId && !dragged) {
-      if (isPaused() && !isGameOver()) {
-        setPaused(false);
-        setLastFrameTime(performance.now());
-        showToast("Spiel fortgesetzt");
-        if (touches.size === 0) pointerDown = null;
-        return;
-      }
+    if (endedDuringPinch) {
+      dragged = true;
+      pinchState = null;
+      pinchActive = false;
 
-      const rect = canvas.getBoundingClientRect();
-      const worldPoint = screenToWorld(
-        event.clientX - rect.left,
-        event.clientY - rect.top
-      );
-      worldTap(worldPoint.x, worldPoint.y);
+      if (touches.size === 1) {
+        const [remainingId, remaining] = [...touches.entries()][0];
+        const camera = getCamera();
+        pointerDown = {
+          id: remainingId,
+          x: remaining.x,
+          y: remaining.y,
+          camX: camera.x,
+          camY: camera.y,
+          pointerType: remaining.pointerType || "touch"
+        };
+        dragActive = true;
+      } else {
+        pointerDown = null;
+        dragActive = false;
+      }
+      return;
     }
 
-    if (touches.size === 0) pointerDown = null;
+    if (allowTap && pointerDown && pointerDown.id === event.pointerId && !dragged) {
+      if (isPaused() && !isGameOver()) {
+        showToast("Spiel ist pausiert – oben auf Weiter tippen");
+      } else {
+        const rect = canvas.getBoundingClientRect();
+        const worldPoint = screenToWorld(
+          event.clientX - rect.left,
+          event.clientY - rect.top
+        );
+        worldTap(worldPoint.x, worldPoint.y);
+      }
+    }
+
+    if (touches.size === 0) {
+      pointerDown = null;
+      dragActive = false;
+      dragged = false;
+    }
   };
+
+  const onPointerEnd = event => finishPointer(event, true);
+  const onPointerCancel = event => finishPointer(event, false);
 
   const onKeyDown = event => {
     if (
@@ -223,7 +294,7 @@ export function attachGameInput({
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerEnd);
-  canvas.addEventListener("pointercancel", onPointerEnd);
+  canvas.addEventListener("pointercancel", onPointerCancel);
   canvas.addEventListener("contextmenu", event => {
     event.preventDefault();
     if (typeof cancelAction === "function") cancelAction("context");
@@ -237,7 +308,7 @@ export function attachGameInput({
     canvas.removeEventListener("pointerdown", onPointerDown);
     canvas.removeEventListener("pointermove", onPointerMove);
     canvas.removeEventListener("pointerup", onPointerEnd);
-    canvas.removeEventListener("pointercancel", onPointerEnd);
+    canvas.removeEventListener("pointercancel", onPointerCancel);
     window.removeEventListener("keydown", onKeyDown);
     window.removeEventListener("resize", onResize);
     window.removeEventListener("orientationchange", onOrientationChange);

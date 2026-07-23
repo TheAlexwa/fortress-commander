@@ -230,8 +230,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.17.8";
-const GAME_RELEASE_NAME="Stabiles HUD & Flacker-Fix";
+const GAME_VERSION="1.17.9";
+const GAME_RELEASE_NAME="Mobile Bedienkomfort & Performance";
 
 const SUPPORTS_STABLE_SMALL_VIEWPORT=Boolean(window.CSS?.supports?.("height: 100svh"));
 let lastViewportWidth=Math.round(document.documentElement.clientWidth||window.innerWidth||0);
@@ -494,6 +494,7 @@ function returnToTitle(){
   startScreen.classList.add("hidden");campaignMapScreen.classList.add("hidden");
   if(!gameOver){paused=false;last=performance.now()}
   const menuButton=document.getElementById("navMenu");if(menuButton)menuButton.classList.remove("active");
+  navMore?.classList.remove("active");closeMoreNav();
   updateUI();
  }else if(instructionsOpenedFrom==="map"){
   startScreen.classList.add("hidden");campaignMapScreen.classList.remove("hidden");paused=true;renderCampaignWorldMap();
@@ -1365,6 +1366,10 @@ function updateUI(){
  updateWarCouncilHud();
  updateBonusObjectiveHud();
  updateCampaignHud();
+ if(navMoreBadge){
+  navMoreBadge.textContent=Math.floor(state.researchPoints||0);
+  navMoreBadge.classList.toggle("isEmpty",Math.floor(state.researchPoints||0)<=0);
+ }
  resetGameHeaderScroll();
  return result;
 }
@@ -1372,10 +1377,24 @@ function updateUI(){
 function buildRequirement(key){return getBuildRequirement(state,key)}
 
 function isPanelVisible(id){const el=document.getElementById(id);return !!(el&&!el.classList.contains("hidden"));}
+function isMoreNavOpen(){return Boolean(moreNavMenu&&!moreNavMenu.classList.contains("hidden")&&window.matchMedia("(max-width: 700px)").matches)}
+function closeMoreNav(){
+ if(!moreNavMenu||!navMore)return;
+ moreNavMenu.classList.add("hidden");
+ navMore.setAttribute("aria-expanded","false");
+ navMore.classList.remove("menuOpen");
+}
+function openMoreNav(){
+ if(!moreNavMenu||!navMore||!window.matchMedia("(max-width: 700px)").matches)return;
+ moreNavMenu.classList.remove("hidden");
+ navMore.setAttribute("aria-expanded","true");
+ navMore.classList.add("menuOpen");
+}
 function isBlockingPanelOpen(){
  return ["testResourcePanel","statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","bonusObjectivePanel","campaignPanel","veteranPanel","enemyInfoOverlay","pauseMenu","instructionsScreen","repairDecision","campaignVictoryScreen","commanderCampPanel"].some(isPanelVisible);
 }
 function closeTopBlockingPanel(){
+ if(isMoreNavOpen()){closeMoreNav();return "Mehr-Menü geschlossen"}
  if(isPanelVisible("testResourcePanel")){closeTestResourcePanel();return "Testfenster geschlossen"}
  if(isPanelVisible("enemyInfoOverlay")){closeEnemyInfo(true);return "Fenster geschlossen"}
  if(isPanelVisible("marketPanel")){closeMarketPanel();return "Fenster geschlossen"}
@@ -1393,6 +1412,7 @@ function closeTopBlockingPanel(){
  return "";
 }
 function closeAllBlockingPanels(){
+ closeMoreNav();
  hideRepairDecision();
  ["statsScreen","workshopPanel","marketPanel","statueOfferingPanel","warCouncilPanel","bonusObjectivePanel","campaignPanel","veteranPanel","enemyInfoOverlay","pauseMenu"].forEach(id=>{
   const el=document.getElementById(id);
@@ -2452,7 +2472,7 @@ function reset(){
  selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();syncWorldMapFromCurrentState();showToast("Neue Belagerung beginnt");
 }
 
-document.querySelectorAll(".buildBtn").forEach(b=>b.addEventListener("click",e=>{if(e.target.closest(".buildInfoBtn"))return;hideRepairDecision();const k=b.dataset.build;buildMode=buildMode===k?null:k;selected=null;unitCommandMode=null}));
+document.querySelectorAll(".buildBtn").forEach(b=>b.addEventListener("click",e=>{if(e.target.closest(".buildInfoBtn"))return;hideRepairDecision();const k=b.dataset.build;buildMode=buildMode===k?null:k;selected=null;unitCommandMode=null;centerBuildTrayCard(b)}));
 document.querySelectorAll(".buildInfoBtn").forEach(info=>{
  const open=e=>{e.preventDefault();e.stopPropagation();buildMode=null;selected=null;unitCommandMode=null;openBuildCombatInfo(info.dataset.buildInfo)};
  info.addEventListener("click",open);info.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")open(e)});
@@ -2528,11 +2548,18 @@ attachGameInput({
 ui.levelDock.addEventListener("click",e=>{const card=e.target.closest(".levelCard");if(card)focusUpgradeEntity(card)});
 
 const buildTray=document.getElementById("buildTray");
+const buildTrayPrev=document.getElementById("buildTrayPrev");
+const buildTrayNext=document.getElementById("buildTrayNext");
+const buildTrayEdgeLeft=document.getElementById("buildTrayEdgeLeft");
+const buildTrayEdgeRight=document.getElementById("buildTrayEdgeRight");
 const navButtons=[...document.querySelectorAll(".navBtn[data-tab]")];
 const navResearch=document.getElementById("navResearch"),navResearchBadge=document.getElementById("navResearchBadge");
 const navUpgrade=document.getElementById("navUpgrade");
 const navStats=document.getElementById("navStats");
 const navMenu=document.getElementById("navMenu");
+const navMore=document.getElementById("navMore");
+const navMoreBadge=document.getElementById("navMoreBadge");
+const moreNavMenu=document.getElementById("moreNavMenu");
 const statsScreen=document.getElementById("statsScreen");
 const statsContent=document.getElementById("statsContent");
 const statsTitle=document.getElementById("statsTitle");
@@ -2951,22 +2978,84 @@ function openStats(target=selected){
 }
 function closeStats(){statsScreen.classList.add("hidden");statsScreen.style.pointerEvents="none";statsScreen.style.visibility="hidden";statsScreen.style.display="none";last=performance.now();updateUI()}
 
+const BUILD_TRAY_SCROLL_KEY="fortressCommander.buildTrayScroll.v1";
+let activeBuildTab="towers";
+let buildTrayScrollPositions={towers:0,units:0,support:0};
+let buildTraySaveTimer=0;
+try{
+ const stored=JSON.parse(localStorage.getItem(BUILD_TRAY_SCROLL_KEY)||"null");
+ if(stored&&typeof stored==="object"){
+  for(const key of Object.keys(buildTrayScrollPositions)){
+   if(Number.isFinite(Number(stored[key])))buildTrayScrollPositions[key]=Math.max(0,Number(stored[key]));
+  }
+ }
+}catch{}
+function persistBuildTrayScroll(){
+ clearTimeout(buildTraySaveTimer);
+ buildTraySaveTimer=setTimeout(()=>{
+  try{localStorage.setItem(BUILD_TRAY_SCROLL_KEY,JSON.stringify(buildTrayScrollPositions))}catch{}
+ },120);
+}
+function rememberBuildTrayScroll(){
+ if(!buildTray||!activeBuildTab)return;
+ buildTrayScrollPositions[activeBuildTab]=Math.max(0,buildTray.scrollLeft||0);
+ persistBuildTrayScroll();
+}
+function updateBuildTrayIndicators(){
+ if(!buildTray)return;
+ const maxScroll=Math.max(0,buildTray.scrollWidth-buildTray.clientWidth);
+ const canLeft=buildTray.scrollLeft>4;
+ const canRight=buildTray.scrollLeft<maxScroll-4;
+ buildTrayPrev?.classList.toggle("trayControlHidden",!canLeft);
+ buildTrayNext?.classList.toggle("trayControlHidden",!canRight);
+ buildTrayEdgeLeft?.classList.toggle("visible",canLeft);
+ buildTrayEdgeRight?.classList.toggle("visible",canRight);
+}
+function restoreBuildTrayScroll(tab){
+ requestAnimationFrame(()=>{
+  const maxScroll=Math.max(0,buildTray.scrollWidth-buildTray.clientWidth);
+  buildTray.scrollLeft=Math.min(maxScroll,Math.max(0,buildTrayScrollPositions[tab]||0));
+  updateBuildTrayIndicators();
+ });
+}
+function centerBuildTrayCard(card){
+ if(!buildTray||!card||card.style.display==="none")return;
+ const target=card.offsetLeft-(buildTray.clientWidth-card.offsetWidth)/2;
+ buildTray.scrollTo({left:Math.max(0,target),behavior:"smooth"});
+}
 function clearNavActionState(){
  document.querySelectorAll("#bottomNav .navBtn").forEach(b=>{if(!b.dataset.tab)b.classList.remove("active")});
 }
+function activateSecondaryNav(button){
+ clearNavActionState();navButtons.forEach(b=>b.classList.remove("active"));button?.classList.add("active");
+ if(window.matchMedia("(max-width: 700px)").matches)navMore?.classList.add("active");
+ closeMoreNav();
+}
 function setBuildTab(tab){
+ rememberBuildTrayScroll();
  closeAllBlockingPanels();clearNavActionState();
+ activeBuildTab=tab;
  navButtons.forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
  const cards=[...document.querySelectorAll(".buildBtn")];
  cards.forEach(card=>card.style.display=card.dataset.group===tab?"block":"none");
- buildTray.scrollTo({left:0,behavior:"smooth"});
+ restoreBuildTrayScroll(tab);
 }
 navButtons.forEach(btn=>btn.addEventListener("click",()=>setBuildTab(btn.dataset.tab)));
-navUpgrade.addEventListener("click",()=>{
- clearNavActionState();navButtons.forEach(b=>b.classList.remove("active"));navUpgrade.classList.add("active");openUpgradeCenter();
+navUpgrade.addEventListener("click",()=>{rememberBuildTrayScroll();activateSecondaryNav(navUpgrade);openUpgradeCenter()});
+navStats.addEventListener("click",()=>{rememberBuildTrayScroll();activateSecondaryNav(navStats);openStats()});
+navResearch.addEventListener("click",()=>{rememberBuildTrayScroll();activateSecondaryNav(navResearch);openWorkshopPanel()});
+navMore?.addEventListener("click",event=>{
+ event.preventDefault();event.stopPropagation();
+ if(isMoreNavOpen())closeMoreNav();else openMoreNav();
 });
-navStats.addEventListener("click",()=>{clearNavActionState();navButtons.forEach(b=>b.classList.remove("active"));navStats.classList.add("active");openStats()});
-navResearch.addEventListener("click",()=>{clearNavActionState();navButtons.forEach(b=>b.classList.remove("active"));navResearch.classList.add("active");openWorkshopPanel()});
+moreNavMenu?.addEventListener("click",event=>event.stopPropagation());
+document.addEventListener("pointerdown",event=>{
+ if(isMoreNavOpen()&&!moreNavMenu.contains(event.target)&&!navMore.contains(event.target))closeMoreNav();
+});
+buildTray?.addEventListener("scroll",()=>{rememberBuildTrayScroll();updateBuildTrayIndicators()},{passive:true});
+buildTrayPrev?.addEventListener("click",()=>buildTray.scrollBy({left:-Math.max(170,buildTray.clientWidth*.72),behavior:"smooth"}));
+buildTrayNext?.addEventListener("click",()=>buildTray.scrollBy({left:Math.max(170,buildTray.clientWidth*.72),behavior:"smooth"}));
+window.addEventListener("resize",()=>requestAnimationFrame(updateBuildTrayIndicators));
 statsCloseBtn.addEventListener("click",closeStats);
 testResourceCloseBtn.addEventListener("click",closeTestResourcePanel);
 testResourcePanel.addEventListener("click",e=>{
@@ -3122,8 +3211,7 @@ statsContent.addEventListener("click",e=>{
  const row=e.target.closest("[data-unit-stat]");if(!row)return;const u=state.units.find(x=>x.uid===Number(row.dataset.unitStat));if(u){selected=u;openStats(u)}
 });
 navMenu.addEventListener("click",()=>{
- clearNavActionState();navButtons.forEach(b=>b.classList.remove("active"));navMenu.classList.add("active");
- openInstructions();
+ rememberBuildTrayScroll();activateSecondaryNav(navMenu);openInstructions();
 });
 setBuildTab("towers");
 
