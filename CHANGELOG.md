@@ -1,3 +1,12 @@
+## v1.18.6 – Faire Gegnerreichweiten
+
+- Pauschale gegnerische Einheitentreffer aus 62 Pixel Entfernung durch körperbasierte Nahkampfreichweiten ersetzt.
+- `enemyAttackDefender()` kontrolliert die Entfernung nun direkt beim Schadensereignis und verwirft zu weit entfernte Treffer.
+- Speerjäger-Reichweite auf rund 70 reduziert und Fernstich auf Burgwachen sowie Andreas begrenzt.
+- Bogenschützen sind gegen Speerjäger aus der zweiten Reihe kein zulässiges Ziel mehr und können nur bei echtem Nahkontakt getroffen werden.
+- Torwachen-, Turm- und Gebäudetreffer verwenden angepasste Kontaktabstände statt großzügiger fester Schwellen.
+- Gegnerkodex, Anleitung, Versionsangaben, PWA-Cache und Kampfvalidierung auf v1.18.6 aktualisiert.
+
 ## v1.18.5 – Truppenlimit & Außenversorgung
 
 - `js/troops.js` als zentrale Quelle für Grundkapazität, Wohngebäude-Boni, Einheitenkosten, Überbelegung und absolutes Sicherheitslimit ergänzt.

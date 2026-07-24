@@ -234,6 +234,37 @@ export const GUARD_OUTER_HOLD_RADIUS_BONUS = 235;
 // Der Ausfall darf bis 250 Einheiten über den äußeren Ring hinausreichen.
 // WALL_R + 235 (äußerer Ring) + 250 = WALL_R + 485.
 export const GUARD_OFFENSE_RADIUS_BONUS = 485;
+export const ENEMY_MELEE_CONTACT_PADDING = 6;
+export const ENEMY_SPEAR_REACH_BONUS = 34;
+
+export function getDefenderBodyRadius(unit) {
+  if (!unit) return 12;
+  if (Number.isFinite(Number(unit.bodyRadius))) return Math.max(8, Number(unit.bodyRadius));
+  if (unit.key === "hero") return 16;
+  if (unit.key === "guard") return 14;
+  return 12;
+}
+
+export function getEnemyDefenderAttackReach(
+  enemy,
+  defender,
+  { attackMode = "melee" } = {}
+) {
+  const enemyRadius = Math.max(8, Number(enemy?.radius) || 12);
+  const defenderRadius = getDefenderBodyRadius(defender);
+  const spearBonus = attackMode === "spear" ? ENEMY_SPEAR_REACH_BONUS : 0;
+  return enemyRadius + defenderRadius + ENEMY_MELEE_CONTACT_PADDING + spearBonus;
+}
+
+export function isEnemyDefenderInAttackRange(
+  enemy,
+  defender,
+  { attackMode = "melee" } = {}
+) {
+  if (!enemy || !defender || enemy.hp <= 0 || defender.hp <= 0) return false;
+  const reach = getEnemyDefenderAttackReach(enemy, defender, { attackMode });
+  return (enemy.x - defender.x) ** 2 + (enemy.y - defender.y) ** 2 <= reach * reach;
+}
 
 export function isMeleeDefender(unit) {
   return Boolean(unit && (unit.key === "guard" || unit.key === "hero"));
@@ -340,13 +371,21 @@ export function resolveGuardEnemyOverlap(
 export function findNearestBlockingUnit(
   units,
   enemy,
-  { centerX, centerY, wallRadius, maxRange = 58 }
+  {
+    centerX,
+    centerY,
+    wallRadius,
+    attackMode = "melee",
+    maxRange = Infinity,
+    unitFilter = null,
+  }
 ) {
   let best = null;
-  let bestDistanceSquared = maxRange * maxRange;
+  let bestDistanceSquared = Infinity;
 
   for (const unit of units) {
     if (unit.hp <= 0) continue;
+    if (typeof unitFilter === "function" && !unitFilter(unit)) continue;
 
     if (isMeleeDefender(unit) && !isGuardTargetAllowed(unit, enemy, {
       centerX,
@@ -356,8 +395,12 @@ export function findNearestBlockingUnit(
       continue;
     }
 
+    const reach = Math.min(
+      Math.max(0, Number(maxRange) || Infinity),
+      getEnemyDefenderAttackReach(enemy, unit, { attackMode })
+    );
     const distanceSquared = (unit.x - enemy.x) ** 2 + (unit.y - enemy.y) ** 2;
-    if (distanceSquared < bestDistanceSquared) {
+    if (distanceSquared <= reach * reach && distanceSquared < bestDistanceSquared) {
       bestDistanceSquared = distanceSquared;
       best = unit;
     }

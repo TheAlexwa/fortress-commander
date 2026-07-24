@@ -1,3 +1,13 @@
+## v1.18.6 – Faire Gegnerreichweiten
+
+- Alle Angriffe gegnerischer Einheiten gegen mobile Verteidiger prüfen die tatsächliche Körperdistanz unmittelbar vor dem Schaden erneut.
+- Normale Nahkämpfer treffen Bogenschützen, Burgwachen und Andreas nur noch bei sichtbarem Kontakt statt aus einem pauschalen 62-Pixel-Radius.
+- Speerjäger behalten einen begrenzten Angriff aus der zweiten Reihe, können damit aber nur Burgwachen und Andreas angreifen. Bogenschützen erleiden durch Speerjäger nur noch bei normalem Nahkontakt Schaden.
+- Speerreichweite von 112 auf ungefähr 70 Einheiten reduziert.
+- Torverteidiger, Türme und Versorgungsgebäude verwenden körper- beziehungsweise gebäudebasierte Trefferabstände.
+- Die Kampfprüfung kontrolliert jetzt Nahkontakt, zu weit entfernte Angreifer und die Zielauswahl der Speerjäger.
+- Spielstände aus v1.18.5 bleiben vollständig kompatibel.
+
 ## v1.18.5 – Truppenlimit & Außenversorgung
 
 - Eigenständiges Truppenplatz-System ergänzt: 2 Grundplätze der Burg und maximal 24 mobile Truppenplätze als Leistungsschutz.

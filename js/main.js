@@ -94,6 +94,8 @@ import {
  getTowerBehindWall,
  findNearestCastleTower,
  findNearestBlockingUnit,
+ getEnemyDefenderAttackReach,
+ isEnemyDefenderInAttackRange,
  findNearestGuardTarget,
  getGuardMeleeReach,
  getGuardRadiusLimit,
@@ -254,8 +256,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.5";
-const GAME_RELEASE_NAME="Truppenlimit & Außenversorgung";
+const GAME_VERSION="1.18.6";
+const GAME_RELEASE_NAME="Faire Gegnerreichweiten";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true};
@@ -1855,9 +1857,12 @@ function earlyLumberProtectionMultiplier(building){
  // gesamte Wirtschaft. Ein zweiter Holzfäller hebt den Anfängerschutz auf.
  return intactLumber <= 1 ? 0.55 : 1;
 }
+function enemyBuildingAttackReach(enemy,building){
+ return Math.max(20,(Number(enemy?.radius)||12)+buildingCollisionRadius(building)+STRUCTURE_COLLISION_PADDING+2);
+}
 function attackRaidBuilding(enemy,building,dt){
  if(!building)return false;const dx=building.slot.x-enemy.x,dy=building.slot.y-enemy.y,d=Math.max(1,Math.hypot(dx,dy));
- if(d<=40+(Number(enemy.radius)||12)){if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;const stone=isStoneBuilding(building),supplyProtection=earlyLumberProtectionMultiplier(building);building.hp=Math.max(0,building.hp-enemyAttackDamage(enemy)*stonePlunderDamageMultiplier(building)*supplyProtection);burst(building.slot.x,building.slot.y,stone?"#aeb5b8":"#b56b32",7);if(building.hp<=0)showToast(`${buildingDisplayName(building)} wurde geplündert!`)}}else{const speed=getEffectiveEnemySpeed(enemy),prevX=enemy.x,prevY=enemy.y;placeMobileEntity(enemy,enemy.x+dx/d*speed*dt,enemy.y+dy/d*speed*dt,prevX,prevY)}return true;
+ if(d<=enemyBuildingAttackReach(enemy,building)){if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;const stone=isStoneBuilding(building),supplyProtection=earlyLumberProtectionMultiplier(building);building.hp=Math.max(0,building.hp-enemyAttackDamage(enemy)*stonePlunderDamageMultiplier(building)*supplyProtection);burst(building.slot.x,building.slot.y,stone?"#aeb5b8":"#b56b32",7);if(building.hp<=0)showToast(`${buildingDisplayName(building)} wurde geplündert!`)}}else{const speed=getEffectiveEnemySpeed(enemy),prevX=enemy.x,prevY=enemy.y;placeMobileEntity(enemy,enemy.x+dx/d*speed*dt,enemy.y+dy/d*speed*dt,prevX,prevY)}return true;
 }
 function applyBossDeathShock(boss){
  let affected=0;for(const enemy of state.enemies){if(enemy===boss||enemy.hp<=0)continue;if(Math.hypot(enemy.x-boss.x,enemy.y-boss.y)<=190){enemy.moraleBreakTime=Math.max(Number(enemy.moraleBreakTime)||0,4);affected++}}
@@ -1970,26 +1975,31 @@ function heroSharesEnemyDefenseZone(enemy,hero){
  if(enemy.phase==="core")return heroRadius<FIXED_INNER_WALL_RADIUS+18;
  return false;
 }
-function nearestBlockingUnit(enemy,maxRange=58){
- const hero=getAndreas();
- if(heroAbilityActive(hero)&&heroSharesEnemyDefenseZone(enemy,hero)&&Math.hypot(enemy.x-hero.x,enemy.y-hero.y)<=maxRange)return hero;
- return findNearestBlockingUnit(state.units,enemy,{centerX:CX,centerY:CY,wallRadius:WALL_R,maxRange});
+function nearestBlockingUnit(enemy,attackMode="melee",unitFilter=null){
+ return findNearestBlockingUnit(state.units,enemy,{
+  centerX:CX,centerY:CY,wallRadius:WALL_R,attackMode,unitFilter
+ });
 }
 function nearestGateDefender(enemy,gate,radius){
  if(!enemy||!gate)return null;
  const gx=CX+Math.cos(gate.angle)*radius,gy=CY+Math.sin(gate.angle)*radius;
- let best=null,bestDistance=68;
+ let best=null,bestDistance=Infinity;
  for(const unit of state.units){
   if(unit?.key!=="guard"||unit.hp<=0)continue;
   if(Math.hypot(unit.x-gx,unit.y-gy)>96)continue;
+  if(!isEnemyDefenderInAttackRange(enemy,unit,{attackMode:"melee"}))continue;
   const distance=Math.hypot(unit.x-enemy.x,unit.y-enemy.y);
   if(distance<bestDistance){bestDistance=distance;best=unit}
  }
  return best;
 }
-function enemyAttackDefender(enemy,defender,damageFactor=.6){
- if(!defender)return false;
- if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;defender.hp-=enemyAttackDamage(enemy)*damageFactor*(1-effectiveUnitArmor(defender));burst(defender.x,defender.y,"#b84640",4);playSound("meleeHit")}
+function enemyAttackDefender(enemy,defender,damageFactor=.6,attackMode="melee"){
+ if(!defender||!isEnemyDefenderInAttackRange(enemy,defender,{attackMode}))return false;
+ if(enemy.attackCd<=0){
+  enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;enemy._facing=Math.atan2(defender.y-enemy.y,defender.x-enemy.x);
+  defender.hp-=enemyAttackDamage(enemy)*damageFactor*(1-effectiveUnitArmor(defender));
+  burst(defender.x,defender.y,attackMode==="spear"?"#9dae72":"#b84640",attackMode==="spear"?5:4);playSound("meleeHit");
+ }
  return true;
 }
 function handleHeroTaunt(enemy,dt){
@@ -1997,9 +2007,9 @@ function handleHeroTaunt(enemy,dt){
  if(!heroAbilityActive(hero)||hero.hp<=0||!heroSharesEnemyDefenseZone(enemy,hero))return false;
  const dx=hero.x-enemy.x,dy=hero.y-enemy.y,d=Math.max(1,Math.hypot(dx,dy));
  if(d>HERO_ABILITY_TAUNT_RADIUS)return false;
- const reach=Math.max(44,(Number(enemy.radius)||12)+31);
+ const reach=getEnemyDefenderAttackReach(enemy,hero,{attackMode:"melee"});
  if(d<=reach){
-  if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;hero.hp-=enemyAttackDamage(enemy)*.6*(1-effectiveUnitArmor(hero));burst(hero.x,hero.y,"#b84640",5)}
+  enemyAttackDefender(enemy,hero,.6,"melee");
  }else{const speed=getEffectiveEnemySpeed(enemy),prevX=enemy.x,prevY=enemy.y;placeMobileEntity(enemy,enemy.x+dx/d*speed*dt,enemy.y+dy/d*speed*dt,prevX,prevY)}
  return true;
 }
@@ -2433,22 +2443,22 @@ function update(dt){
   }else if(e.phase==="inside"){
    const tauntedByHero=handleHeroTaunt(e,dt);
    const tower=towerBehindWall(e.wallIndex);
-   const spearDefender=!tauntedByHero&&e.type==="spear"?nearestBlockingUnit(e,112):null;
-   const blockingUnit=tauntedByHero?null:nearestBlockingUnit(e,62);
+   const spearDefender=!tauntedByHero&&e.type==="spear"?nearestBlockingUnit(e,"spear",isMeleeHeroUnit):null;
+   const blockingUnit=tauntedByHero?null:nearestBlockingUnit(e,"melee");
    const raidTarget=!tauntedByHero&&e.type==="raider"?nearestRaidBuilding(e):null;
    const innerWall=getInnerWallSegmentForPoint(state,e.x,e.y,{CX,CY});
    e.innerWallIndex=innerWall?.i??null;
    if(tauntedByHero){
     // Ruf des Helden lenkt nahe Feinde auf Andreas, ohne Mauern zu überspringen.
    }else if(spearDefender){
-    e.secondRowAttack=true;enemyAttackDefender(e,spearDefender,.48);
+    e.secondRowAttack=true;enemyAttackDefender(e,spearDefender,.48,"spear");
    }else if(blockingUnit){
     enemyAttackDefender(e,blockingUnit);
    }else if(raidTarget){
     attackRaidBuilding(e,raidTarget,dt);
    }else if(tower){
     const tdx=tower.slot.x-e.x,tdy=tower.slot.y-e.y,td=Math.max(1,Math.hypot(tdx,tdy));
-    if(td<38+e.radius){
+    if(td<=enemyBuildingAttackReach(e,tower)){
      if(e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;tower.hp-=enemyAttackDamage(e);burst(tower.slot.x,tower.slot.y,"#b67a45",6)}
     }else{const speed=getEffectiveEnemySpeed(e),prevX=e.x,prevY=e.y;placeMobileEntity(e,e.x+tdx/td*speed*dt,e.y+tdy/td*speed*dt,prevX,prevY)}
    }else if(!innerWall||innerWall.hp<=0){
@@ -2469,20 +2479,20 @@ function update(dt){
   }else{
    const tauntedByHero=handleHeroTaunt(e,dt);
    const castleTower=nearestCastleTower(e);
-   const spearDefender=!tauntedByHero&&e.type==="spear"?nearestBlockingUnit(e,112):null;
-   const blockingUnit=tauntedByHero?null:nearestBlockingUnit(e,62);
+   const spearDefender=!tauntedByHero&&e.type==="spear"?nearestBlockingUnit(e,"spear",isMeleeHeroUnit):null;
+   const blockingUnit=tauntedByHero?null:nearestBlockingUnit(e,"melee");
    const raidTarget=!tauntedByHero&&e.type==="raider"?nearestRaidBuilding(e):null;
    if(tauntedByHero){
     // Andreas bindet nahe Feinde während seiner aktiven Fähigkeit.
    }else if(spearDefender){
-    e.secondRowAttack=true;enemyAttackDefender(e,spearDefender,.48);
+    e.secondRowAttack=true;enemyAttackDefender(e,spearDefender,.48,"spear");
    }else if(blockingUnit){
     enemyAttackDefender(e,blockingUnit);
    }else if(raidTarget){
     attackRaidBuilding(e,raidTarget,dt);
    }else if(castleTower){
     const cdx=castleTower.slot.x-e.x,cdy=castleTower.slot.y-e.y,cd=Math.max(1,Math.hypot(cdx,cdy));
-    if(cd<38+e.radius){
+    if(cd<=enemyBuildingAttackReach(e,castleTower)){
      if(e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;castleTower.hp-=enemyAttackDamage(e);burst(castleTower.slot.x,castleTower.slot.y,"#b67a45",6)}
     }else{const speed=getEffectiveEnemySpeed(e),prevX=e.x,prevY=e.y;placeMobileEntity(e,e.x+cdx/cd*speed*dt,e.y+cdy/cd*speed*dt,prevX,prevY)}
    }else{
