@@ -54,6 +54,9 @@ footer:after{content:"";position:absolute;top:7px;left:50%;width:42px;height:4px
 .buildBtn .cost{margin-top:3px;font-weight:800}
 .buildBtn .desc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .small{height:72px;min-width:94px;border-radius:16px;font-weight:900;background:linear-gradient(155deg,#3f554a,#1d2924)}
+.small.cta,#statueOfferingBtn.cta{background:linear-gradient(155deg,#916b2c,#553718);border-color:#ffd88a;box-shadow:0 0 0 1px #ffe39d55,0 0 16px #ffb34755,inset 0 1px #ffffff2e;color:#fff6dd}
+.small.cta:disabled,#statueOfferingBtn.cta:disabled{opacity:.58;box-shadow:0 0 0 1px #ffe39d22,inset 0 1px #ffffff18}
+.utilityBuildBtn .cost{font-size:9px}
 #upgradeBtn{border-color:#70c7ff66;background:linear-gradient(155deg,#315d75,#183344)}
 #repairWallBtn{border-color:#77d08955;background:linear-gradient(155deg,#376c4a,#1d3a29)}
 #sellBtn{border-color:#e7807866}

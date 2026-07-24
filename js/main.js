@@ -198,10 +198,12 @@ import {
   MIDDLE_WALL_SEGMENT_COUNT,
   MIDDLE_WALL_WOOD_MAX_HP,
   MIDDLE_GATE_COUNT,
+  MIDDLE_GATE_HALF_ANGLE,
   isMiddleTowerSpotSegment,
   isOuterTowerSpotSegment,
   OUTER_WALL_SEGMENT_COUNT,
   OUTER_GATE_COUNT,
+  OUTER_GATE_HALF_ANGLE,
   createInnerWallSegments,
   createMiddleGates,
   createOuterWallSegments,
@@ -212,14 +214,17 @@ import {
   getBuiltOuterGateCount,
   getInnerWallSegmentForPoint,
   getMiddleGateForPoint,
+  getMiddleGateIndexForAngle,
   getNearestMiddleGateIndexForAngle,
   getMiddleWallSectionIndexForSegment,
+  getMiddleWallSegmentIndexForAngle,
   getMiddleWallSegmentAngles,
   getMiddleWallSegmentName,
   getMiddleWallSegmentStatus,
   getMiddleFortificationUpgrade,
   upgradeMiddleFortification,
   getOuterWallSegmentIndexForAngle,
+  getOuterGateIndexForAngle,
   getOuterGateForPoint,
   getOuterWallSegmentName,
   getOuterWallSegmentStatus,
@@ -240,8 +245,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.3";
-const GAME_RELEASE_NAME="Wachen-Angriffsfix & Bogenschuss";
+const GAME_VERSION="1.18.4";
+const GAME_RELEASE_NAME="Andreas-Opfer & Kollisionsfix";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true};
@@ -296,6 +301,8 @@ const AUTOSAVE_INTERVAL_MS=60_000;
 const ACTIVE_ENEMY_LIMIT=(window.matchMedia("(max-width: 900px)").matches||navigator.maxTouchPoints>0)?64:72;
 const ENEMY_PULSE_INTERVAL=.11;
 const ENEMY_PULSE_PAUSE=1.25;
+const STRUCTURE_COLLISION_PADDING=6;
+const RING_COLLISION_THICKNESS=22;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
  if(!ENEMY_CODEX[type]||discoveredEnemies.has(type))return;
@@ -640,7 +647,8 @@ function moveArcherAwayFromThreat(unit,threat,dt){
   const score=threatDistance+safetyBonus-Math.hypot(x-unit.x,y-unit.y)*.04;
   if(score>bestScore){bestScore=score;bestX=x;bestY=y}
  }
- unit.x=bestX;unit.y=bestY;unit.targetX=bestX;unit.targetY=bestY;unit.evadingMelee=true;
+ const prevX=unit.x,prevY=unit.y;
+ placeMobileEntity(unit,bestX,bestY,prevX,prevY);unit.targetX=bestX;unit.targetY=bestY;unit.evadingMelee=true;
  return true;
 }
 function canPlaceMoveTarget(unit,x,y){
@@ -651,6 +659,90 @@ function canPlaceMoveTarget(unit,x,y){
   return d<(((unit.guardZone||"middle")==="outer"?OUTER_WALL_R:WALL_R)-10)&&d>95;
  }
  return d<archerZoneRadius(unit)&&d>95;
+}
+function entityCollisionRadius(entity){
+ if(!entity)return 12;
+ if(entity.kind==="unit")return entity.key==="hero"?16:entity.key==="guard"?14:12;
+ if(entity.job==="craftsman")return 10;
+ return Math.max(10,Number(entity.radius)||12);
+}
+function buildingCollisionRadius(building){
+ if(!building?.slot)return 0;
+ if(building.base?.kind==="tower")return 24;
+ return ({statue:34,market:30,workshop:29,repair:28,quarry:29,lumber:27,house:26})[building.key]||26;
+}
+function normalizeArcAngle(angle){
+ let result=Number(angle)||0;
+ while(result<=-Math.PI)result+=Math.PI*2;
+ while(result>Math.PI)result-=Math.PI*2;
+ return result;
+}
+function angleWithinArc(angle,start,end,padding=0){
+ const mid=normalizeArcAngle((start+end)/2);
+ const span=Math.abs(normalizeArcAngle(end-start))/2+padding;
+ return Math.abs(normalizeArcAngle(angle-mid))<=span;
+}
+function pushEntityOutsideCircle(entity,cx,cy,radius,previousX=entity.x,previousY=entity.y){
+ let dx=entity.x-cx,dy=entity.y-cy,d=Math.hypot(dx,dy);
+ if(d<.001){dx=previousX-cx;dy=previousY-cy;d=Math.hypot(dx,dy)||1}
+ const target=radius+entityCollisionRadius(entity)+STRUCTURE_COLLISION_PADDING;
+ entity.x=cx+dx/d*target;
+ entity.y=cy+dy/d*target;
+}
+function isMiddleRingSolidAtAngle(angle){
+ const gateIndex=getMiddleGateIndexForAngle(angle,MIDDLE_GATE_HALF_ANGLE*1.08);
+ if(gateIndex>=0){const gate=state.middleGates?.[gateIndex];return !!(gate?.built&&gate.hp>0)}
+ const segmentIndex=getMiddleWallSegmentIndexForAngle(angle,state.walls.length||MIDDLE_WALL_SEGMENT_COUNT);
+ const wall=state.walls?.[segmentIndex];
+ return !!(wall?.built&&wall.hp>0&&angleWithinArc(angle,wall.a0,wall.a1,.015));
+}
+function isOuterRingSolidAtAngle(angle){
+ const gateIndex=getOuterGateIndexForAngle(angle,OUTER_GATE_HALF_ANGLE*1.18);
+ if(gateIndex>=0){const gate=state.outerGates?.[gateIndex];return !!(gate?.built&&gate.hp>0)}
+ const segmentIndex=getOuterWallSegmentIndexForAngle(angle,state.outerWalls.length||OUTER_WALL_SEGMENT_COUNT);
+ const wall=state.outerWalls?.[segmentIndex];
+ return !!(wall?.built&&wall.hp>0&&angleWithinArc(angle,wall.a0,wall.a1,.015));
+}
+function resolveEntityAgainstRing(entity,previousX,previousY,ringRadius,isSolidAtAngle){
+ if(!entity||entity.hp<=0)return false;
+ const radius=entityCollisionRadius(entity);
+ const currentDx=entity.x-CX,currentDy=entity.y-CY;
+ const currentDistance=Math.hypot(currentDx,currentDy);
+ const previousDistance=Math.hypot(previousX-CX,previousY-CY);
+ const bandInner=ringRadius-RING_COLLISION_THICKNESS-radius;
+ const bandOuter=ringRadius+RING_COLLISION_THICKNESS+radius;
+ if(Math.max(currentDistance,previousDistance)<bandInner||Math.min(currentDistance,previousDistance)>bandOuter)return false;
+ const angle=Math.atan2(currentDy,currentDx);
+ if(!isSolidAtAngle(angle))return false;
+ const approachInside=previousDistance<=ringRadius;
+ const targetDistance=approachInside?bandInner:bandOuter;
+ const length=currentDistance||Math.hypot(previousX-CX,previousY-CY)||1;
+ const baseX=currentDistance?currentDx:(previousX-CX);
+ const baseY=currentDistance?currentDy:(previousY-CY);
+ entity.x=CX+baseX/length*targetDistance;
+ entity.y=CY+baseY/length*targetDistance;
+ return true;
+}
+function resolveEntityAgainstBuildings(entity,previousX=entity.x,previousY=entity.y){
+ if(!entity||entity.hp<=0)return;
+ for(const building of state.buildings){
+  if(!building?.slot||building.hp<=0)continue;
+  const radius=buildingCollisionRadius(building);
+  if(!radius)continue;
+  const dx=entity.x-building.slot.x,dy=entity.y-building.slot.y;
+  const minDistance=radius+entityCollisionRadius(entity)+STRUCTURE_COLLISION_PADDING;
+  if(dx*dx+dy*dy<minDistance*minDistance)pushEntityOutsideCircle(entity,building.slot.x,building.slot.y,radius,previousX,previousY);
+ }
+}
+function resolveEntityStructureCollision(entity,previousX=entity.x,previousY=entity.y,{ignoreBuildings=false}={}){
+ if(!entity)return;
+ resolveEntityAgainstRing(entity,previousX,previousY,OUTER_WALL_R,isOuterRingSolidAtAngle);
+ resolveEntityAgainstRing(entity,previousX,previousY,WALL_R,isMiddleRingSolidAtAngle);
+ if(!ignoreBuildings)resolveEntityAgainstBuildings(entity,previousX,previousY);
+}
+function placeMobileEntity(entity,nextX,nextY,previousX=entity.x,previousY=entity.y,{ignoreBuildings=false}={}){
+ entity.x=nextX;entity.y=nextY;
+ resolveEntityStructureCollision(entity,previousX,previousY,{ignoreBuildings});
 }
 function getAndreas(){return state.units.find(unit=>unit.key==="hero"&&unit.hp>0)||null}
 function hasActiveKriegerstatue(){return state.buildings.some(building=>building.key==="statue")}
@@ -1697,8 +1789,8 @@ function moveEnemyToward(enemy,x,y,dt){
  if(d<=.001)return d;
  const effectiveSpeed=getEffectiveEnemySpeed(enemy);
  const speed=enemy.queueWaiting?effectiveSpeed*.82:effectiveSpeed;
- const step=Math.min(d,speed*dt);
- enemy.x+=dx/d*step;enemy.y+=dy/d*step;
+ const step=Math.min(d,speed*dt),prevX=enemy.x,prevY=enemy.y;
+ placeMobileEntity(enemy,enemy.x+dx/d*step,enemy.y+dy/d*step,prevX,prevY);
  return d;
 }
 function enemyIsEnraged(enemy){return enemy?.type==="berserker"&&enemy.hp>0&&enemy.hp<=enemy.maxHp*.5}
@@ -1742,7 +1834,7 @@ function earlyLumberProtectionMultiplier(building){
 }
 function attackRaidBuilding(enemy,building,dt){
  if(!building)return false;const dx=building.slot.x-enemy.x,dy=building.slot.y-enemy.y,d=Math.max(1,Math.hypot(dx,dy));
- if(d<=40+(Number(enemy.radius)||12)){if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;const stone=isStoneBuilding(building),supplyProtection=earlyLumberProtectionMultiplier(building);building.hp=Math.max(0,building.hp-enemyAttackDamage(enemy)*stonePlunderDamageMultiplier(building)*supplyProtection);burst(building.slot.x,building.slot.y,stone?"#aeb5b8":"#b56b32",7);if(building.hp<=0)showToast(`${buildingDisplayName(building)} wurde geplündert!`)}}else{const speed=getEffectiveEnemySpeed(enemy);enemy.x+=dx/d*speed*dt;enemy.y+=dy/d*speed*dt}return true;
+ if(d<=40+(Number(enemy.radius)||12)){if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;const stone=isStoneBuilding(building),supplyProtection=earlyLumberProtectionMultiplier(building);building.hp=Math.max(0,building.hp-enemyAttackDamage(enemy)*stonePlunderDamageMultiplier(building)*supplyProtection);burst(building.slot.x,building.slot.y,stone?"#aeb5b8":"#b56b32",7);if(building.hp<=0)showToast(`${buildingDisplayName(building)} wurde geplündert!`)}}else{const speed=getEffectiveEnemySpeed(enemy),prevX=enemy.x,prevY=enemy.y;placeMobileEntity(enemy,enemy.x+dx/d*speed*dt,enemy.y+dy/d*speed*dt,prevX,prevY)}return true;
 }
 function applyBossDeathShock(boss){
  let affected=0;for(const enemy of state.enemies){if(enemy===boss||enemy.hp<=0)continue;if(Math.hypot(enemy.x-boss.x,enemy.y-boss.y)<=190){enemy.moraleBreakTime=Math.max(Number(enemy.moraleBreakTime)||0,4);affected++}}
@@ -2012,8 +2104,8 @@ function assignCraftsmen(){
 }
 function moveCraftsman(c,x,y,dt){
  const dx=x-c.x,dy=y-c.y,d=Math.hypot(dx,dy);
- if(d<=4){c.x=x;c.y=y;return true}
- const step=Math.min(d,craftsmanMoveSpeed()*dt);c.x+=dx/d*step;c.y+=dy/d*step;return false;
+ if(d<=4){placeMobileEntity(c,x,y,c.x,c.y);return true}
+ const step=Math.min(d,craftsmanMoveSpeed()*dt),prevX=c.x,prevY=c.y;placeMobileEntity(c,c.x+dx/d*step,c.y+dy/d*step,prevX,prevY);return false;
 }
 function sendCraftsmanHome(c){c.target=null;c.mode="returning";c.repairTimer=0}
 function chooseCraftsmanTarget(c){
@@ -2128,9 +2220,9 @@ function update(dt){
    if(u.retreating){
     u.autoTarget=null;
     const dx=u.homeX-u.x,dy=u.homeY-u.y,d=Math.hypot(dx,dy);
-    if(d>4){const step=Math.min(d,effectiveUnitSpeed(u)*dt);u.x+=dx/d*step;u.y+=dy/d*step}
+    if(d>4){const step=Math.min(d,effectiveUnitSpeed(u)*dt),prevX=u.x,prevY=u.y;placeMobileEntity(u,u.x+dx/d*step,u.y+dy/d*step,prevX,prevY)}
     else{
-     u.x=u.homeX;u.y=u.homeY;
+     placeMobileEntity(u,u.homeX,u.homeY,u.x,u.y);
      u.retreatTimer=Math.max(0,(u.retreatTimer||0)-dt);
      if(u.retreatTimer<=0){u.retreating=false;u.retargetCd=0}
     }
@@ -2162,11 +2254,11 @@ function update(dt){
      const nr=Math.hypot(nx-CX,ny-CY);
      const movementLimit=getGuardRadiusLimit(u,WALL_R);
      if(nr>movementLimit){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(movementLimit-2);ny=CY+Math.sin(a)*(movementLimit-2)}
-     u.x=nx;u.y=ny;
+     placeMobileEntity(u,nx,ny,u.x,u.y);
     }
    }else{
     const tx=u.stance==="defend"?u.homeX:u.targetX,ty=u.stance==="defend"?u.homeY:u.targetY;
-    const dx=tx-u.x,dy=ty-u.y,d=Math.hypot(dx,dy);if(d>4){const step=Math.min(d,effectiveUnitSpeed(u)*dt);u.x+=dx/d*step;u.y+=dy/d*step}
+    const dx=tx-u.x,dy=ty-u.y,d=Math.hypot(dx,dy);if(d>4){const step=Math.min(d,effectiveUnitSpeed(u)*dt),prevX=u.x,prevY=u.y;placeMobileEntity(u,u.x+dx/d*step,u.y+dy/d*step,prevX,prevY)}
    }
    continue;
   }
@@ -2187,12 +2279,12 @@ function update(dt){
     const moveSpeed=effectiveUnitSpeed(u);const desiredX=u.x+dx/d*moveSpeed*dt,desiredY=u.y+dy/d*moveSpeed*dt;
     const dc=Math.hypot(desiredX-CX,desiredY-CY);
     const zoneR=archerZoneRadius(u);
-    if(dc<zoneR&&dc>92){u.x=desiredX;u.y=desiredY}
+    if(dc<zoneR&&dc>92){placeMobileEntity(u,desiredX,desiredY,u.x,u.y)}
     else{
      const a=Math.atan2(t.y-CY,t.x-CX),r=zoneR-4;
      u.targetX=CX+Math.cos(a)*r;u.targetY=CY+Math.sin(a)*r;
      const mdx=u.targetX-u.x,mdy=u.targetY-u.y,md=Math.hypot(mdx,mdy);
-     if(md>4){const step=Math.min(md,effectiveUnitSpeed(u)*dt);u.x+=mdx/md*step;u.y+=mdy/md*step}
+     if(md>4){const step=Math.min(md,effectiveUnitSpeed(u)*dt),prevX=u.x,prevY=u.y;placeMobileEntity(u,u.x+mdx/md*step,u.y+mdy/md*step,prevX,prevY)}
     }
    }
   }else{
@@ -2208,7 +2300,7 @@ function update(dt){
       const zoneR=archerZoneRadius(u);
       const nd=Math.hypot(nx-CX,ny-CY);
       if(nd>zoneR){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(zoneR-2);ny=CY+Math.sin(a)*(zoneR-2)}
-      u.x=nx;u.y=ny;
+      placeMobileEntity(u,nx,ny,u.x,u.y);
     }
    }
   }
@@ -2332,7 +2424,7 @@ function update(dt){
     const tdx=tower.slot.x-e.x,tdy=tower.slot.y-e.y,td=Math.max(1,Math.hypot(tdx,tdy));
     if(td<38+e.radius){
      if(e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;tower.hp-=enemyAttackDamage(e);burst(tower.slot.x,tower.slot.y,"#b67a45",6)}
-    }else{const speed=getEffectiveEnemySpeed(e);e.x+=tdx/td*speed*dt;e.y+=tdy/td*speed*dt}
+    }else{const speed=getEffectiveEnemySpeed(e),prevX=e.x,prevY=e.y;placeMobileEntity(e,e.x+tdx/td*speed*dt,e.y+tdy/td*speed*dt,prevX,prevY)}
    }else if(!innerWall||innerWall.hp<=0){
     e.phase="core";
    }else{
@@ -2366,7 +2458,7 @@ function update(dt){
     const cdx=castleTower.slot.x-e.x,cdy=castleTower.slot.y-e.y,cd=Math.max(1,Math.hypot(cdx,cdy));
     if(cd<38+e.radius){
      if(e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;castleTower.hp-=enemyAttackDamage(e);burst(castleTower.slot.x,castleTower.slot.y,"#b67a45",6)}
-    }else{const speed=getEffectiveEnemySpeed(e);e.x+=cdx/cd*speed*dt;e.y+=cdy/cd*speed*dt}
+    }else{const speed=getEffectiveEnemySpeed(e),prevX=e.x,prevY=e.y;placeMobileEntity(e,e.x+cdx/cd*speed*dt,e.y+cdy/cd*speed*dt,prevX,prevY)}
    }else{
     // Der Angriffswinkel wird beim ersten Erreichen der Kernzone fixiert.
    // Wuerde er aus der laufend veraenderten Position neu berechnet, wuerde der
@@ -2380,6 +2472,7 @@ function update(dt){
   }
  }
  resolveEnemySeparation(state.enemies,dt);
+ for(const enemy of state.enemies)resolveEntityStructureCollision(enemy,enemy.x,enemy.y);
  for(const e of state.enemies)if(e.hp<=0&&!e.dead){
   e.dead=true;if(e.type==="boss"){registerBonusEnemyDeath(state,e);applyBossDeathShock(e)}state.gold+=e.reward;state.kills++;
   if(e.lastHitEntity){const baseXp=e.type==="boss"?55:e.type==="shield"?22:e.type==="runner"?13:16;grantCombatXp(e.lastHitEntity,baseXp*Math.max(.15,Number(e.xpScale)||1))}
@@ -2634,7 +2727,7 @@ function reset(){
  selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();syncWorldMapFromCurrentState();showToast("Neue Belagerung beginnt");
 }
 
-document.querySelectorAll(".buildBtn").forEach(b=>b.addEventListener("click",e=>{if(e.target.closest(".buildInfoBtn"))return;hideRepairDecision();const k=b.dataset.build;buildMode=buildMode===k?null:k;selected=null;unitCommandMode=null;centerBuildTrayCard(b)}));
+document.querySelectorAll(".buildBtn").forEach(b=>b.addEventListener("click",e=>{if(e.target.closest(".buildInfoBtn"))return;hideRepairDecision();const action=b.dataset.action;if(action==="unit-overview"){rememberBuildTrayScroll();closeMoreNav();selected=null;unitCommandMode=null;buildMode=null;centerBuildTrayCard(b);openUnitOverview();return}const k=b.dataset.build;buildMode=buildMode===k?null:k;selected=null;unitCommandMode=null;centerBuildTrayCard(b)}));
 document.querySelectorAll(".buildInfoBtn").forEach(info=>{
  const open=e=>{e.preventDefault();e.stopPropagation();buildMode=null;selected=null;unitCommandMode=null;openBuildCombatInfo(info.dataset.buildInfo)};
  info.addEventListener("click",open);info.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")open(e)});
@@ -3249,6 +3342,24 @@ function updateDisplayPreference(key,value){
 function openDisplaySettings(options={}){refreshDisplaySettingsControls();refreshAudioControls();openBlockingPanel("displaySettingsPanel",{pauseGame:true,...options})}
 function closeDisplaySettings(options={}){closeBlockingPanel("displaySettingsPanel",{resume:true,...options})}
 
+function unitOverviewHtml(){
+ const units=state.units.filter(unit=>unit.hp>0);
+ const groups=[
+  {key:"soldier",icon:"🏹",label:"Bogenschützen",description:"Bewegliche Fernkämpfer mit Prioritätensteuerung."},
+  {key:"guard",icon:"🛡️",label:"Burgwachen",description:"Nahkämpfer für Burghalten, Außenring und Ausfall."},
+  {key:"hero",icon:"👑",label:"Andreas",description:"Legendärer Held aus der Kriegerstatue."}
+ ];
+ const summary=groups.map(group=>{
+  const count=units.filter(unit=>unit.key===group.key).length;
+  return `<div class="statTile"><span>${group.label}</span><b>${group.icon} ${count}</b></div>`;
+ }).join("");
+ const cards=groups.map(group=>{
+  const entries=units.filter(unit=>unit.key===group.key);
+  const body=entries.length?entries.map(unit=>`<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(unit)}</div><div><b>${upgradeEntityName(unit)} · EXP-Stufe ${unit.expLevel||1}</b><small>HP ${Math.ceil(unit.hp)}/${Math.ceil(unit.maxHp)} · Schaden ${Math.round(unit.damage)} · ${unit.key==="guard"?`Modus ${guardZoneLabel(unit)}`:unit.key==="soldier"?`Ziel ${targetPriorityLabel(unit)}`:heroAbilityActive(unit)?"Heldenruf aktiv":"Heldenaura aktiv"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="unit:${unit.uid}">Ansehen</button></div></div>`).join(""):'<div class="statsHint">Zurzeit keine Einheit dieses Typs im Feld.</div>';
+  return `<div class="statsSection"><h3>${group.icon} ${group.label}</h3><div class="statsHint">${group.description}</div>${body}</div>`;
+ }).join("");
+ return `<div class="statsSummary">${summary}<div class="statTile"><span>Alle Einheiten</span><b>${units.length}</b></div></div><div class="statsHint">Das Einheitenbuch bündelt alle mobilen Truppen mit Schnellzugriff auf ihre Detailwerte. Türme bleiben weiterhin in der Upgrade-Zentrale und in den Bauinformationen.</div>${cards}`;
+}
 function openStats(target=selected){
  prepareStatsScreen();
  if(target&&target.kind==="unit"){statsTitle.textContent="Einheitenwerte";statsContent.innerHTML=unitStatsHtml(target)}
@@ -3256,6 +3367,7 @@ function openStats(target=selected){
  else if(target&&(target.kind==="gate"||target.kind==="wall-section"||target.kind==="wall")&&target.maxHp){statsTitle.textContent=target.kind==="gate"?"Torwerte":target.ring==="inner"?"Innerer Mauerring":"Palisadenwerte";statsContent.innerHTML=wallStatsHtml(target)}
  else{statsTitle.textContent="Festungsstatistiken";statsContent.innerHTML=overviewStatsHtml()}
 }
+function openUnitOverview(){prepareStatsScreen();statsTitle.textContent="🪖 Einheitenbuch";statsContent.innerHTML=unitOverviewHtml()}
 function closeStats(options={}){closeBlockingPanel("statsScreen",{resume:true,...options});updateUI()}
 
 const BUILD_TRAY_SCROLL_KEY="fortressCommander.buildTrayScroll.v1";

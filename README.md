@@ -1,3 +1,12 @@
+## v1.18.4 – Andreas-Opfer & Kollisionsfix
+
+- Die Kriegerstatue zeigt jetzt einen deutlich hervorgehobenen „Andreas rufen“-Knopf, damit die Opferfunktion sofort auffällt.
+- Neue Karten-Schaltfläche „Einheitenbuch“ im Einheiten-Reiter ergänzt. Sie öffnet eine kompakte Übersicht aller mobilen Einheiten mit Schnellzugriff auf ihre Detailwerte.
+- Mobile Einheiten, Feinde und Handwerker werden nach Bewegungen nun an intakten Mauerringen und Gebäuden abgefangen; sie laufen nur noch durch zerstörte oder offene Durchgänge.
+- Clanspäher/Runner und andere schnelle Feinde respektieren dadurch Außenring, Mittleren Ring und Gebäude deutlich zuverlässiger.
+- Bestehende Bogenschuss-Audioangleichung bleibt erhalten: Bogenschützenturm und Bogenschütze verwenden weiterhin denselben Schussklang.
+- Versionsangaben, PWA-Cache und Prüfläufe wurden auf v1.18.4 erhöht.
+
 ## v1.18.3 – Wachen-Angriffsfix & Bogenschuss
 
 - Andreas und Burgwachen erkennen Gegner nun auch dann, wenn deren Mittelpunkt nur knapp außerhalb des gewählten Verteidigungsbereichs liegt, sie aber bereits in Nahkampfreichweite stehen.

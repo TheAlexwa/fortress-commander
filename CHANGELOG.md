@@ -1,3 +1,12 @@
+## v1.18.4 – Andreas-Opfer & Kollisionsfix
+
+- Kriegerstatue-Schaltfläche von „Opfergabe“ auf den deutlich sichtbaren CTA „Andreas rufen“ umgestellt und optisch hervorgehoben.
+- Neue Einheiten-Karte „Einheitenbuch“ im Reiter „Einheiten“ ergänzt.
+- Neue Einheitenübersicht im Statistikfenster mit Schnellwahl für alle mobilen Truppen ergänzt.
+- Kollisionen für mobile Einheiten, Gegner und Handwerker an intakten Gebäuden, mittlerem Ring und äußerem Ring ergänzt.
+- Runner/Clanspäher und andere schnelle Gegner können dadurch nicht mehr durch stehende Mauern oder Gebäude phasen; offene Tore und zerstörte Breschen bleiben passierbar.
+- Service-Worker-Cache, Titel, sichtbare Versionen und Validierungsprüfungen auf v1.18.4 aktualisiert.
+
 ## v1.18.3 – Wachen-Angriffsfix & Bogenschuss
 
 - Fehler behoben, durch den Andreas und Burgwachen Gegner direkt neben sich ignorieren konnten, wenn der Mittelpunkt des Gegners knapp außerhalb der erlaubten Bereichsgrenze lag.

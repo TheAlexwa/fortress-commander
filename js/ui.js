@@ -207,7 +207,10 @@ export function renderGameUI({
   ui.repairWall.textContent = "Bewohner";
   ui.craftsmanToggle.style.display = "none";
   ui.marketTrade.style.display = "none";
-  if (ui.statueOffering) ui.statueOffering.style.display = "none";
+  if (ui.statueOffering) {
+    ui.statueOffering.style.display = "none";
+    ui.statueOffering.classList.remove("cta");
+  }
 
   const workshopResearchButton = document.getElementById("workshopResearchBtn");
   if (workshopResearchButton) workshopResearchButton.style.display = "none";
@@ -300,8 +303,9 @@ export function renderGameUI({
     ui.upgrade.style.display = "none";
     if (ui.statueOffering) {
       ui.statueOffering.style.display = "inline-block";
-      ui.statueOffering.textContent = state.heroSummoned ? "👑 Held gerufen" : "🔥 Opfergabe";
+      ui.statueOffering.textContent = state.heroSummoned ? "👑 Andreas aktiv" : "👑 Andreas rufen";
       ui.statueOffering.disabled = false;
+      ui.statueOffering.classList.toggle("cta", !state.heroSummoned);
     }
     ui.sell.disabled = progress > 0 || state.heroSummoned;
     return;

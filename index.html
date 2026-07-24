@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
-<title>Fortress Commander v1.18.3 – Wachen-Angriffsfix</title>
+<title>Fortress Commander v1.18.4 – Andreas-Opfer & Kollisionsfix</title>
 <meta name="theme-color" content="#0b1b2d">
 <meta name="application-name" content="Fortress Commander">
 <meta name="mobile-web-app-capable" content="yes">
@@ -26,7 +26,7 @@
   <div class="appLaunchTitle">FORTRESS<br><span>COMMANDER</span></div>
   <div class="appLaunchSubtitle">Strategie · Verteidigung · Dein Reich</div>
   <div class="appLaunchProgress" aria-hidden="true"><span></span></div>
-  <small>v1.18.3 · Verteidiger und Audio werden vorbereitet …</small>
+  <small>v1.18.4 · Andreas-Opfer, Kollisionen und Einheitenbuch werden vorbereitet …</small>
  </div>
 </div>
 
@@ -50,7 +50,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Kampagnenkarte öffnen">Spiel starten</button>
-  <div id="gameVersionBadge">v1.18.3</div>
+  <div id="gameVersionBadge">v1.18.4</div>
   <div id="pwaInstallCard" class="hidden">
    <img src="assets/icons/icon-192.png" alt="" width="38" height="38">
    <div><strong>Als Handy-App installieren</strong><span>Vollbild, schneller Start und grundlegende Offline-Nutzung.</span></div>
@@ -423,6 +423,7 @@
   <button class="buildBtn" data-build="catapult" data-group="towers" data-icon="🪨"><span class="buildInfoBtn" data-build-info="catapult" role="button" tabindex="0" aria-label="Informationen öffnen">ⓘ</span><div class="name">Katapult</div><div class="cost">🪙 140 · 🪵 55</div><div class="desc">Fläche · Rüstungsbruch</div></button>
   <button class="buildBtn" data-build="soldier" data-group="units" data-icon="🏹"><span class="buildInfoBtn" data-build-info="soldier" role="button" tabindex="0" aria-label="Informationen öffnen">ⓘ</span><div class="name">Bogenschütze</div><div class="cost">🪙 55 · 🪵 10</div><div class="desc">Beweglich · Automatik</div></button>
   <button class="buildBtn" data-build="guard" data-group="units" data-icon="🛡️"><span class="buildInfoBtn" data-build-info="guard" role="button" tabindex="0" aria-label="Informationen öffnen">ⓘ</span><div class="name">Burgwache</div><div class="cost">🪙 120 · 🪵 10</div><div class="desc">Nahkampf · Burg halten / Ausfall</div></button>
+  <button class="buildBtn utilityBuildBtn" data-action="unit-overview" data-group="units" data-icon="🪖"><div class="name">Einheitenbuch</div><div class="cost">Alle mobilen Truppen</div><div class="desc">Übersicht · Auswahl · Werte</div></button>
   <button class="buildBtn" data-build="house" data-group="support" data-icon="⛺"><div class="name">Zeltlager</div><div class="cost">🪙 65 · 🪵 20</div><div class="desc">2 Bewohner · Gold im Kampf</div></button>
   <button class="buildBtn" data-build="lumber" data-group="support" data-icon="🪵"><div class="name">Holzfäller</div><div class="cost">🪙 70</div><div class="desc">Bis zu 4 Bewohner · 45–120 %</div></button>
   <button class="buildBtn" data-build="quarry" data-group="support" data-icon="🪨"><div class="name">Steinbruch</div><div class="cost">🪙 90 · 🪵 25</div><div class="desc">Bis zu 4 Steinmetze</div></button>
@@ -518,7 +519,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.18.3 · Wachen-Angriffsfix und einheitlicher Bogenschuss.</div>
+  <div class="workshopFoot">v1.18.4 · Andreas-Opferknopf, Kollisionsfix und Einheitenbuch.</div>
  </section>
 </div>
 
