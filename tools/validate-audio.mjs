@@ -58,6 +58,6 @@ for(const text of [
 for(const key of ["menu","build","battle","boss","defeat"])if(!audio.includes(`${key}:{file:`))failures.push(`Musikdefinition fehlt: ${key}`);
 for(const key of ["castle","blacksmith","wind"])if(!audio.includes(`${key}:{file:`))failures.push(`Atmosphärendefinition fehlt: ${key}`);
 if(!licenses.includes("Nicht aus dem ZIP feststellbar"))failures.push("Fehlende Lizenzangaben der neuen Dateien sind nicht transparent gekennzeichnet");
-if(!sw.includes('CACHE_NAME="fortress-commander-v1.18.8"'))failures.push("Service-Worker-Cacheversion ist nicht v1.18.8");
+if(!sw.includes('CACHE_NAME="fortress-commander-v1.18.9"'))failures.push("Service-Worker-Cacheversion ist nicht v1.18.9");
 if(failures.length){console.error("Audio-Prüfung fehlgeschlagen:\n- "+failures.join("\n- "));process.exit(1)}
 console.log(`Audio-Prüfung erfolgreich: ${requiredFiles.length} Dateien, fünf Musikzustände, drei Atmosphärenkanäle, Lautstärkesteuerung und Offline-Cache bestätigt.`);

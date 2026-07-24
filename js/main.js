@@ -256,8 +256,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.8";
-const GAME_RELEASE_NAME="Karten- & Info-Ausrichtung";
+const GAME_VERSION="1.18.9";
+const GAME_RELEASE_NAME="Einheitenanimationen & Trefferfeedback";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true};
@@ -2277,6 +2277,7 @@ function update(dt){
     if(d<=meleeReach){
      if(u.attackCd<=0){
       u.attackAngle=Math.atan2(target.y-u.y,target.x-u.x);
+      u.attackVisualVariant=(Number(u.attackVisualVariant)||0)+1;
       u.attackCd=effectiveAttackCooldown(u);
       const dealt=u.damage*unitDamageMultiplier(u,target)*(1-getEffectiveEnemyArmor(target));target.hp-=dealt;target.lastHitEntity=u;
       grantCombatXp(u,Math.min(7,dealt*.075));burst(target.x,target.y,"#f2cf82",7);playSound("meleeHit");
@@ -2305,7 +2306,7 @@ function update(dt){
    }
    const t=u.autoTarget;
    const distance=t?Math.hypot(t.x-u.x,t.y-u.y):Infinity;
-   if(t&&distance<=effectiveUnitRange(u)&&u.attackCd<=0){u.attackAngle=Math.atan2(t.y-u.y,t.x-u.x);u.attackCd=effectiveAttackCooldown(u);shoot(u,t,u.damage*unitDamageMultiplier(u,t)*bonus,480,0,"#bfe0ff")}
+   if(t&&distance<=effectiveUnitRange(u)&&u.attackCd<=0){u.attackAngle=Math.atan2(t.y-u.y,t.x-u.x);u.attackVisualVariant=(Number(u.attackVisualVariant)||0)+1;u.attackCd=effectiveAttackCooldown(u);shoot(u,t,u.damage*unitDamageMultiplier(u,t)*bonus,480,0,"#bfe0ff")}
    const meleeThreat=nearestArcherMeleeThreat(u,wasEvadingMelee?ARCHER_SAFE_DISTANCE:ARCHER_RETREAT_TRIGGER);
    if(meleeThreat){moveArcherAwayFromThreat(u,meleeThreat,dt);continue}
    if(t&&distance>effectiveUnitRange(u)){
@@ -2325,7 +2326,7 @@ function update(dt){
    u.autoTarget=null;
    const e=nearestEnemy(u.x,u.y,effectiveUnitRange(u));
    if(e){
-    if(u.attackCd<=0){u.attackAngle=Math.atan2(e.y-u.y,e.x-u.x);u.attackCd=effectiveAttackCooldown(u);shoot(u,e,u.damage*unitDamageMultiplier(u,e)*bonus,480,0,"#bfe0ff")}
+    if(u.attackCd<=0){u.attackAngle=Math.atan2(e.y-u.y,e.x-u.x);u.attackVisualVariant=(Number(u.attackVisualVariant)||0)+1;u.attackCd=effectiveAttackCooldown(u);shoot(u,e,u.damage*unitDamageMultiplier(u,e)*bonus,480,0,"#bfe0ff")}
    }else{
     const dx=u.targetX-u.x,dy=u.targetY-u.y,d=Math.hypot(dx,dy);
     if(d>4){

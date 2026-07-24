@@ -43,8 +43,8 @@ for(const text of [
 
 requireText(html,'class="worldMapPlayableBadge"',"Spielbar-Badge fehlt");
 
-requireText(main,'const GAME_VERSION="1.18.8"',"Spielversion fehlt");
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.8"',"Cacheversion fehlt");
+requireText(main,'const GAME_VERSION="1.18.9"',"Spielversion fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.9"',"Cacheversion fehlt");
 requireText(sw,"'./assets/ui/campaign-map-v1.18.7.webp'","Kartenbild fehlt im Offline-Cache");
 
 const nodeIds=[...html.matchAll(/class="worldNode[^\"]*"[^>]*data-world-id="([^"]+)"/g)].map(match=>match[1]);

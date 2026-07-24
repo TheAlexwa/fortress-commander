@@ -1,3 +1,16 @@
+## v1.18.9 – Einheitenanimationen & Trefferfeedback
+
+- Bogenschützen erhalten eine sichtbare Bogen-, Sehnen- und Pfeilfreigabe mit kurzem Rückstoß.
+- Burgwachen wechseln zwischen zwei Schwerthieben mit sichtbarer Schlagspur und kleinem Ausfallschritt.
+- Andreas besitzt eine größere goldene Schwertspur, Bodenschock und leuchtende Waffe während „Ruf des Helden“.
+- Eigene und feindliche Einheiten reagieren auf Treffer mit Rückstoß, Aufblitzen und gerichteten Trefferfunken.
+- Burgwachen, Andreas und Eisenschilde zeigen bei Treffern einen eigenen Schildblockeffekt.
+- Laufbewegungen verwenden individuelle Schrittphasen, sanftes Wippen und dezente Staubspuren.
+- Gefallene Einheiten kippen um, sinken leicht ab und verblassen, statt sofort unsichtbar zu werden.
+- Pfeile, Armbrustbolzen und Katapultgeschosse sind klarer gezeichnet und besitzen Schatten beziehungsweise Bewegungsspur.
+- Feindliche Nahkampf- und Speerangriffe erhalten sichtbare Waffenbewegungen, ohne Kampfwerte oder Reichweiten zu verändern.
+- Spielstände aus v1.18.8 bleiben kompatibel.
+
 ## v1.18.8 – Karten- & Info-Ausrichtung
 
 - Die fünf unsichtbaren Weltknoten wurden anhand der tatsächlichen Kreiszentren der Kampagnenillustration pixelgenau neu positioniert.

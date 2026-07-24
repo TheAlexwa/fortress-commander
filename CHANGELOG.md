@@ -1,3 +1,15 @@
+## v1.18.9 – Einheitenanimationen & Trefferfeedback
+
+- Renderseitige Bogenanimation mit gespannter Sehne, Pfeilfreigabe und Rückstoß für mobile Bogenschützen ergänzt.
+- Abwechselnde horizontale und diagonale Schwerthiebe für Burgwachen und Andreas ergänzt.
+- Andreas’ Angriffsspur, Bodenschock und aktive Heldenwaffe goldfarben hervorgehoben.
+- Trefferverfolgung über Lebenspunktänderungen ergänzt: Rückstoß, Aufblitzen, Funken und Schildblock werden ohne Änderung der Schadenslogik dargestellt.
+- Kurze lokale Todesanimationen für eigene und feindliche Einheiten ergänzt; sie verändern weder Spielzustand noch Speicherformat.
+- Laufanimationen um individuelle Schrittphase, Körperneigung und leichte Staubspuren erweitert.
+- Pfeile, Bolzen und Katapultgeschosse grafisch überarbeitet.
+- Feindliche Speerstöße und Nahkampfschwünge sichtbar gemacht.
+- `tools/validate-animations.mjs` ergänzt und Versionsangaben sowie PWA-Cache auf v1.18.9 erhöht.
+
 ## v1.18.8 – Karten- & Info-Ausrichtung
 
 - Weltknoten-Koordinaten auf die gemessenen Kreiszentren der Hintergrundillustration korrigiert.
