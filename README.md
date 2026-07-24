@@ -1,3 +1,12 @@
+## v1.18.3 – Wachen-Angriffsfix & Bogenschuss
+
+- Andreas und Burgwachen erkennen Gegner nun auch dann, wenn deren Mittelpunkt nur knapp außerhalb des gewählten Verteidigungsbereichs liegt, sie aber bereits in Nahkampfreichweite stehen.
+- Der Ausfallradius wurde mit dem tatsächlich erlaubten Bewegungsbereich vereinheitlicht und reicht jetzt zuverlässig bis 250 Einheiten über den äußeren Ring hinaus.
+- Die Bewegungsbegrenzung verwendet dieselbe zentrale Radiusberechnung wie die Zielsuche, damit Einheiten am Rand nicht mehr untätig festhängen.
+- Der Bogenschützenturm verwendet ausdrücklich denselben `arrow-shot`-Klang wie der mobile Bogenschütze; Armbrust und Katapult behalten den schweren Turmklang.
+- Neuer automatischer Prüflauf `node tools/validate-combat.mjs` kontrolliert Bereichsgrenzen, Ausfallradius und Randangriffe.
+- Spielstände aus v1.18.2 bleiben vollständig kompatibel.
+
 ## v1.18.2 – Musik & Atmosphäre
 
 - Fünf dynamische Musiksituationen für Hauptmenü/Kampagnenkarte, ruhige Bauphase, normale Angriffswelle, Bosskampf und Niederlage ergänzt.

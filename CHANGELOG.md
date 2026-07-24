@@ -1,3 +1,12 @@
+## v1.18.3 – Wachen-Angriffsfix & Bogenschuss
+
+- Fehler behoben, durch den Andreas und Burgwachen Gegner direkt neben sich ignorieren konnten, wenn der Mittelpunkt des Gegners knapp außerhalb der erlaubten Bereichsgrenze lag.
+- Zielprüfung berücksichtigt an der Bereichskante nun zusätzlich die tatsächliche Nahkampfreichweite.
+- Ausfall-Zielradius und Ausfall-Bewegungsradius auf denselben Wert vereinheitlicht: bis 250 Einheiten über den äußeren Ring hinaus.
+- Doppelte, abweichende Bewegungsgrenze aus `js/main.js` entfernt; `getGuardRadiusLimit()` ist jetzt die zentrale Quelle.
+- Bogenschützenturm und Bogenschütze werden in der Schussfunktion ausdrücklich auf denselben Bogenschussklang gelegt.
+- `tools/validate-combat.mjs` ergänzt und Versionsangaben sowie PWA-Cache auf v1.18.3 erhöht.
+
 ## v1.18.2 – Musik & Atmosphäre
 
 - Acht bereitgestellte Musik- und Atmosphärendateien unter eindeutigen Projektnamen in `assets/audio/` integriert.

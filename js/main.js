@@ -87,7 +87,6 @@ import {
  findNearestBlockingUnit,
  findNearestGuardTarget,
  getGuardMeleeReach,
- GUARD_DEFEND_RADIUS_BONUS,
  getGuardRadiusLimit,
  resolveGuardEnemyOverlap,
  isGuardTargetAllowed,
@@ -241,8 +240,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.2";
-const GAME_RELEASE_NAME="Musik & Atmosphäre";
+const GAME_VERSION="1.18.3";
+const GAME_RELEASE_NAME="Wachen-Angriffsfix & Bogenschuss";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true};
@@ -1890,7 +1889,8 @@ function handleHeroTaunt(enemy,dt){
  return true;
 }
 function shoot(from,target,damage,speed,splash=0,color="#f0d176",effects=null){
- if(from?.key==="crossbow"||from?.key==="catapult")playSound("towerShot",{playbackRate:from.key==="catapult"?.86:1,volume:from.key==="catapult"?1.05:1});
+ if(from?.key==="archer"||from?.key==="soldier")playSound("arrowShot");
+ else if(from?.key==="crossbow"||from?.key==="catapult")playSound("towerShot",{playbackRate:from.key==="catapult"?.86:1,volume:from.key==="catapult"?1.05:1});
  else playSound("arrowShot");
  return createProjectile(state.projectiles,from,target,damage,speed,splash,color,effects);
 }
@@ -2160,9 +2160,8 @@ function update(dt){
      const travel=Math.max(0,d-stopDistance);
      const step=Math.min(travel,effectiveUnitSpeed(u)*dt);let nx=u.x+dx/d*step,ny=u.y+dy/d*step;
      const nr=Math.hypot(nx-CX,ny-CY);
-     const defendLimit=getGuardRadiusLimit(u,WALL_R);
-     if(u.stance!=="offense"&&nr>defendLimit){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(defendLimit-2);ny=CY+Math.sin(a)*(defendLimit-2)}
-     if(u.stance==="offense"&&nr>WALL_R+330){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(WALL_R+328);ny=CY+Math.sin(a)*(WALL_R+328)}
+     const movementLimit=getGuardRadiusLimit(u,WALL_R);
+     if(nr>movementLimit){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(movementLimit-2);ny=CY+Math.sin(a)*(movementLimit-2)}
      u.x=nx;u.y=ny;
     }
    }else{

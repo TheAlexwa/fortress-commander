@@ -231,6 +231,9 @@ export function findNearestCastleTower(buildings, enemy) {
 
 export const GUARD_DEFEND_RADIUS_BONUS = 135;
 export const GUARD_OUTER_HOLD_RADIUS_BONUS = 235;
+// Der Ausfall darf bis 250 Einheiten über den äußeren Ring hinausreichen.
+// WALL_R + 235 (äußerer Ring) + 250 = WALL_R + 485.
+export const GUARD_OFFENSE_RADIUS_BONUS = 485;
 
 export function isMeleeDefender(unit) {
   return Boolean(unit && (unit.key === "guard" || unit.key === "hero"));
@@ -238,7 +241,7 @@ export function isMeleeDefender(unit) {
 
 export function getGuardRadiusLimit(unit, wallRadius) {
   if (!isMeleeDefender(unit)) return wallRadius + GUARD_DEFEND_RADIUS_BONUS;
-  if (unit.stance === "offense") return wallRadius + 330;
+  if (unit.stance === "offense") return wallRadius + GUARD_OFFENSE_RADIUS_BONUS;
   const zone = unit.guardZone || "middle";
   return wallRadius + (zone === "outer" ? GUARD_OUTER_HOLD_RADIUS_BONUS : GUARD_DEFEND_RADIUS_BONUS);
 }
@@ -251,7 +254,13 @@ export function isGuardTargetAllowed(
   if (!isMeleeDefender(unit) || !enemy || enemy.hp <= 0) return false;
 
   const enemyCenterRadius = Math.hypot(enemy.x - centerX, enemy.y - centerY);
-  return enemyCenterRadius <= getGuardRadiusLimit(unit, wallRadius);
+  const radiusLimit = getGuardRadiusLimit(unit, wallRadius);
+
+  // Ein Gegner direkt an der Bereichsgrenze muss erreichbar bleiben. Zuvor
+  // konnten Wachen und Andreas wenige Pixel neben einem Gegner stehen und ihn
+  // trotzdem ignorieren, sobald dessen Mittelpunkt knapp außerhalb lag.
+  const edgeReach = getGuardMeleeReach(unit, enemy);
+  return enemyCenterRadius <= radiusLimit + edgeReach;
 }
 
 export function findNearestGuardTarget(
