@@ -1,4 +1,4 @@
-const CACHE_NAME="fortress-commander-v1.18.1";
+const CACHE_NAME="fortress-commander-v1.18.2";
 const INDEX_URL=new URL("index.html",self.registration.scope).href;
 const APP_SHELL=[
  './index.html',
@@ -50,6 +50,14 @@ const APP_SHELL=[
  './assets/audio/upgrade-complete.mp3',
  './assets/audio/wave-horn.mp3',
  './assets/audio/wave-victory.mp3',
+ './assets/audio/music-menu.mp3',
+ './assets/audio/music-build.mp3',
+ './assets/audio/music-battle.mp3',
+ './assets/audio/music-boss.mp3',
+ './assets/audio/music-defeat.mp3',
+ './assets/audio/ambience-castle.mp3',
+ './assets/audio/ambience-blacksmith.mp3',
+ './assets/audio/ambience-wind.mp3',
  './assets/buildings/archer-tower.webp',
  './assets/buildings/catapult-tower.webp',
  './assets/buildings/crossbow-tower.webp',

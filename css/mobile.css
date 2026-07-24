@@ -219,7 +219,7 @@ header #populationOverviewBtn .popFree{display:block!important;width:auto!import
  .appLaunchCard{grid-template-columns:120px 1fr;column-gap:18px;text-align:left;justify-items:start}.appLaunchCard img{grid-row:1/6;width:120px}.appLaunchTitle{margin-top:0}.appLaunchProgress{width:min(250px,42vw)}
 }
 
-/* v1.18.1 – Soundgrundsystem & Schlachtgeräusche */
+/* v1.18.2 – Musik & Atmosphäre */
 @media(max-width:900px){
  .soundToggleBtn{top:118px;right:calc(max(6px,var(--safeR)) + 108px)}
 }

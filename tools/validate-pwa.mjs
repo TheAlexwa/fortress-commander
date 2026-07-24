@@ -23,7 +23,7 @@ for(const text of [
 requireText(main,'initializePwa({version:GAME_VERSION})',"PWA-Initialisierung fehlt");
 for(const text of ["beforeinstallprompt","appinstalled","navigator.serviceWorker.register","controllerchange","registration.update()"])
  requireText(pwa,text,"PWA-Logik fehlt");
-for(const text of ['CACHE_NAME="fortress-commander-v1.18.1"','type==="SKIP_WAITING"','request.mode==="navigate"'])
+for(const text of ['CACHE_NAME="fortress-commander-v1.18.2"','type==="SKIP_WAITING"','request.mode==="navigate"'])
  requireText(sw,text,"Service-Worker-Funktion fehlt");
 
 if(manifest.name!=="Fortress Commander")failures.push("Manifest-Name ist falsch");
@@ -41,7 +41,7 @@ for(const asset of shellPaths){
  const assetPath=path.join(root,asset.replace(/^\.\//,""));
  if(!fs.existsSync(assetPath))failures.push(`Cache-Datei fehlt: ${asset}`);
 }
-for(const required of ["./index.html","./manifest.webmanifest","./js/main.js","./js/pwa.js","./js/audio.js","./assets/icons/icon-512.png","./assets/audio/wave-horn.mp3"]){
+for(const required of ["./index.html","./manifest.webmanifest","./js/main.js","./js/pwa.js","./js/audio.js","./assets/icons/icon-512.png","./assets/audio/wave-horn.mp3","./assets/audio/music-menu.mp3","./assets/audio/ambience-wind.mp3"]){
  if(!shellPaths.includes(required))failures.push(`Kern-Datei fehlt im Cache: ${required}`);
 }
 if(failures.length){

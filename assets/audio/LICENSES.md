@@ -1,6 +1,6 @@
-# Audioquellen – Fortress Commander v1.18.1
+# Audioquellen – Fortress Commander v1.18.2
 
-Die Dateien in diesem Ordner wurden für das Spiel gekürzt, auf Mono/44,1 kHz vereinheitlicht, lautheitsangepasst und als MP3 mit 96 kbit/s exportiert. Die Originaldateien wurden vom Nutzer von den jeweiligen offiziellen Plattformen heruntergeladen und für die Einbindung in Fortress Commander bereitgestellt.
+Die zwölf kurzen Soundeffekte aus v1.18.1 wurden für das Spiel gekürzt, auf Mono/44,1 kHz vereinheitlicht, lautheitsangepasst und als MP3 mit 96 kbit/s exportiert. Die acht in v1.18.2 ergänzten Musik- und Atmosphärendateien wurden aus dem bereitgestellten ZIP unverändert übernommen und ausschließlich auf die unten dokumentierten Projektnamen umbenannt. Die Originaldateien wurden vom Nutzer für die Einbindung in Fortress Commander bereitgestellt.
 
 ## Mixkit – Mixkit Free License
 
@@ -35,3 +35,19 @@ Lizenzübersicht: https://pixabay.com/service/license-summary/
 | `wave-victory.mp3` | Gewonnen · Freesound Community (`freesound_community-gewonnen-87838.mp3`) | https://pixabay.com/sound-effects/search/gewonnen/ | Gewonnene Welle |
 
 Die Audiodateien dürfen nicht als eigenständiges Soundpaket weiterverkauft oder unverändert als separate Sammlung verteilt werden. Ihre bearbeitete Einbindung als Bestandteil des Spiels ist vorgesehen.
+
+
+## Musik und Atmosphäre – Angaben aus dem bereitgestellten ZIP
+
+Für diese acht Dateien enthielt das ZIP keine Lizenztexte, Quelllinks oder eingebetteten ID3-Angaben zu Plattform und Lizenz. Deshalb werden diese Felder ausdrücklich als **nicht aus dem ZIP feststellbar** gekennzeichnet. Die Urheberbezeichnungen und Originaltitel sind nur aus den gelieferten Dateinamen abgeleitet.
+
+| Datei im Spiel | Originaldatei | Originaltitel | Urheber laut Dateiname | Plattform | Lizenz | Ursprüngliche Quellseite | Bearbeitung |
+|---|---|---|---|---|---|---|---|
+| `music-menu.mp3` | `deuslower-fantasy-medieval-epic-music-239599.mp3` | Fantasy Medieval Epic Music | deuslower | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nur Umbenennung; Audioinhalt unverändert |
+| `music-build.mp3` | `deuslower-fantasy-medieval-ambient-237371.mp3` | Fantasy Medieval Ambient | deuslower | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nur Umbenennung; Audioinhalt unverändert |
+| `music-battle.mp3` | `u_cppl7ah986-ambient-medieval-battle-223808.mp3` | Ambient Medieval Battle | u_cppl7ah986 | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nur Umbenennung; Audioinhalt unverändert |
+| `music-boss.mp3` | `montogoronto-dark-fight-music-boss-142794.mp3` | Dark Fight Music Boss | montogoronto | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nur Umbenennung; Audioinhalt unverändert |
+| `music-defeat.mp3` | `charles_michel-defeat-charles-michel-140604.mp3` | Defeat | charles_michel | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nur Umbenennung; Audioinhalt unverändert |
+| `ambience-castle.mp3` | `freesound_community-lonely-castle-29059.mp3` | Lonely Castle | freesound_community | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nur Umbenennung; Audioinhalt unverändert |
+| `ambience-blacksmith.mp3` | `freesound_community-blacksmith-workshop-24409.mp3` | Blacksmith Workshop | freesound_community | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nur Umbenennung; Audioinhalt unverändert |
+| `ambience-wind.mp3` | `soundreality-wind-blowing-457954.mp3` | Wind Blowing | soundreality | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nicht aus dem ZIP feststellbar | Nur Umbenennung; Audioinhalt unverändert |

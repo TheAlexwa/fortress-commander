@@ -1,3 +1,14 @@
+## v1.18.2 – Musik & Atmosphäre
+
+- Fünf dynamische Musiksituationen für Hauptmenü/Kampagnenkarte, ruhige Bauphase, normale Angriffswelle, Bosskampf und Niederlage ergänzt.
+- Musikwechsel werden über zwei wiederverwendete Musikkanäle in etwa 2,2 Sekunden weich überblendet; ein Zustandswechsel startet nur bei einer tatsächlich geänderten Spielsituation.
+- Burg-, Wind- und Schmiedeatmosphäre als getrennte Endlosschleifen integriert. Burg und Wind werden im Kampf abgesenkt; die Schmiede reagiert auf Werkstatt-Auswahl, Forschungsfenster und Kameranähe.
+- Ton-Menü um gespeicherte Regler für Musik und Atmosphäre erweitert. Bestehende Gesamt-, Effekt-, Bedienungs- und Stummeinstellungen bleiben kompatibel.
+- Lange Audiospuren pausieren im Browser- oder PWA-Hintergrund und werden nach der Rückkehr kontrolliert ohne doppelte Wiedergabe fortgesetzt.
+- Alle acht neuen MP3-Dateien stehen nach dem ersten Online-Laden über den Service Worker auch offline zur Verfügung.
+- Audio-Prüfung kontrolliert nun alle 20 Audiodateien, die neuen Szenenfunktionen, Lautstärkeregler, Cache-Einträge und Lizenzdokumentation.
+- Lizenz- und Quelldaten der neuen Dateien werden ausschließlich anhand der im ZIP vorhandenen Angaben dokumentiert; fehlende Plattform-, Lizenz- und Quellinformationen sind ausdrücklich gekennzeichnet.
+
 ## v1.18.1 – Soundgrundsystem & Schlachtgeräusche
 
 - Zentrale Web-Audio-Engine mit getrennten Reglern für Gesamtlautstärke, Kampf/Bau und Bedienung ergänzt.

@@ -118,7 +118,9 @@ import {
  setAudioPreferences,
  toggleAudioMute,
  subscribeAudioPreferences,
- playSound
+ playSound,
+ updateAudioScene,
+ resumeLongAudio
 } from "./audio.js";
 import { saveGameState, loadGameState, deleteSaveGame, getSaveMetadata } from "./save.js";
 import {
@@ -239,8 +241,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.1";
-const GAME_RELEASE_NAME="Soundgrundsystem & Schlachtgeräusche";
+const GAME_VERSION="1.18.2";
+const GAME_RELEASE_NAME="Musik & Atmosphäre";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true};
@@ -3174,14 +3176,14 @@ function openUpgradeCenter(){prepareStatsScreen();statsTitle.textContent="Upgrad
 function audioPercent(value){return `${Math.round(Math.max(0,Math.min(1,Number(value)||0))*100)} %`}
 function setAudioStatus(text){const status=document.getElementById("audioSettingsStatus");if(status)status.textContent=text}
 function refreshAudioControls(next=getAudioPreferences()){
- const controls={master:document.getElementById("audioMasterVolume"),effects:document.getElementById("audioEffectsVolume"),ui:document.getElementById("audioUiVolume")};
- const outputs={master:document.getElementById("audioMasterValue"),effects:document.getElementById("audioEffectsValue"),ui:document.getElementById("audioUiValue")};
+ const controls={master:document.getElementById("audioMasterVolume"),music:document.getElementById("audioMusicVolume"),ambience:document.getElementById("audioAmbienceVolume"),effects:document.getElementById("audioEffectsVolume"),ui:document.getElementById("audioUiVolume")};
+ const outputs={master:document.getElementById("audioMasterValue"),music:document.getElementById("audioMusicValue"),ambience:document.getElementById("audioAmbienceValue"),effects:document.getElementById("audioEffectsValue"),ui:document.getElementById("audioUiValue")};
  for(const key of Object.keys(controls)){if(controls[key])controls[key].value=String(Math.round(next[key]*100));if(outputs[key])outputs[key].textContent=audioPercent(next[key])}
  const muteToggle=document.getElementById("audioMuteToggle");if(muteToggle)muteToggle.checked=next.muted;
  if(soundToggleBtn){soundToggleBtn.textContent=next.muted?"🔇":"🔊";soundToggleBtn.classList.toggle("isMuted",next.muted);soundToggleBtn.setAttribute("aria-pressed",String(next.muted));soundToggleBtn.setAttribute("aria-label",next.muted?"Ton einschalten":"Ton stummschalten");soundToggleBtn.title=next.muted?"Ton einschalten":"Ton stummschalten"}
  if(navSound){const icon=navSound.querySelector(".navIcon");if(icon)icon.textContent=next.muted?"🔇":"🔊"}
- const availability=next.available?(next.unlocked?"Sound aktiv":"Aktiviert sich nach der ersten Berührung"):"Web-Audio wird von diesem Browser nicht unterstützt";
- setAudioStatus(next.muted?`Ton ist stumm · ${availability}`:`Gesamt ${audioPercent(next.master)} · Kampf ${audioPercent(next.effects)} · Bedienung ${audioPercent(next.ui)} · ${availability}`);
+ const availability=next.available?(next.unlocked?"Audio aktiv":"Aktiviert sich nach der ersten Berührung"):"Web-Audio wird von diesem Browser nicht unterstützt";
+ setAudioStatus(next.muted?`Alles stumm · ${availability}`:`Gesamt ${audioPercent(next.master)} · Musik ${audioPercent(next.music)} · Atmosphäre ${audioPercent(next.ambience)} · Kampf ${audioPercent(next.effects)} · Bedienung ${audioPercent(next.ui)} · ${availability}`);
 }
 subscribeAudioPreferences(refreshAudioControls);
 refreshAudioControls();
@@ -3189,9 +3191,41 @@ function openSoundSettings(){
  openDisplaySettings();
  requestAnimationFrame(()=>{document.getElementById("audioSettingsSection")?.scrollIntoView({block:"center",behavior:"smooth"});document.getElementById("audioMasterVolume")?.focus({preventScroll:true})});
 }
+function audioSceneSnapshot(){
+ const fortressVisible=gameSessionStarted&&startScreen.classList.contains("hidden")&&campaignMapScreen.classList.contains("hidden");
+ let music="menu";
+ if(fortressVisible){
+  if(gameOver||!document.getElementById("endScreen")?.classList.contains("hidden"))music="defeat";
+  else if(state.inWave)music=state.enemies.some(enemy=>enemy.hp>0&&enemy.type==="boss")?"boss":"battle";
+  else music="build";
+ }
+ let castle=0,wind=0,blacksmith=0;
+ if(fortressVisible&&!gameOver){
+  castle=state.inWave?.13:.5;
+  wind=state.inWave?.18:.34;
+  const workshop=state.buildings.find(building=>building.key==="workshop"&&building.hp>0);
+  if(workshop){
+   const wx=Number(workshop.slot?.x??workshop.x)||CX,wy=Number(workshop.slot?.y??workshop.y)||CY;
+   const distance=Math.hypot(camX-wx,camY-wy);
+   blacksmith=distance<190?.72:distance<360?.42:distance<620?.16:.04;
+   const workshopPanelOpen=!document.getElementById("workshopPanel")?.classList.contains("hidden");
+   if(selected===workshop||workshopPanelOpen)blacksmith=.92;
+   if(state.inWave)blacksmith*=.34;
+  }
+ }
+ const quantize=value=>Math.round(Math.max(0,Math.min(1,value))*20)/20;
+ return {music,fadeSeconds:music==="defeat"?1.4:2.2,ambience:{castle:quantize(castle),wind:quantize(wind),blacksmith:quantize(blacksmith)}};
+}
+function syncGameAudioScene(){updateAudioScene(audioSceneSnapshot())}
 async function testConfiguredSound(id,label){
  const audio=getAudioPreferences();if(audio.muted){setAudioStatus("Ton ist stumm. Stummschaltung zuerst deaktivieren.");return}
  const played=await playSound(id,{force:true});setAudioStatus(played?`${label} wurde abgespielt.`:"Ton wird nach einer Berührung aktiviert oder konnte nicht geladen werden.");
+}
+async function testLongAudio(label){
+ const audio=getAudioPreferences();if(audio.muted){setAudioStatus("Ton ist stumm. Stummschaltung zuerst deaktivieren.");return}
+ const scene=audioSceneSnapshot();syncGameAudioScene();const resumed=await resumeLongAudio();
+ if(label==="Atmosphäre"&&!Object.values(scene.ambience).some(value=>value>0)){setAudioStatus("Atmosphäre wird in der Festungsansicht hörbar; im Hauptmenü bleibt sie bewusst aus.");return}
+ setAudioStatus(resumed?`${label} läuft passend zur aktuellen Spielsituation.`:"Audio wird nach einer Berührung aktiviert oder konnte nicht gestartet werden.");
 }
 
 function displayHudSizeLabel(size){return size==="small"?"Klein":size==="large"?"Groß":"Normal"}
@@ -3323,18 +3357,20 @@ document.getElementById("hapticsToggle")?.addEventListener("change",event=>updat
 document.getElementById("landscapeHintToggle")?.addEventListener("change",event=>{orientationHintDismissed=false;try{sessionStorage.removeItem("fortressCommander.orientationHintDismissed")}catch{}updateDisplayPreference("landscapeHint",Boolean(event.target.checked))});
 document.getElementById("hapticsTestBtn")?.addEventListener("click",()=>{const worked=hapticFeedback("success");const status=document.getElementById("displaySettingsStatus");if(status)status.textContent=worked?"Vibrationstest ausgelöst":"Vibration wird von diesem Gerät oder Browser nicht unterstützt"});
 soundToggleBtn?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();const next=toggleAudioMute();if(!next.muted)playSound("uiClick",{force:true})});
-for(const [id,key] of [["audioMasterVolume","master"],["audioEffectsVolume","effects"],["audioUiVolume","ui"]]){
+for(const [id,key] of [["audioMasterVolume","master"],["audioMusicVolume","music"],["audioAmbienceVolume","ambience"],["audioEffectsVolume","effects"],["audioUiVolume","ui"]]){
  document.getElementById(id)?.addEventListener("input",event=>setAudioPreferences({[key]:Number(event.target.value)/100}));
 }
 document.getElementById("audioMuteToggle")?.addEventListener("change",event=>{const next=setAudioPreferences({muted:Boolean(event.target.checked)});if(!next.muted)playSound("uiClick",{force:true})});
 document.getElementById("audioTestUiBtn")?.addEventListener("click",()=>testConfiguredSound("uiClick","Bedienungston"));
 document.getElementById("audioTestHornBtn")?.addEventListener("click",()=>testConfiguredSound("waveHorn","Angriffshorn"));
 document.getElementById("audioTestVictoryBtn")?.addEventListener("click",()=>testConfiguredSound("waveVictory","Siegesklang"));
+document.getElementById("audioTestMusicBtn")?.addEventListener("click",()=>testLongAudio("Musik"));
+document.getElementById("audioTestAmbienceBtn")?.addEventListener("click",()=>testLongAudio("Atmosphäre"));
 
 
 document.addEventListener("click",event=>{
  const button=event.target.closest("button");if(!button||button.disabled)return;
- if(button.matches("#soundToggleBtn,#audioTestUiBtn,#audioTestHornBtn,#audioTestVictoryBtn,#startWaveBtn,#upgradeBtn,#selectionUpgradeBtn,[data-upgrade-buy],[data-building-upgrade],[data-building-stone-upgrade],[data-tech]"))return;
+ if(button.matches("#soundToggleBtn,#audioTestUiBtn,#audioTestHornBtn,#audioTestVictoryBtn,#audioTestMusicBtn,#audioTestAmbienceBtn,#startWaveBtn,#upgradeBtn,#selectionUpgradeBtn,[data-upgrade-buy],[data-building-upgrade],[data-building-stone-upgrade],[data-tech]"))return;
  const closeLike=button.matches(".panelCornerClose,.workshopClose,.enemyClose,.offeringClose,.warCouncilClose,.bonusObjectiveClose,.campaignPanelClose,.veteranClose,.commanderCampClose,[id*='CloseBtn'],[id*='BackBtn']");
  playSound(closeLike?"uiClose":"uiClick");
 });
@@ -3715,7 +3751,7 @@ function nextFrameDelay(){
 function loop(now){
  if(document.hidden){last=now;scheduleGameFrame(nextFrameDelay());return}
  const dt=Math.min(.04,Math.max(0,(now-last)/1000));last=now;
- try{update(dt);draw();renderLevelUpDock();updateSelectionHud();updateActionBanner();updateUI()}
+ try{update(dt);syncGameAudioScene();draw();renderLevelUpDock();updateSelectionHud();updateActionBanner();updateUI()}
  catch(err){console.error("Spielschleife abgefangen:",err);closeAllBlockingPanels();canvas.style.pointerEvents="auto";showToast("Darstellungsfehler abgefangen – Spiel läuft weiter")}
  scheduleGameFrame(nextFrameDelay());
 }

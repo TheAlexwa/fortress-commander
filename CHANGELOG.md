@@ -1,3 +1,17 @@
+## v1.18.2 – Musik & Atmosphäre
+
+- Acht bereitgestellte Musik- und Atmosphärendateien unter eindeutigen Projektnamen in `assets/audio/` integriert.
+- `js/audio.js` um zwei wiederverwendete Musikkanäle, weiche Crossfades, fünf Musikzustände und drei getrennte Atmosphärenkanäle erweitert.
+- Automatische Musiksteuerung für Hauptmenü/Kampagnenkarte, Bauphase, normale Welle, aktiven Boss und Niederlagenbildschirm ergänzt.
+- Burg- und Windatmosphäre werden während intensiver Kämpfe abgesenkt; die Schmiedeatmosphäre reagiert auf vorhandene Werkstatt, Auswahl, Forschungsfenster und Kameranähe.
+- Ton-Menü um gespeicherte Regler für Musik und Umgebung sowie Testknöpfe für die langen Audiospuren erweitert.
+- Hintergrundwechsel pausieren Musik und Atmosphäre; die Rückkehr setzt den gewünschten Zustand kontrolliert fort, ohne doppelte Audioelemente zu starten.
+- Bestehender Einstellschlüssel aus v1.18.1 bleibt erhalten, sodass bisherige Gesamt-, Effekt-, UI- und Stummeinstellungen nicht verloren gehen.
+- Service-Worker-Cache auf `fortress-commander-v1.18.2` erhöht und um alle acht neuen MP3-Dateien ergänzt.
+- `assets/audio/LICENSES.md` um die im bereitgestellten ZIP feststellbaren Originalnamen und Urheberbezeichnungen erweitert; nicht enthaltene Lizenz- und Quellangaben werden nicht erfunden.
+- `tools/validate-audio.mjs`, `tools/validate-pwa.mjs` und `tools/validate-panels.mjs` auf v1.18.2 und die neuen Audiofunktionen erweitert.
+- Anleitung, README, Startbildschirm, Titel und sichtbare Versionsangaben auf v1.18.2 aktualisiert.
+
 ## v1.18.1 – Soundgrundsystem & Schlachtgeräusche
 
 - Neue zentrale Soundengine `js/audio.js` mit Web Audio API, Vorladen, Stimmenbegrenzung und gespeicherten Geräteeinstellungen ergänzt.

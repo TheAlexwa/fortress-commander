@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
-<title>Fortress Commander v1.18.1 – Soundgrundsystem &amp; Schlachtgeräusche</title>
+<title>Fortress Commander v1.18.2 – Musik &amp; Atmosphäre</title>
 <meta name="theme-color" content="#0b1b2d">
 <meta name="application-name" content="Fortress Commander">
 <meta name="mobile-web-app-capable" content="yes">
@@ -26,7 +26,7 @@
   <div class="appLaunchTitle">FORTRESS<br><span>COMMANDER</span></div>
   <div class="appLaunchSubtitle">Strategie · Verteidigung · Dein Reich</div>
   <div class="appLaunchProgress" aria-hidden="true"><span></span></div>
-  <small>v1.18.1 · Sound wird vorbereitet …</small>
+  <small>v1.18.2 · Musik und Atmosphäre werden vorbereitet …</small>
  </div>
 </div>
 
@@ -50,7 +50,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Kampagnenkarte öffnen">Spiel starten</button>
-  <div id="gameVersionBadge">v1.18.1</div>
+  <div id="gameVersionBadge">v1.18.2</div>
   <div id="pwaInstallCard" class="hidden">
    <img src="assets/icons/icon-192.png" alt="" width="38" height="38">
    <div><strong>Als Handy-App installieren</strong><span>Vollbild, schneller Start und grundlegende Offline-Nutzung.</span></div>
@@ -328,8 +328,8 @@
   </details>
 
   <details class="guideSection">
-   <summary>🔊 Ton &amp; Schlachtgeräusche</summary>
-   <div class="guideBody"><div class="guideTip"><b>Aktivierung:</b> Mobile Browser erlauben Ton erst nach der ersten Berührung. Danach werden die kurzen Effekte vorgeladen und stehen auch in der installierten Offline-App zur Verfügung.</div><div class="guideGrid"><article class="guideCard"><h3>🔊 Schnellschalter</h3><p>Der kleine Lautsprecherknopf rechts auf der Spielfläche schaltet alle Töne sofort stumm oder wieder ein.</p></article><article class="guideCard"><h3>🎚️ Lautstärke</h3><p>Unter Mehr → Ton lassen sich Gesamtlautstärke, Kampf- und Baugeräusche sowie Bedienungstöne getrennt einstellen.</p></article><article class="guideCard"><h3>⚔️ Große Schlachten</h3><p>Ähnliche Treffer werden automatisch begrenzt und leicht variiert, damit viele Einheiten nicht zu einem übersteuerten Klangteppich werden.</p></article><article class="guideCard"><h3>📱 Hintergrund</h3><p>Beim Sperren des Bildschirms oder Wechseln der App werden laufende Geräusche gestoppt. Spielstände und Audioeinstellungen bleiben erhalten.</p></article></div></div>
+   <summary>🎵 Musik, Atmosphäre &amp; Schlachtgeräusche</summary>
+   <div class="guideBody"><div class="guideTip"><b>Aktivierung:</b> Mobile Browser erlauben Audio erst nach der ersten Berührung. Danach starten Musik, Atmosphäre und Effekte passend zur aktuellen Spielsituation und stehen nach dem ersten Online-Laden auch in der installierten Offline-App bereit.</div><div class="guideGrid"><article class="guideCard"><h3>🎵 Dynamische Musik</h3><p>Hauptmenü, Bauphase, Angriffswelle, Bosskampf und Niederlage besitzen eigene Musik. Wechsel werden weich überblendet.</p></article><article class="guideCard"><h3>🌬️ Burgatmosphäre</h3><p>Wind und Burggeräusche liegen leise unter der Musik. Die Schmiede wird in der Nähe einer Werkstatt oder im Forschungsfenster deutlicher hörbar.</p></article><article class="guideCard"><h3>🎚️ Fünf Regler</h3><p>Unter Mehr → Ton lassen sich Gesamtlautstärke, Musik, Atmosphäre, Kampf- und Baugeräusche sowie Bedienung getrennt einstellen.</p></article><article class="guideCard"><h3>📱 Hintergrund &amp; Akku</h3><p>Beim Sperren oder App-Wechsel pausieren lange Audiospuren kontrolliert. Beim Zurückkehren laufen sie ohne doppelte Wiedergabe weiter.</p></article></div></div>
   </details>
 
   <details class="guideSection">
@@ -481,18 +481,22 @@
   <button id="hapticsTestBtn" class="hapticsTestBtn" type="button">📳 Vibration testen</button>
 
   <div id="audioSettingsSection" class="displaySettingsSection audioSettingsSection">
-   <div class="audioSettingsTitle"><div><h3>🔊 Ton &amp; Schlachtgeräusche</h3><p>Gesamt-, Kampf- und Bedienungslautstärke werden auf diesem Gerät gespeichert.</p></div><label class="audioMuteLabel"><span>Stumm</span><input id="audioMuteToggle" type="checkbox"></label></div>
+   <div class="audioSettingsTitle"><div><h3>🎵 Ton, Musik &amp; Atmosphäre</h3><p>Alle fünf Lautstärken und die Stummschaltung werden auf diesem Gerät gespeichert.</p></div><label class="audioMuteLabel"><span>Stumm</span><input id="audioMuteToggle" type="checkbox"></label></div>
    <div class="audioVolumeGrid">
     <label for="audioMasterVolume"><span><b>Gesamtlautstärke</b><output id="audioMasterValue">78 %</output></span><input id="audioMasterVolume" type="range" min="0" max="100" step="1" value="78"></label>
+    <label for="audioMusicVolume"><span><b>Musik</b><output id="audioMusicValue">40 %</output></span><input id="audioMusicVolume" type="range" min="0" max="100" step="1" value="40"></label>
+    <label for="audioAmbienceVolume"><span><b>Atmosphäre</b><output id="audioAmbienceValue">24 %</output></span><input id="audioAmbienceVolume" type="range" min="0" max="100" step="1" value="24"></label>
     <label for="audioEffectsVolume"><span><b>Kampf &amp; Bau</b><output id="audioEffectsValue">86 %</output></span><input id="audioEffectsVolume" type="range" min="0" max="100" step="1" value="86"></label>
     <label for="audioUiVolume"><span><b>Bedienung</b><output id="audioUiValue">62 %</output></span><input id="audioUiVolume" type="range" min="0" max="100" step="1" value="62"></label>
    </div>
-   <div class="audioTestButtons" role="group" aria-label="Sound testen">
+   <div class="audioTestButtons" role="group" aria-label="Audio testen">
+    <button id="audioTestMusicBtn" type="button">🎵 Musik prüfen</button>
+    <button id="audioTestAmbienceBtn" type="button">🌬️ Atmosphäre prüfen</button>
     <button id="audioTestUiBtn" type="button">🖱️ Klick testen</button>
     <button id="audioTestHornBtn" type="button">📯 Horn testen</button>
     <button id="audioTestVictoryBtn" type="button">🏆 Sieg testen</button>
    </div>
-   <div id="audioSettingsStatus" class="audioSettingsStatus" aria-live="polite">Ton wird nach der ersten Berührung aktiviert.</div>
+   <div id="audioSettingsStatus" class="audioSettingsStatus" aria-live="polite">Audio wird nach der ersten Berührung aktiviert.</div>
   </div>
   <div class="displaySettingsSection pwaSettingsSection">
    <h3>Installierbare Handy-App</h3>
@@ -514,7 +518,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.18.1 · Soundgrundsystem, Lautstärkeregler und Schlachtgeräusche.</div>
+  <div class="workshopFoot">v1.18.2 · Dynamische Musik, Burgatmosphäre und weiche Überblendungen.</div>
  </section>
 </div>
 
