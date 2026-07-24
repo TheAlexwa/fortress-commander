@@ -41,20 +41,35 @@ for(const text of [
  'top:-1px!important'
 ])requireText(css,text,"Weltkarten- oder Info-CSS fehlt");
 
-for(const text of [
- 'style="--world-x:17.8%;--world-y:74.0%"',
- 'style="--world-x:39.7%;--world-y:46.2%"',
- 'style="--world-x:56.9%;--world-y:18.1%"',
- 'style="--world-x:58.9%;--world-y:74.2%"',
- 'style="--world-x:78.2%;--world-y:46.0%"',
- 'class="worldMapPlayableBadge"'
-])requireText(html,text,"Kartenposition oder Spielbar-Badge fehlt");
+requireText(html,'class="worldMapPlayableBadge"',"Spielbar-Badge fehlt");
 
-requireText(main,'const GAME_VERSION="1.18.7"',"Spielversion fehlt");
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.7"',"Cacheversion fehlt");
+requireText(main,'const GAME_VERSION="1.18.8"',"Spielversion fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.8"',"Cacheversion fehlt");
 requireText(sw,"'./assets/ui/campaign-map-v1.18.7.webp'","Kartenbild fehlt im Offline-Cache");
 
 const nodeIds=[...html.matchAll(/class="worldNode[^\"]*"[^>]*data-world-id="([^"]+)"/g)].map(match=>match[1]);
+const expectedNodes={
+ "borderlands":"--world-x:17.58%;--world-y:74.63%;--world-ring:84%",
+ "mistwood":"--world-x:40.99%;--world-y:48.94%;--world-ring:88%",
+ "frozen-pass":"--world-x:58.32%;--world-y:20.12%;--world-ring:84%",
+ "scorched-plains":"--world-x:60.05%;--world-y:76.29%;--world-ring:88%",
+ "ironclan-heart":"--world-x:80.70%;--world-y:49.03%;--world-ring:93%"
+};
+for(const [id,style] of Object.entries(expectedNodes)){
+ requireText(html,`data-world-id="${id}"`,`Weltknoten fehlt`);
+ requireText(html,style,`Weltknoten ist nicht exakt ausgerichtet: ${id}`);
+}
+for(const key of ["soldier","guard"]){
+ const match=html.match(new RegExp(`<span class="buildInfoBtn" data-build-info="${key}"[^>]*>([^<]*)<\/span>`));
+ if(!match||match[1].trim()!=="")failures.push(`Info-Punkt ${key} enthält weiterhin ein doppeltes sichtbares Zeichen`);
+}
+for(const text of [
+ 'width:var(--world-ring,86%)',
+ '.buildBtn[data-group="units"] .buildInfoBtn::after',
+ 'font-size:0!important',
+ 'right:2px',
+ 'top:2px'
+])requireText(css,text,"Ausrichtungs-CSS fehlt");
 if(nodeIds.length!==5)failures.push(`Erwartet werden 5 Weltknoten, gefunden: ${nodeIds.length}`);
 if(new Set(nodeIds).size!==nodeIds.length)failures.push("Doppelte Weltknoten gefunden");
 
@@ -62,4 +77,4 @@ if(failures.length){
  console.error("Weltkartenprüfung fehlgeschlagen:\n- "+failures.join("\n- "));
  process.exit(1);
 }
-console.log(`Weltkartenprüfung erfolgreich: ${nodeIds.length} Knoten, neues WebP-Kartenbild, responsive Hotspots und mobiler Info-Punkt bestätigt.`);
+console.log(`Weltkartenprüfung erfolgreich: ${nodeIds.length} Knoten, neues WebP-Kartenbild, pixelgenaue Hotspots, passende Ringgrößen und einzelner mobiler Info-Punkt bestätigt.`);

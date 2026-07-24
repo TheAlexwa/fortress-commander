@@ -1,4 +1,4 @@
-const CACHE_NAME="fortress-commander-v1.18.7";
+const CACHE_NAME="fortress-commander-v1.18.8";
 const INDEX_URL=new URL("index.html",self.registration.scope).href;
 const APP_SHELL=[
  './index.html',

@@ -1105,7 +1105,7 @@ header>#startWaveBtn{grid-column:6!important}
 }
 
 
-/* v1.18.7 – illustrierte Kampagnenkarte (Variante A) */
+/* v1.18.8 – exakt ausgerichtete Weltpunkte auf der illustrierten Kampagnenkarte */
 .worldMapShell{min-height:0}
 .worldMapLayout{align-items:start}
 .fantasyWorldMap{
@@ -1133,7 +1133,7 @@ header>#startWaveBtn{grid-column:6!important}
  left:var(--world-x);
  top:var(--world-y);
  z-index:12;
- width:14.5%;
+ width:15%;
  min-height:0;
  aspect-ratio:1;
  padding:0;
@@ -1153,7 +1153,11 @@ header>#startWaveBtn{grid-column:6!important}
 .fantasyWorldMap .worldNode:before{
  content:"";
  position:absolute;
- inset:7%;
+ left:50%;
+ top:50%;
+ width:var(--world-ring,86%);
+ height:var(--world-ring,86%);
+ transform:translate(-50%,-50%);
  border:3px solid transparent;
  border-radius:50%;
  box-shadow:0 0 0 0 transparent;
@@ -1161,7 +1165,7 @@ header>#startWaveBtn{grid-column:6!important}
 }
 .fantasyWorldMap .worldNode:hover,.fantasyWorldMap .worldNode:focus-visible{
  outline:none;
- transform:translate(-50%,-50%) scale(1.025);
+ transform:translate(-50%,-50%);
 }
 .fantasyWorldMap .worldNode:hover:before,.fantasyWorldMap .worldNode:focus-visible:before{
  border-color:#fff0a5;
@@ -1176,7 +1180,7 @@ header>#startWaveBtn{grid-column:6!important}
 .worldMapPlayableBadge{
  position:absolute;
  z-index:13;
- left:17.8%;
+ left:17.58%;
  top:84.2%;
  transform:translate(-50%,-50%);
  min-width:76px;
@@ -1195,37 +1199,64 @@ header>#startWaveBtn{grid-column:6!important}
  .worldMapShell{min-height:100dvh}
  .worldMapLayout{grid-template-columns:1fr;grid-template-rows:auto auto}
  .fantasyWorldMap{min-height:0;aspect-ratio:4/3;border-right:0;border-bottom:2px solid #806235}
- .fantasyWorldMap .worldNode{width:15.5%}
+ .fantasyWorldMap .worldNode{width:15%}
  .worldMapPlayableBadge{min-width:58px;padding:3px 6px;font-size:7px}
 }
 @media(max-width:430px){
  .worldMapLayout{grid-template-rows:auto auto}
  .fantasyWorldMap{min-height:0}
- .fantasyWorldMap .worldNode{width:17%}
+ .fantasyWorldMap .worldNode{width:15%}
  .fantasyWorldMap .worldNode:before{border-width:2px}
  .worldMapPlayableBadge{top:84.4%;min-width:50px;padding:2px 5px;font-size:6px;letter-spacing:.6px}
 }
 
-/* v1.18.7 – Info-Punkt bei Einheitenkarten sicher im rechten oberen Eck */
+/* v1.18.8 – einzelner Info-Punkt exakt im rechten oberen Eck der Einheitenkarten */
 .buildBtn[data-group="units"] .buildInfoBtn{
- right:0!important;
- top:0!important;
- width:25px!important;
- height:25px!important;
- border-radius:0 14px 0 13px;
- font-size:12px!important;
- box-shadow:-2px 2px 7px #000a;
+ position:absolute!important;
+ right:-1px!important;
+ top:-1px!important;
+ width:30px!important;
+ height:30px!important;
+ padding:0!important;
+ border:0!important;
+ border-radius:0 13px 0 12px!important;
+ background:transparent!important;
+ box-shadow:none!important;
+ color:transparent!important;
+ font-size:0!important;
+ line-height:0!important;
+ display:block!important;
+ overflow:visible!important;
+ outline:none!important;
+}
+.buildBtn[data-group="units"] .buildInfoBtn::after{
+ content:"ⓘ";
+ position:absolute;
+ right:2px;
+ top:2px;
+ width:20px;
+ height:20px;
+ display:grid;
+ place-items:center;
+ border-radius:50%;
+ background:#101a17ee;
+ border:1px solid #ffe091bb;
+ color:#ffe8a8;
+ font:950 12px/1 system-ui,sans-serif;
+ box-shadow:0 2px 7px #000b;
+}
+.buildBtn[data-group="units"] .buildInfoBtn:hover::after,
+.buildBtn[data-group="units"] .buildInfoBtn:focus-visible::after{
+ background:#5b4625;
+ color:#fff;
+ outline:2px solid #fff0a8;
+ outline-offset:1px;
 }
 @media(max-width:700px){
- .buildBtn[data-group="units"] .buildInfoBtn{
-  right:-1px!important;
-  top:-1px!important;
-  width:31px!important;
-  height:31px!important;
-  border-radius:0 12px 0 14px;
-  font-size:12px!important;
- }
+ .buildBtn[data-group="units"] .buildInfoBtn{width:29px!important;height:29px!important}
+ .buildBtn[data-group="units"] .buildInfoBtn::after{right:1px;top:1px;width:19px;height:19px;font-size:11px}
 }
 @media(orientation:landscape) and (max-height:700px){
- .buildBtn[data-group="units"] .buildInfoBtn{width:28px!important;height:28px!important;font-size:11px!important}
+ .buildBtn[data-group="units"] .buildInfoBtn{width:27px!important;height:27px!important}
+ .buildBtn[data-group="units"] .buildInfoBtn::after{width:18px;height:18px;font-size:10px}
 }

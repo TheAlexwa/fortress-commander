@@ -1,3 +1,12 @@
+## v1.18.8 – Karten- & Info-Ausrichtung
+
+- Weltknoten-Koordinaten auf die gemessenen Kreiszentren der Hintergrundillustration korrigiert.
+- Individuelle Ringgrößen für Grenzmark, Nebelwald, Eispass, Brandland und Eisenclan ergänzt.
+- Skalierungsbewegung der unsichtbaren Weltknoten entfernt, damit der Markierungsring beim Hover nicht mehr gegenüber der Grafik wandert.
+- Doppelte ⓘ-Darstellung auf Bogenschützen- und Burgwachenkarte beseitigt.
+- Mobiles Infoelement als einzelnes CSS-Symbol direkt im rechten oberen Eck neu aufgebaut und seine Klickfläche reduziert.
+- Titel, sichtbare Version, PWA-Cache und Prüfskripte auf v1.18.8 aktualisiert.
+
 ## v1.18.7 – Neue Kampagnenkarte
 
 - Ausgewählten Weltkarten-Vorschlag 3 als `assets/ui/campaign-map-v1.18.7.webp` integriert.

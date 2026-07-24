@@ -1,3 +1,13 @@
+## v1.18.8 – Karten- & Info-Ausrichtung
+
+- Die fünf unsichtbaren Weltknoten wurden anhand der tatsächlichen Kreiszentren der Kampagnenillustration pixelgenau neu positioniert.
+- Der Auswahl-, Hover- und Tastaturfokusring besitzt pro Welt eine eigene passende Größe und liegt nun direkt über dem sichtbaren Kreis.
+- Die Klickfläche bleibt groß genug für Touch, während der sichtbare Ring unabhängig davon exakt auf der Grafik sitzt.
+- Der doppelt dargestellte Info-Punkt auf den Einheitenkarten wurde entfernt.
+- Bogenschütze und Burgwache besitzen jetzt jeweils genau einen kleineren Info-Punkt unmittelbar im rechten oberen Karteneck.
+- Die mobile Info-Klickfläche wurde verkleinert, damit normales Antippen der Einheit seltener versehentlich die Detailansicht öffnet.
+- Spielstände und Kampagnenfortschritt aus v1.18.7 bleiben kompatibel.
+
 ## v1.18.7 – Neue Kampagnenkarte
 
 - Die bisherige abstrakte Weltkarte wurde durch die ausgewählte illustrierte Kartenvariante ersetzt.
