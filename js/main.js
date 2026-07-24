@@ -112,6 +112,14 @@ import { renderGameUI } from "./ui.js";
 import { renderGameFrame } from "./render.js";
 import { attachGameInput } from "./input.js";
 import { initializePwa } from "./pwa.js";
+import {
+ initializeAudio,
+ getAudioPreferences,
+ setAudioPreferences,
+ toggleAudioMute,
+ subscribeAudioPreferences,
+ playSound
+} from "./audio.js";
 import { saveGameState, loadGameState, deleteSaveGame, getSaveMetadata } from "./save.js";
 import {
   beginSiegeAttack,
@@ -231,8 +239,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.0";
-const GAME_RELEASE_NAME="Installierbare Handy-App & PWA";
+const GAME_VERSION="1.18.1";
+const GAME_RELEASE_NAME="Soundgrundsystem & Schlachtgeräusche";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true};
@@ -302,6 +310,7 @@ const instructionVersion=document.getElementById("instructionVersion");
 if(gameVersionBadge)gameVersionBadge.textContent=`v${GAME_VERSION}`;
 if(instructionVersion)instructionVersion.textContent=`Anleitung · Version ${GAME_VERSION} – ${GAME_RELEASE_NAME}`;
 initializePwa({version:GAME_VERSION});
+initializeAudio();
 const startScreen=document.getElementById("startScreen");
 const campaignMapScreen=document.getElementById("campaignMapScreen");
 const instructionsScreen=document.getElementById("instructionsScreen");
@@ -907,10 +916,11 @@ function renderWorkshop(){
 }
 function buyResearch(techId){
  const tech=Object.values(RESEARCH_TECHS).flat().find(t=>t.id===techId);if(!tech)return;
- const lv=state.research[tech.id]||0;if(lv>=tech.max)return showToast("Technologie bereits maximiert");
- if(!researchRequirementMet(tech))return showToast(tech.minWave&&state.wave<tech.minWave?`Verfügbar ab Welle ${tech.minWave}`:"Vorherige Technologie zuerst erforschen");
- const cost=researchCost(tech);if((state.researchPoints||0)<cost)return showToast("Nicht genug Forschungspunkte");
- state.researchPoints-=cost;state.research[tech.id]=lv+1;applyResearchToExistingUnits(tech.id,lv,lv+1);applyResearchToExistingTowers(tech.id,lv,lv+1);showToast(`${tech.name}: Stufe ${lv+1} · andere Forschungen +${Math.round(globalResearchIncreaseRate()*100)} %`);renderWorkshop();updateUI();saveGame(true);
+ const fail=message=>{showToast(message);playSound("uiError");return false};
+ const lv=state.research[tech.id]||0;if(lv>=tech.max)return fail("Technologie bereits maximiert");
+ if(!researchRequirementMet(tech))return fail(tech.minWave&&state.wave<tech.minWave?`Verfügbar ab Welle ${tech.minWave}`:"Vorherige Technologie zuerst erforschen");
+ const cost=researchCost(tech);if((state.researchPoints||0)<cost)return fail("Nicht genug Forschungspunkte");
+ state.researchPoints-=cost;state.research[tech.id]=lv+1;applyResearchToExistingUnits(tech.id,lv,lv+1);applyResearchToExistingTowers(tech.id,lv,lv+1);showToast(`${tech.name}: Stufe ${lv+1} · andere Forschungen +${Math.round(globalResearchIncreaseRate()*100)} %`);playSound("upgradeComplete");renderWorkshop();updateUI();saveGame(true);return true;
 }
 document.getElementById("workshopResearchBtn").addEventListener("click",()=>openWorkshopPanel());
 document.getElementById("workshopCloseBtn").addEventListener("click",()=>closeWorkshopPanel(true));
@@ -1602,8 +1612,8 @@ function startWave(){
   setBuildMode:value=>{buildMode=value},
   setSelected:value=>{selected=value}
  });
- if(!release){state.warCouncil.locked=false;state.warCouncil.active="none";hapticFeedback("error");return false}
- hapticFeedback("wave");
+ if(!release){state.warCouncil.locked=false;state.warCouncil.active="none";hapticFeedback("error");playSound("uiError");return false}
+ hapticFeedback("wave");playSound("waveHorn",{force:true});
  activateBonusObjective(state,{fullyGathered:release.reinforcements.length===0});
  closeWarCouncilPanel(false);
  closeBonusObjectivePanel(false);
@@ -1751,8 +1761,8 @@ function createAt(x,y,key){
  });
  if(created){
   if(BUILD[key]?.kind==="inside")reapplyPopulationProfile();
-  hapticFeedback("success");
- }else hapticFeedback("error");
+  hapticFeedback("success");playSound("buildPlace");
+ }else{hapticFeedback("error");playSound("uiError")}
  return created;
 }
 function upgradeSelected(){
@@ -1767,7 +1777,7 @@ function upgradeSelected(){
  }else{
   const stoneUpgrade=getStoneBuildingUpgrade(selected,state);
   if(stoneUpgrade.supported&&!stoneUpgrade.upgraded&&stoneUpgrade.levelReady){
-   if(!stoneUpgrade.canUpgrade){showToast(stoneUpgrade.reason);return false}
+   if(!stoneUpgrade.canUpgrade){showToast(stoneUpgrade.reason);hapticFeedback("error");playSound("uiError");return false}
    const result=upgradeBuildingToStone(selected,state);
    upgraded=result.ok;
    if(upgraded){
@@ -1779,8 +1789,8 @@ function upgradeSelected(){
  }
  if(upgraded){
   if(upgradedEntity?.kind==="building"&&upgradedEntity.base?.kind!=="tower")reapplyPopulationProfile();
-  hapticFeedback("success");
- }else hapticFeedback("error");
+  hapticFeedback("success");playSound("upgradeComplete");
+ }else{hapticFeedback("error");playSound("uiError")}
  return upgraded;
 }
 function sellSelected(){
@@ -1863,7 +1873,7 @@ function nearestGateDefender(enemy,gate,radius){
 }
 function enemyAttackDefender(enemy,defender,damageFactor=.6){
  if(!defender)return false;
- if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;defender.hp-=enemyAttackDamage(enemy)*damageFactor*(1-effectiveUnitArmor(defender));burst(defender.x,defender.y,"#b84640",4)}
+ if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;defender.hp-=enemyAttackDamage(enemy)*damageFactor*(1-effectiveUnitArmor(defender));burst(defender.x,defender.y,"#b84640",4);playSound("meleeHit")}
  return true;
 }
 function handleHeroTaunt(enemy,dt){
@@ -1878,6 +1888,8 @@ function handleHeroTaunt(enemy,dt){
  return true;
 }
 function shoot(from,target,damage,speed,splash=0,color="#f0d176",effects=null){
+ if(from?.key==="crossbow"||from?.key==="catapult")playSound("towerShot",{playbackRate:from.key==="catapult"?.86:1,volume:from.key==="catapult"?1.05:1});
+ else playSound("arrowShot");
  return createProjectile(state.projectiles,from,target,damage,speed,splash,color,effects);
 }
 function applyProjectileEffects(enemy,projectile){
@@ -2051,7 +2063,7 @@ function updateCraftsmen(dt){
    state.stone=Math.max(0,state.stone-stoneRepairCost);
    const repaired=Math.min(repairHpPerCraftsmanTick(c.home),Math.max(0,info.need()));
    info.apply(repaired);state.repairedHp+=repaired;
-   burst(info.x,info.y,"#e7c36b",2);
+   burst(info.x,info.y,"#e7c36b",2);playSound("repair");
   }
  }
 }
@@ -2139,7 +2151,7 @@ function update(dt){
       u.attackAngle=Math.atan2(target.y-u.y,target.x-u.x);
       u.attackCd=effectiveAttackCooldown(u);
       const dealt=u.damage*unitDamageMultiplier(u,target)*(1-getEffectiveEnemyArmor(target));target.hp-=dealt;target.lastHitEntity=u;
-      grantCombatXp(u,Math.min(7,dealt*.075));burst(target.x,target.y,"#f2cf82",7);
+      grantCombatXp(u,Math.min(7,dealt*.075));burst(target.x,target.y,"#f2cf82",7);playSound("meleeHit");
      }
     }else{
      const stopDistance=Math.max(10,meleeReach-4);
@@ -2213,7 +2225,7 @@ function update(dt){
       if(p.owner){e.lastHitEntity=p.owner;grantCombatXp(p.owner,Math.min(5,dealt*.045))}
      }
     }
-    burst(p.target.x,p.target.y,"#7e6a50",14);
+    burst(p.target.x,p.target.y,"#7e6a50",14);playSound("siegeImpact");
    }else{
     const dealt=projectileDamage(p,p.target,Number(p.primaryTargetMultiplier)||1);
     p.target.hp-=dealt;applyProjectileEffects(p.target,p);
@@ -2426,6 +2438,7 @@ function update(dt){
   state.repairActive=false;
   state.spawnQueue=[];
   for(const c of state.craftsmen)sendCraftsmanHome(c);
+  playSound("waveVictory",{force:true});
   if(campaignResult.victory){
    state.siege=null;paused=true;last=performance.now();
    showToast(`🏆 Kampagne gewonnen! Der Kriegsherr der Eisenclans ist besiegt.${campaignText}`);
@@ -2753,6 +2766,8 @@ const navUpgrade=document.getElementById("navUpgrade");
 const navStats=document.getElementById("navStats");
 const navMenu=document.getElementById("navMenu");
 const navDisplay=document.getElementById("navDisplay");
+const navSound=document.getElementById("navSound");
+const soundToggleBtn=document.getElementById("soundToggleBtn");
 const navMore=document.getElementById("navMore");
 const navMoreBadge=document.getElementById("navMoreBadge");
 const moreNavMenu=document.getElementById("moreNavMenu");
@@ -3156,6 +3171,29 @@ function upgradeCenterHtml(){
 function findUpgradeEntity(ref){const [kind,idRaw]=String(ref||"").split(":");const id=Number(idRaw);return kind==="building"?state.buildings.find(b=>b.bid===id):kind==="unit"?state.units.find(u=>u.uid===id):null}
 function openUpgradeCenter(){prepareStatsScreen();statsTitle.textContent="Upgrade-Zentrale";statsContent.innerHTML=upgradeCenterHtml()}
 
+function audioPercent(value){return `${Math.round(Math.max(0,Math.min(1,Number(value)||0))*100)} %`}
+function setAudioStatus(text){const status=document.getElementById("audioSettingsStatus");if(status)status.textContent=text}
+function refreshAudioControls(next=getAudioPreferences()){
+ const controls={master:document.getElementById("audioMasterVolume"),effects:document.getElementById("audioEffectsVolume"),ui:document.getElementById("audioUiVolume")};
+ const outputs={master:document.getElementById("audioMasterValue"),effects:document.getElementById("audioEffectsValue"),ui:document.getElementById("audioUiValue")};
+ for(const key of Object.keys(controls)){if(controls[key])controls[key].value=String(Math.round(next[key]*100));if(outputs[key])outputs[key].textContent=audioPercent(next[key])}
+ const muteToggle=document.getElementById("audioMuteToggle");if(muteToggle)muteToggle.checked=next.muted;
+ if(soundToggleBtn){soundToggleBtn.textContent=next.muted?"🔇":"🔊";soundToggleBtn.classList.toggle("isMuted",next.muted);soundToggleBtn.setAttribute("aria-pressed",String(next.muted));soundToggleBtn.setAttribute("aria-label",next.muted?"Ton einschalten":"Ton stummschalten");soundToggleBtn.title=next.muted?"Ton einschalten":"Ton stummschalten"}
+ if(navSound){const icon=navSound.querySelector(".navIcon");if(icon)icon.textContent=next.muted?"🔇":"🔊"}
+ const availability=next.available?(next.unlocked?"Sound aktiv":"Aktiviert sich nach der ersten Berührung"):"Web-Audio wird von diesem Browser nicht unterstützt";
+ setAudioStatus(next.muted?`Ton ist stumm · ${availability}`:`Gesamt ${audioPercent(next.master)} · Kampf ${audioPercent(next.effects)} · Bedienung ${audioPercent(next.ui)} · ${availability}`);
+}
+subscribeAudioPreferences(refreshAudioControls);
+refreshAudioControls();
+function openSoundSettings(){
+ openDisplaySettings();
+ requestAnimationFrame(()=>{document.getElementById("audioSettingsSection")?.scrollIntoView({block:"center",behavior:"smooth"});document.getElementById("audioMasterVolume")?.focus({preventScroll:true})});
+}
+async function testConfiguredSound(id,label){
+ const audio=getAudioPreferences();if(audio.muted){setAudioStatus("Ton ist stumm. Stummschaltung zuerst deaktivieren.");return}
+ const played=await playSound(id,{force:true});setAudioStatus(played?`${label} wurde abgespielt.`:"Ton wird nach einer Berührung aktiviert oder konnte nicht geladen werden.");
+}
+
 function displayHudSizeLabel(size){return size==="small"?"Klein":size==="large"?"Groß":"Normal"}
 function refreshDisplaySettingsControls(){
  document.querySelectorAll("[data-hud-size]").forEach(button=>{
@@ -3175,7 +3213,7 @@ function updateDisplayPreference(key,value){
  displayPreferences={...displayPreferences,[key]:value};persistDisplayPreferences();applyDisplayPreferences();refreshDisplaySettingsControls();syncOrientationHint();
  requestAnimationFrame(()=>{resize();updateBuildTrayIndicators();updateSelectionHud()});
 }
-function openDisplaySettings(options={}){refreshDisplaySettingsControls();openBlockingPanel("displaySettingsPanel",{pauseGame:true,...options})}
+function openDisplaySettings(options={}){refreshDisplaySettingsControls();refreshAudioControls();openBlockingPanel("displaySettingsPanel",{pauseGame:true,...options})}
 function closeDisplaySettings(options={}){closeBlockingPanel("displaySettingsPanel",{resume:true,...options})}
 
 function openStats(target=selected){
@@ -3275,6 +3313,7 @@ testResourcePanel.addEventListener("click",e=>{
 ui.resourceOverviewBtn.addEventListener("click",openResourceDetails);
 ui.populationOverviewBtn.addEventListener("click",openPopulationDetails);
 navDisplay?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();closeMoreNav();openDisplaySettings()});
+navSound?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();closeMoreNav();openSoundSettings()});
 document.getElementById("displaySettingsCloseBtn")?.addEventListener("click",()=>closeDisplaySettings());
 document.getElementById("hudSizeChoices")?.addEventListener("click",event=>{
  const button=event.target.closest("[data-hud-size]");if(!button)return;
@@ -3283,6 +3322,22 @@ document.getElementById("hudSizeChoices")?.addEventListener("click",event=>{
 document.getElementById("hapticsToggle")?.addEventListener("change",event=>updateDisplayPreference("haptics",Boolean(event.target.checked)));
 document.getElementById("landscapeHintToggle")?.addEventListener("change",event=>{orientationHintDismissed=false;try{sessionStorage.removeItem("fortressCommander.orientationHintDismissed")}catch{}updateDisplayPreference("landscapeHint",Boolean(event.target.checked))});
 document.getElementById("hapticsTestBtn")?.addEventListener("click",()=>{const worked=hapticFeedback("success");const status=document.getElementById("displaySettingsStatus");if(status)status.textContent=worked?"Vibrationstest ausgelöst":"Vibration wird von diesem Gerät oder Browser nicht unterstützt"});
+soundToggleBtn?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();const next=toggleAudioMute();if(!next.muted)playSound("uiClick",{force:true})});
+for(const [id,key] of [["audioMasterVolume","master"],["audioEffectsVolume","effects"],["audioUiVolume","ui"]]){
+ document.getElementById(id)?.addEventListener("input",event=>setAudioPreferences({[key]:Number(event.target.value)/100}));
+}
+document.getElementById("audioMuteToggle")?.addEventListener("change",event=>{const next=setAudioPreferences({muted:Boolean(event.target.checked)});if(!next.muted)playSound("uiClick",{force:true})});
+document.getElementById("audioTestUiBtn")?.addEventListener("click",()=>testConfiguredSound("uiClick","Bedienungston"));
+document.getElementById("audioTestHornBtn")?.addEventListener("click",()=>testConfiguredSound("waveHorn","Angriffshorn"));
+document.getElementById("audioTestVictoryBtn")?.addEventListener("click",()=>testConfiguredSound("waveVictory","Siegesklang"));
+
+
+document.addEventListener("click",event=>{
+ const button=event.target.closest("button");if(!button||button.disabled)return;
+ if(button.matches("#soundToggleBtn,#audioTestUiBtn,#audioTestHornBtn,#audioTestVictoryBtn,#startWaveBtn,#upgradeBtn,#selectionUpgradeBtn,[data-upgrade-buy],[data-building-upgrade],[data-building-stone-upgrade],[data-tech]"))return;
+ const closeLike=button.matches(".panelCornerClose,.workshopClose,.enemyClose,.offeringClose,.warCouncilClose,.bonusObjectiveClose,.campaignPanelClose,.veteranClose,.commanderCampClose,[id*='CloseBtn'],[id*='BackBtn']");
+ playSound(closeLike?"uiClose":"uiClick");
+});
 statsContent.addEventListener("click",e=>{
  const openTestResources=e.target.closest("[data-open-test-resources]");
  if(openTestResources){e.preventDefault();e.stopPropagation();openTestResourcePanel();return}
@@ -3428,6 +3483,7 @@ selectionTalentBar.addEventListener("click",e=>{
  else return;
  if((selected.pendingUpgrades||0)<=0)selectionTalentBar.classList.add("hidden");
 });
+
 statsContent.addEventListener("click",e=>{
  const veteran=e.target.closest("[data-open-veteran]");
  if(veteran&&selected){e.preventDefault();e.stopPropagation();openVeteranPanel(selected,{fromPanel:"statsScreen"});return}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
-<title>Fortress Commander v1.18.0 – Installierbare Handy-App</title>
+<title>Fortress Commander v1.18.1 – Soundgrundsystem &amp; Schlachtgeräusche</title>
 <meta name="theme-color" content="#0b1b2d">
 <meta name="application-name" content="Fortress Commander">
 <meta name="mobile-web-app-capable" content="yes">
@@ -26,7 +26,7 @@
   <div class="appLaunchTitle">FORTRESS<br><span>COMMANDER</span></div>
   <div class="appLaunchSubtitle">Strategie · Verteidigung · Dein Reich</div>
   <div class="appLaunchProgress" aria-hidden="true"><span></span></div>
-  <small>v1.18.0 · Wird geladen …</small>
+  <small>v1.18.1 · Sound wird vorbereitet …</small>
  </div>
 </div>
 
@@ -50,7 +50,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Kampagnenkarte öffnen">Spiel starten</button>
-  <div id="gameVersionBadge">v1.18.0</div>
+  <div id="gameVersionBadge">v1.18.1</div>
   <div id="pwaInstallCard" class="hidden">
    <img src="assets/icons/icon-192.png" alt="" width="38" height="38">
    <div><strong>Als Handy-App installieren</strong><span>Vollbild, schneller Start und grundlegende Offline-Nutzung.</span></div>
@@ -328,6 +328,11 @@
   </details>
 
   <details class="guideSection">
+   <summary>🔊 Ton &amp; Schlachtgeräusche</summary>
+   <div class="guideBody"><div class="guideTip"><b>Aktivierung:</b> Mobile Browser erlauben Ton erst nach der ersten Berührung. Danach werden die kurzen Effekte vorgeladen und stehen auch in der installierten Offline-App zur Verfügung.</div><div class="guideGrid"><article class="guideCard"><h3>🔊 Schnellschalter</h3><p>Der kleine Lautsprecherknopf rechts auf der Spielfläche schaltet alle Töne sofort stumm oder wieder ein.</p></article><article class="guideCard"><h3>🎚️ Lautstärke</h3><p>Unter Mehr → Ton lassen sich Gesamtlautstärke, Kampf- und Baugeräusche sowie Bedienungstöne getrennt einstellen.</p></article><article class="guideCard"><h3>⚔️ Große Schlachten</h3><p>Ähnliche Treffer werden automatisch begrenzt und leicht variiert, damit viele Einheiten nicht zu einem übersteuerten Klangteppich werden.</p></article><article class="guideCard"><h3>📱 Hintergrund</h3><p>Beim Sperren des Bildschirms oder Wechseln der App werden laufende Geräusche gestoppt. Spielstände und Audioeinstellungen bleiben erhalten.</p></article></div></div>
+  </details>
+
+  <details class="guideSection">
    <summary>📖 Gegnerlexikon: Eisenclans</summary>
    <div class="guideBody"><p class="bestiaryIntro">Gegner werden dauerhaft enthüllt, sobald sie dir erstmals begegnen. Tippe im Kampf auf einen Feind, um seine aktuellen Werte, Rüstung und Besonderheiten zu sehen.</p><div id="bestiaryProgress" class="bestiaryProgress">0 / 6 entdeckt</div><div id="bestiaryGrid" class="bestiaryGrid" aria-live="polite"></div></div>
   </details>
@@ -357,6 +362,7 @@
 <div id="gameWrap">
  <canvas id="game"></canvas>
  <div id="siegePhaseNotice" class="siegePhaseNotice hidden" role="status" aria-live="polite"><strong id="siegePhaseTitle">⛺ Belagerungsphase</strong><span id="siegePhaseText">Die nächste Armee sammelt sich in den Außenlagern.</span></div>
+ <button id="soundToggleBtn" class="soundToggleBtn" type="button" aria-label="Ton stummschalten" aria-pressed="false" title="Ton an oder aus">🔊</button>
  <div id="tacticsDock" aria-label="Taktische Schnellzugriffe">
   <button id="tacticsMenuBtn" class="tacticsMenuBtn" type="button" aria-expanded="false" aria-controls="tacticsMenu"><span id="tacticsMenuIcon">🧭</span><strong>Taktik</strong><small id="tacticsMenuBadge"></small></button>
   <div id="tacticsMenu" class="tacticsMenu hidden">
@@ -446,6 +452,7 @@
    <button class="navBtn" id="navStats" type="button" role="menuitem"><span class="navIcon">📜</span>Werte</button>
    <button class="navBtn" id="navResearch" type="button" role="menuitem" disabled><span class="navIcon">🔬</span>Forschung<span class="researchBadge" id="navResearchBadge">0</span></button>
    <button class="navBtn" id="navDisplay" type="button" role="menuitem"><span class="navIcon">📱</span>Anzeige</button>
+   <button class="navBtn" id="navSound" type="button" role="menuitem"><span class="navIcon">🔊</span>Ton</button>
    <button class="navBtn hidden" id="navInstallApp" type="button" role="menuitem"><span class="navIcon">📲</span>App installieren</button>
    <button class="navBtn" id="navMenu" type="button" role="menuitem"><span class="navIcon">📖</span>Anleitung</button>
   </div>
@@ -472,6 +479,21 @@
    <label><span><b>↔️ Querformat-Hinweis</b><small>Zeigt beim Drehen einmal einen kompakten Bedienhinweis.</small></span><input id="landscapeHintToggle" type="checkbox" checked></label>
   </div>
   <button id="hapticsTestBtn" class="hapticsTestBtn" type="button">📳 Vibration testen</button>
+
+  <div id="audioSettingsSection" class="displaySettingsSection audioSettingsSection">
+   <div class="audioSettingsTitle"><div><h3>🔊 Ton &amp; Schlachtgeräusche</h3><p>Gesamt-, Kampf- und Bedienungslautstärke werden auf diesem Gerät gespeichert.</p></div><label class="audioMuteLabel"><span>Stumm</span><input id="audioMuteToggle" type="checkbox"></label></div>
+   <div class="audioVolumeGrid">
+    <label for="audioMasterVolume"><span><b>Gesamtlautstärke</b><output id="audioMasterValue">78 %</output></span><input id="audioMasterVolume" type="range" min="0" max="100" step="1" value="78"></label>
+    <label for="audioEffectsVolume"><span><b>Kampf &amp; Bau</b><output id="audioEffectsValue">86 %</output></span><input id="audioEffectsVolume" type="range" min="0" max="100" step="1" value="86"></label>
+    <label for="audioUiVolume"><span><b>Bedienung</b><output id="audioUiValue">62 %</output></span><input id="audioUiVolume" type="range" min="0" max="100" step="1" value="62"></label>
+   </div>
+   <div class="audioTestButtons" role="group" aria-label="Sound testen">
+    <button id="audioTestUiBtn" type="button">🖱️ Klick testen</button>
+    <button id="audioTestHornBtn" type="button">📯 Horn testen</button>
+    <button id="audioTestVictoryBtn" type="button">🏆 Sieg testen</button>
+   </div>
+   <div id="audioSettingsStatus" class="audioSettingsStatus" aria-live="polite">Ton wird nach der ersten Berührung aktiviert.</div>
+  </div>
   <div class="displaySettingsSection pwaSettingsSection">
    <h3>Installierbare Handy-App</h3>
    <div class="pwaSettingsSummary"><img src="assets/icons/icon-192.png" alt="" width="54" height="54"><div><b id="pwaInstallState">Browser-Version</b><small id="pwaInstallDescription">Nach der Installation startet Fortress Commander ohne Browserleiste und kann wichtige Dateien offline laden.</small></div></div>
@@ -492,7 +514,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.18.0 · Installierbare PWA, Offline-Modus und Update-System.</div>
+  <div class="workshopFoot">v1.18.1 · Soundgrundsystem, Lautstärkeregler und Schlachtgeräusche.</div>
  </section>
 </div>
 

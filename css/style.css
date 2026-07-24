@@ -1044,3 +1044,14 @@ body.fcModalOpen>.fcPanelActive{pointer-events:auto!important;user-select:auto}
 body.pwaStandalone #pwaInstallCard,body.pwaStandalone #navInstallApp,body.pwaStandalone #installAppSettingsBtn{display:none!important}
 
 @media(prefers-reduced-motion:reduce){.appLaunchCard img,.appLaunchProgress span{animation:none}.appLaunchProgress span{width:100%}}
+
+/* v1.18.1 – Soundgrundsystem & Schlachtgeräusche */
+.soundToggleBtn{position:absolute;z-index:36;top:118px;right:124px;width:42px;height:42px;min-width:42px;padding:0;display:grid;place-items:center;border:1px solid #d7b65f88;border-radius:14px;background:linear-gradient(145deg,#31443aee,#111b17ee);box-shadow:0 5px 18px #0009;color:#fff2c7;font-size:19px;line-height:1;touch-action:manipulation}
+.soundToggleBtn.isMuted{border-color:#9a6c5f;background:linear-gradient(145deg,#392622ee,#17100fee);color:#d7b5aa;box-shadow:0 5px 18px #0009}
+.soundToggleBtn:focus-visible{outline:2px solid #ffe4a0;outline-offset:2px}
+.audioSettingsSection{border-color:#d0b26555;background:linear-gradient(145deg,#14251dcc,#09130fdd)}
+.audioSettingsTitle{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.audioSettingsTitle h3{margin:0!important}.audioSettingsTitle p{margin:4px 0 0;color:#bfcac3;font-size:9px;line-height:1.35}
+.audioMuteLabel{min-width:92px;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px;padding:7px 9px;border-radius:12px;background:#101814;border:1px solid #ffffff18;color:#f4e8c8;font-size:10px;font-weight:900;cursor:pointer}.audioMuteLabel input{width:22px;height:22px;accent-color:#d7b75e}
+.audioVolumeGrid{display:grid;gap:10px;margin-top:13px}.audioVolumeGrid>label{display:grid;gap:7px;padding:10px;border-radius:12px;background:#0c1511;border:1px solid #ffffff13}.audioVolumeGrid>label>span{display:flex;align-items:center;justify-content:space-between;gap:10px}.audioVolumeGrid b{font-size:11px}.audioVolumeGrid output{color:#ffe09a;font-size:10px;font-weight:950;font-variant-numeric:tabular-nums}.audioVolumeGrid input[type="range"]{width:100%;height:24px;accent-color:#d7b75e;cursor:pointer}
+.audioTestButtons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:12px}.audioTestButtons button{min-height:44px;padding:7px;font-size:10px;font-weight:900}
+.audioSettingsStatus{margin-top:9px;padding:8px;border-radius:10px;background:#06100bbb;color:#bfe5c9;text-align:center;font-size:10px;font-weight:900}

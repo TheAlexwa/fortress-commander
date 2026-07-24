@@ -1,4 +1,4 @@
-const CACHE_NAME="fortress-commander-v1.18.0";
+const CACHE_NAME="fortress-commander-v1.18.1";
 const INDEX_URL=new URL("index.html",self.registration.scope).href;
 const APP_SHELL=[
  './index.html',
@@ -6,6 +6,7 @@ const APP_SHELL=[
  './css/mobile.css',
  './css/style.css',
  './css/ui.css',
+ './js/audio.js',
  './js/bonus-objectives.js',
  './js/buildings.js',
  './js/campaign.js',
@@ -36,6 +37,19 @@ const APP_SHELL=[
  './data/technologies.json',
  './data/units.json',
  './data/weather.json',
+ './assets/audio/LICENSES.md',
+ './assets/audio/arrow-shot.mp3',
+ './assets/audio/build-place.mp3',
+ './assets/audio/melee-hit.mp3',
+ './assets/audio/repair.mp3',
+ './assets/audio/siege-impact.mp3',
+ './assets/audio/tower-shot.mp3',
+ './assets/audio/ui-click.mp3',
+ './assets/audio/ui-close.mp3',
+ './assets/audio/ui-error.mp3',
+ './assets/audio/upgrade-complete.mp3',
+ './assets/audio/wave-horn.mp3',
+ './assets/audio/wave-victory.mp3',
  './assets/buildings/archer-tower.webp',
  './assets/buildings/catapult-tower.webp',
  './assets/buildings/crossbow-tower.webp',

@@ -1,3 +1,14 @@
+## v1.18.1 – Soundgrundsystem & Schlachtgeräusche
+
+- Zentrale Web-Audio-Engine mit getrennten Reglern für Gesamtlautstärke, Kampf/Bau und Bedienung ergänzt.
+- Stummschaltung über einen dauerhaft erreichbaren Lautsprecherknopf auf der Spielfläche sowie unter Mehr → Ton.
+- Zwölf optimierte Soundeffekte für Bedienung, Fehler, Bauen, Upgrades, Forschung, Reparatur, Bogenschüsse, Nahkampf, Türme, Belagerung, Angriffshorn und Wellensieg integriert.
+- Gleichzeitige Kampfgeräusche werden pro Sound und global begrenzt; kurze Tonhöhenvariationen verhindern monotone Wiederholungen.
+- Audio wird erst nach der ersten Nutzerinteraktion aktiviert, im Hintergrund gestoppt und beim Zurückkehren sauber fortgesetzt.
+- Lautstärke- und Stummeinstellungen werden lokal auf dem Gerät gespeichert und verändern keine Spielstände.
+- Alle Audiodateien liegen lautheitsangepasst, mono und mobilfreundlich komprimiert vor; Quellen und Lizenzen stehen in `assets/audio/LICENSES.md`.
+- Service Worker und Offline-Cache wurden auf v1.18.1 erweitert, damit Sounds auch in der installierten PWA verfügbar sind.
+
 ## v1.18.0 – Installierbare Handy-App / PWA
 
 - Fortress Commander kann auf unterstützten Geräten über „Zum Startbildschirm hinzufügen“ als App installiert werden.

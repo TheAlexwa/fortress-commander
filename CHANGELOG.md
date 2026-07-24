@@ -1,3 +1,15 @@
+## v1.18.1 – Soundgrundsystem & Schlachtgeräusche
+
+- Neue zentrale Soundengine `js/audio.js` mit Web Audio API, Vorladen, Stimmenbegrenzung und gespeicherten Geräteeinstellungen ergänzt.
+- Zwölf vom Nutzer bereitgestellte und technisch optimierte Effekte unter `assets/audio/` eingebunden.
+- Soundereignisse für UI-Klick, Fenster schließen, Fehler, Bau, Upgrade/Forschung, Handwerkerreparatur, Pfeilschuss, Nahkampf, Turmschuss, Katapulteinschlag, Angriffshorn und Wellensieg ergänzt.
+- Lautsprecher-Schnellschalter auf dem Spielfeld und Ton-Eintrag im Mehr-Menü ergänzt.
+- Anzeige- und Touchfenster um Gesamt-, Effekt- und Bedienungslautstärke, Stummschaltung sowie drei Testknöpfe erweitert.
+- Audio pausiert im Browserhintergrund und wird nach der ersten Berührung mobilbrowserkonform freigeschaltet.
+- Service-Worker-Cache auf `fortress-commander-v1.18.1` erhöht und um Soundengine, Lizenzübersicht und alle Audiodateien ergänzt.
+- Automatischer Prüflauf `tools/validate-audio.mjs` ergänzt.
+- README, Anleitung, Startbildschirm und Versionsangaben auf v1.18.1 aktualisiert.
+
 ## v1.18.0 – Installierbare Handy-App / PWA
 
 - Web-App-Manifest, Service Worker und App-Metadaten ergänzt.
