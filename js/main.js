@@ -256,8 +256,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.10";
-const GAME_RELEASE_NAME="Türme, Schäden & Schlachtfeldfeedback";
+const GAME_VERSION="1.18.11";
+const GAME_RELEASE_NAME="Animierte Spielermodelle";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true,cameraEffects:true};

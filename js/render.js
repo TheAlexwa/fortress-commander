@@ -63,6 +63,49 @@ const UNIT_SPRITE_DEFS = {
   }
 };
 
+// Bewegliche 2D-Papierpuppen: Jede bestehende Figurenzeichnung wird beim
+// Rendern in Kopf, Körper, Arme und Beine aufgeteilt. Die Polygone schneiden
+// direkt aus dem vorhandenen Sprite aus, daher bleiben Stil, Farben und
+// Ausrüstung identisch, während die Körperteile eigene Gelenke erhalten.
+const UNIT_RIG_DEFS = {
+  soldier: {
+    sourceWidth:166,sourceHeight:256,
+    order:["leftLeg","rightLeg","torso","head","leftArm","rightArm"],
+    parts:{
+      leftLeg:{pivot:[65,194],polygon:[[30,180],[88,180],[91,256],[27,256]]},
+      rightLeg:{pivot:[101,194],polygon:[[75,180],[138,180],[142,256],[75,256]]},
+      torso:{pivot:[83,145],polygon:[[43,76],[123,76],[128,114],[121,207],[104,221],[62,221],[44,207],[38,114]]},
+      head:{pivot:[83,91],polygon:[[24,0],[142,0],[148,64],[129,101],[106,112],[58,112],[36,101],[18,64]]},
+      leftArm:{pivot:[53,111],polygon:[[0,83],[46,78],[64,105],[61,190],[38,212],[0,197]]},
+      rightArm:{pivot:[116,111],polygon:[[108,77],[137,47],[166,43],[166,225],[137,228],[108,188]]}
+    }
+  },
+  guard: {
+    sourceWidth:202,sourceHeight:256,
+    order:["leftLeg","rightLeg","torso","head","leftArm","rightArm"],
+    parts:{
+      leftLeg:{pivot:[79,194],polygon:[[42,181],[106,181],[108,256],[38,256]]},
+      rightLeg:{pivot:[125,194],polygon:[[92,181],[166,181],[172,256],[92,256]]},
+      torso:{pivot:[103,145],polygon:[[52,71],[153,71],[162,114],[154,214],[128,225],[73,224],[48,210],[44,113]]},
+      head:{pivot:[101,91],polygon:[[35,0],[167,0],[172,65],[154,103],[126,113],[75,113],[48,103],[30,65]]},
+      leftArm:{pivot:[68,108],polygon:[[0,78],[76,72],[105,108],[96,213],[64,230],[0,208]]},
+      rightArm:{pivot:[137,108],polygon:[[124,73],[166,74],[202,86],[202,225],[164,233],[127,190]]}
+    }
+  },
+  hero: {
+    sourceWidth:250,sourceHeight:300,
+    order:["leftLeg","rightLeg","torso","head","leftArm","rightArm"],
+    parts:{
+      leftLeg:{pivot:[103,237],polygon:[[57,218],[136,218],[139,300],[50,300]]},
+      rightLeg:{pivot:[154,237],polygon:[[113,218],[202,218],[208,300],[113,300]]},
+      torso:{pivot:[128,170],polygon:[[68,77],[190,77],[198,133],[190,254],[158,268],[98,268],[63,252],[56,132]]},
+      head:{pivot:[126,108],polygon:[[57,0],[194,0],[204,75],[181,122],[153,132],[99,132],[71,122],[49,75]]},
+      leftArm:{pivot:[86,126],polygon:[[0,85],[94,78],[130,124],[118,253],[79,273],[0,248]]},
+      rightArm:{pivot:[169,126],polygon:[[151,78],[211,72],[250,90],[250,255],[208,273],[154,224]]}
+    }
+  }
+};
+
 function loadUnitSprite(src){
  const image=new Image();
  image.decoding="async";
@@ -1386,11 +1429,13 @@ function drawUnits(){
 
 function getUnitMotion(unit){
  const now=performance.now(),previous=unitMotionStates.get(unit),dt=previous?Math.max(.001,Math.min(.08,(now-previous.time)/1000)):.016;
- const distance=previous?Math.hypot(unit.x-previous.x,unit.y-previous.y):0;
+ const dx=previous?unit.x-previous.x:0,dy=previous?unit.y-previous.y:0,distance=Math.hypot(dx,dy);
  const speed=distance/dt,moving=speed>3.5;
  let phase=previous?.phase??((Number(unit.uid)||0)*1.91);
  phase+=dt*(moving?7.4+Math.min(8,speed*.065):1.25);
- const motion={x:unit.x,y:unit.y,time:now,phase,speed,moving};unitMotionStates.set(unit,motion);return motion;
+ const angle=distance>.04?Math.atan2(dy,dx):(previous?.angle??-Math.PI/2);
+ const facing=distance>.04?(dx<-.02?-1:dx>.02?1:(previous?.facing??1)):(previous?.facing??1);
+ const motion={x:unit.x,y:unit.y,time:now,phase,speed,moving,dx,dy,angle,facing};unitMotionStates.set(unit,motion);return motion;
 }
 
 function getUnitAttackAnimation(unit){
@@ -1426,17 +1471,86 @@ function drawHeroAbilityWeaponGlow(unit){
  const pulse=.5+.5*Math.sin(performance.now()*.012);ctx.save();ctx.rotate(Number.isFinite(unit.attackAngle)?unit.attackAngle:-Math.PI/2);ctx.globalAlpha=.22+.22*pulse;ctx.strokeStyle="#ffe27a";ctx.shadowBlur=16;ctx.shadowColor="#ffbf38";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(27+4*pulse,0);ctx.stroke();ctx.fillStyle="#fff6b8";ctx.beginPath();ctx.arc(29+4*pulse,0,2.4+pulse,0,TAU);ctx.fill();ctx.restore();
 }
 
+function smoothPose(value){
+ const t=clamp01(value);return t*t*(3-2*t);
+}
+function emptyRigPose(){
+ return {leftLeg:{},rightLeg:{},torso:{},head:{},leftArm:{},rightArm:{}};
+}
+function setRigTransform(pose,part,values){pose[part]={...(pose[part]||{}),...values}}
+function getRigPose(unit,motion,attack,hit){
+ const pose=emptyRigPose(),reduced=REDUCED_MOTION ? .45 : 1,step=Math.sin(motion.phase),breath=Math.sin(performance.now()*.004+(Number(unit.uid)||0)*1.31);
+ setRigTransform(pose,"torso",{angle:(motion.moving?step*.025:breath*.008)*reduced,ty:-Math.max(0,breath)*.7*reduced});
+ setRigTransform(pose,"head",{angle:(motion.moving?-step*.035:breath*.012)*reduced,ty:-Math.max(0,breath)*.9*reduced});
+ if(motion.moving){
+  setRigTransform(pose,"leftLeg",{angle:step*.28*reduced,ty:Math.max(0,-step)*1.8*reduced});
+  setRigTransform(pose,"rightLeg",{angle:-step*.28*reduced,ty:Math.max(0,step)*1.8*reduced});
+  setRigTransform(pose,"leftArm",{angle:-step*.13*reduced});
+  setRigTransform(pose,"rightArm",{angle:step*.13*reduced});
+ }else{
+  setRigTransform(pose,"leftArm",{angle:breath*.012*reduced});
+  setRigTransform(pose,"rightArm",{angle:-breath*.012*reduced});
+ }
+ if(attack.active){
+  const p=attack.progress;
+  if(unit.key==="soldier"){
+   const draw=smoothPose(p/.52),release=smoothPose((p-.52)/.14),recover=smoothPose((p-.68)/.32),hold=draw*(1-recover),snap=release*(1-recover);
+   setRigTransform(pose,"torso",{angle:-.045*hold*reduced,tx:-2.5*hold,ty:-1.5*hold});
+   setRigTransform(pose,"head",{angle:-.035*hold*reduced,tx:2*hold,ty:-1.5*hold});
+   setRigTransform(pose,"rightArm",{angle:.28*hold-.18*snap,tx:5*hold,ty:-5*hold});
+   setRigTransform(pose,"leftArm",{angle:-.72*hold+.5*snap,tx:23*hold-15*snap,ty:-18*hold+8*snap});
+   setRigTransform(pose,"leftLeg",{angle:-.08*hold});
+   setRigTransform(pose,"rightLeg",{angle:.1*hold});
+  }else{
+   const direction=attack.variant%2?1:-1,windup=smoothPose(p/.28),strike=smoothPose((p-.18)/.48),recover=smoothPose((p-.7)/.3),power=(windup*(1-strike)+strike)*(1-recover);
+   const hero=unit.key==="hero",reach=hero?1.18:1;
+   setRigTransform(pose,"torso",{angle:(direction*.13*windup-direction*.22*strike)*(1-recover)*reduced,tx:(hero?7:5)*strike*(1-recover),ty:-2*power});
+   setRigTransform(pose,"head",{angle:(-direction*.08*windup+direction*.05*strike)*(1-recover)*reduced,tx:2*strike});
+   setRigTransform(pose,"rightArm",{angle:(-direction*.95*windup+direction*1.82*strike)*(1-recover)*reach*reduced,tx:(hero?7:4)*strike,ty:-4*power});
+   setRigTransform(pose,"leftArm",{angle:(-direction*.13-.16*windup+.12*strike)*(1-recover)*reduced,tx:2*strike,ty:-2*power});
+   setRigTransform(pose,"leftLeg",{angle:-direction*.12*power,tx:-2*power});
+   setRigTransform(pose,"rightLeg",{angle:direction*.16*power,tx:4*strike*(1-recover)});
+  }
+ }
+ if(hit){
+  const recoil=hit.pulse*(.6+hit.strength*.7)*reduced,direction=Math.cos(hit.angle)<0?-1:1;
+  setRigTransform(pose,"head",{...(pose.head||{}),angle:(pose.head?.angle||0)+direction*.11*recoil,tx:(pose.head?.tx||0)+direction*2.5*recoil});
+  setRigTransform(pose,"torso",{...(pose.torso||{}),angle:(pose.torso?.angle||0)+direction*.07*recoil,tx:(pose.torso?.tx||0)+direction*2*recoil});
+  setRigTransform(pose,"leftArm",{...(pose.leftArm||{}),angle:(pose.leftArm?.angle||0)-direction*.12*recoil});
+  setRigTransform(pose,"rightArm",{...(pose.rightArm||{}),angle:(pose.rightArm?.angle||0)+direction*.16*recoil});
+ }
+ return pose;
+}
+function traceRigPolygon(part,x0,y0,scaleX,scaleY){
+ ctx.beginPath();part.polygon.forEach(([x,y],index)=>{const px=x0+x*scaleX,py=y0+y*scaleY;if(index===0)ctx.moveTo(px,py);else ctx.lineTo(px,py)});ctx.closePath();
+}
+function drawRigPart(image,rig,partName,transform,x0,y0,width,height){
+ const part=rig.parts[partName];if(!part)return;
+ const scaleX=width/rig.sourceWidth,scaleY=height/rig.sourceHeight,pivotX=x0+part.pivot[0]*scaleX,pivotY=y0+part.pivot[1]*scaleY;
+ ctx.save();ctx.translate(pivotX+(Number(transform?.tx)||0)*scaleX,pivotY+(Number(transform?.ty)||0)*scaleY);ctx.rotate(Number(transform?.angle)||0);ctx.scale(Number(transform?.scaleX)||1,Number(transform?.scaleY)||1);ctx.translate(-pivotX,-pivotY);traceRigPolygon(part,x0,y0,scaleX,scaleY);ctx.clip();ctx.drawImage(image,x0,y0,width,height);ctx.restore();
+}
+function drawRiggedUnitModel(unit,image,motion,attack,hit,width,height,offsetY=0){
+ const rig=UNIT_RIG_DEFS[unit.key];if(!rig||!image?.complete||!image.naturalWidth)return false;
+ const pose=getRigPose(unit,motion,attack,hit),x0=-width/2,y0=-height/2+offsetY;
+ const attackFacing=attack.active&&Math.abs(Math.cos(attack.angle))>.08?(Math.cos(attack.angle)<0?-1:1):motion.facing;
+ ctx.save();ctx.scale(attackFacing||1,1);
+ for(const partName of rig.order)drawRigPart(image,rig,partName,pose[partName],x0,y0,width,height);
+ ctx.restore();return true;
+}
+
 function drawUnitSprite(unit){
  const sprite=unitSprites[unit.key];if(!sprite)return false;
  const motion=getUnitMotion(unit),moving=motion.moving,attack=getUnitAttackAnimation(unit),hit=getHitReaction(unit);
- const image=!attack.active&&moving?sprite.walk[Math.floor(motion.phase/Math.PI)%sprite.walk.length]:sprite.idle;
- if(!image||!image.complete||!image.naturalWidth)return false;
- const {width,height,offsetY=0}=sprite.def,step=Math.sin(motion.phase),lift=moving?Math.abs(step)*1.55:0,sway=moving?Math.cos(motion.phase*.5)*1.15:0;
- ctx.save();ctx.translate(sway,-lift);ctx.rotate(moving?step*.026:0);
- if(attack.active){const pulse=Math.sin(attack.progress*Math.PI),lunge=unit.key==="soldier"?-2.2*pulse:5.5*pulse;ctx.translate(Math.cos(attack.angle)*lunge,Math.sin(attack.angle)*lunge*.42);if(unit.key==="guard"||unit.key==="hero")ctx.rotate((attack.progress-.48)*(attack.variant%2?-.3:.3));else ctx.rotate((.5-attack.progress)*.075)}
- if(hit){const knock=hit.pulse*(2.8+hit.strength*4);ctx.translate(Math.cos(hit.angle)*knock,Math.sin(hit.angle)*knock*.55);ctx.rotate(Math.sin(hit.angle)*hit.pulse*.055)}
- ctx.drawImage(image,-width/2,-height/2+offsetY,width,height);
- if(hit){ctx.save();ctx.globalCompositeOperation="screen";ctx.globalAlpha=(1-hit.progress)*(.16+.34*hit.pulse);ctx.drawImage(image,-width/2,-height/2+offsetY,width,height);ctx.restore()}
+ const fallbackImage=!attack.active&&moving?sprite.walk[Math.floor(motion.phase/Math.PI)%sprite.walk.length]:sprite.idle;
+ const modelImage=sprite.idle;
+ if(!modelImage||!modelImage.complete||!modelImage.naturalWidth)return false;
+ const {width,height,offsetY=0}=sprite.def,step=Math.sin(motion.phase),lift=moving?Math.abs(step)*1.15:0,sway=moving?Math.cos(motion.phase*.5)*.75:0;
+ ctx.save();ctx.translate(sway,-lift);
+ if(attack.active){const pulse=Math.sin(attack.progress*Math.PI),lunge=unit.key==="soldier"?-1.6*pulse:3.8*pulse;ctx.translate(Math.cos(attack.angle)*lunge,Math.sin(attack.angle)*lunge*.35)}
+ if(hit){const knock=hit.pulse*(2.4+hit.strength*3.5);ctx.translate(Math.cos(hit.angle)*knock,Math.sin(hit.angle)*knock*.48)}
+ const useRig=zoom>=.22&&drawRiggedUnitModel(unit,modelImage,motion,attack,hit,width,height,offsetY);
+ if(!useRig&&fallbackImage?.complete&&fallbackImage.naturalWidth)ctx.drawImage(fallbackImage,-width/2,-height/2+offsetY,width,height);
+ if(hit){ctx.save();ctx.globalCompositeOperation="screen";ctx.globalAlpha=(1-hit.progress)*(.12+.28*hit.pulse);if(useRig)drawRiggedUnitModel(unit,modelImage,motion,attack,hit,width,height,offsetY);else if(fallbackImage?.complete&&fallbackImage.naturalWidth)ctx.drawImage(fallbackImage,-width/2,-height/2+offsetY,width,height);ctx.restore()}
  ctx.restore();drawUnitFootDust(motion,unit,height);
  if(attack.active){if(unit.key==="guard"||unit.key==="hero")drawGuardAttackEffect(attack,unit);else drawArcherAttackEffect(attack,unit)}
  drawHeroAbilityWeaponGlow(unit);drawHitReactionEffect(unit,hit,unit.key==="hero"?29:23);return true;

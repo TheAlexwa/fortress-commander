@@ -31,7 +31,7 @@ for(const text of ["body.fcModalOpen",".fcPanelActive",".panelCornerClose"])requ
 for(const text of ['id="marketCloseIconBtn"','id="pauseCloseBtn"','id="displaySettingsCloseBtn"','data-action="unit-overview"','id="troopOverviewBtn"'])requireText(html,text,"Schließen-Knopf oder Einheitenbuch fehlt");
 for(const file of ["index.html","README.md","CHANGELOG.md","js/main.js"]){
  const content=fs.readFileSync(path.join(root,file),"utf8");
- requireText(content,"1.18.10",`Versionsangabe fehlt in ${file}`);
+ requireText(content,"1.18.11",`Versionsangabe fehlt in ${file}`);
 }
 const forbidden=[
  /panel\.style\.display\s*=/,
@@ -43,4 +43,4 @@ if(failures.length){
  console.error("Fensterprüfung fehlgeschlagen:\n- "+failures.join("\n- "));
  process.exit(1);
 }
-console.log(`Fensterprüfung erfolgreich: ${expected.length} Dialoge, zentrale Steuerung, Einheitenbuch, Truppenanzeige und Version 1.18.10 bestätigt.`);
+console.log(`Fensterprüfung erfolgreich: ${expected.length} Dialoge, zentrale Steuerung, Einheitenbuch, Truppenanzeige und Version 1.18.11 bestätigt.`);

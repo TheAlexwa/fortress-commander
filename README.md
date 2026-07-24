@@ -1,3 +1,15 @@
+## v1.18.11 – Animierte Spielermodelle
+
+- Bogenschütze, Burgwache und Andreas werden nun als bewegliche 2D-Gelenkmodelle aus Kopf, Körper, Armen und Beinen gezeichnet.
+- Die Körperteile werden direkt aus den vorhandenen Figurenbildern ausgeschnitten. Dadurch bleiben Grafikstil, Farben, Rüstung und Ausrüstung unverändert.
+- Laufbewegungen bewegen Beine und Arme gegensinnig; Kopf und Oberkörper reagieren mit eigener Haltung und Blickrichtung.
+- Der Bogenschütze streckt den Bogenarm aus, zieht den anderen Arm sichtbar zur Sehne und löst den Schuss mit einer eigenen Rückbewegung.
+- Burgwache und Andreas holen mit dem Schwertarm aus, drehen Oberkörper und Kopf und gehen beim Schlag sichtbar in den Ausfallschritt.
+- Treffer wirken auf Kopf, Körper und Arme des Modells, statt nur die gesamte Grafik zu verschieben.
+- Modelle spiegeln sich abhängig von Lauf- oder Angriffsrichtung und wenden sich dadurch besser zum Ziel.
+- Bei sehr großer Kartenübersicht wird automatisch die günstigere vollständige Sprite-Darstellung verwendet.
+- Kampfwerte, Reichweiten, Angriffsgeschwindigkeiten, Zielregeln, Kollisionen und Balance bleiben unverändert.
+
 ## v1.18.10 – Türme, Schäden & Schlachtfeldfeedback
 
 - Bogenschützen-, Armbrust- und Katapulttürme besitzen nun eigene sichtbare Schussbewegungen mit Ausrichtung zum Ziel, Rückstoß und kurzem Abschusslicht.

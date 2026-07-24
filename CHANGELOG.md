@@ -1,3 +1,13 @@
+## v1.18.11 – Animierte Spielermodelle
+
+- Neues Canvas-Papierpuppensystem `UNIT_RIG_DEFS` für Bogenschütze, Burgwache und Andreas ergänzt.
+- Vorhandene Einheiten-Sprites werden zur Laufzeit mit Polygonmasken in sechs bewegliche Körperteile zerlegt. Zusätzliche Bilddateien sind nicht erforderlich.
+- Gelenkpunkte und getrennte Transformationswerte für Kopf, Körper, Schild-/Bogenarm, Waffenarm und beide Beine ergänzt.
+- Echte Laufhaltungen, Bogenspannung, Sehnenzug, Schwerthieb, Ausfallschritt, Trefferhaltung und richtungsabhängiges Spiegeln ergänzt.
+- Detailabhängige Rückfallanzeige auf das vollständige Sprite bei sehr weitem Herauszoomen schützt die Leistung auf Mobilgeräten.
+- Neuer Prüflauf `tools/validate-rigged-models.mjs` kontrolliert drei Modelle, sechs Körperteile, Gelenke, Bewegungsphasen und unveränderte Kampfwerte.
+- Service-Worker-Cache und sichtbare Versionsangaben auf v1.18.11 erhöht.
+
 ## v1.18.10 – Türme, Schäden & Schlachtfeldfeedback
 
 - Drei getrennte Turm-Schussanimationen für Bogenturm, Armbrustturm und Katapult ergänzt.
