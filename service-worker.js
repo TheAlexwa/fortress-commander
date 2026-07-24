@@ -1,4 +1,4 @@
-const CACHE_NAME="fortress-commander-v1.18.6";
+const CACHE_NAME="fortress-commander-v1.18.7";
 const INDEX_URL=new URL("index.html",self.registration.scope).href;
 const APP_SHELL=[
  './index.html',
@@ -95,6 +95,7 @@ const APP_SHELL=[
  './assets/icons/icon-maskable-192.png',
  './assets/icons/icon-maskable-512.png',
  './assets/ui/andreas-portrait.webp',
+ './assets/ui/campaign-map-v1.18.7.webp',
  './assets/ui/start-screen.webp',
  './assets/units/andreas-idle.webp',
  './assets/units/andreas-walk-1.webp',

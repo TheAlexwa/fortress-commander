@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
-<title>Fortress Commander v1.18.6 – Faire Gegnerreichweiten</title>
+<title>Fortress Commander v1.18.7 – Neue Kampagnenkarte</title>
 <meta name="theme-color" content="#0b1b2d">
 <meta name="application-name" content="Fortress Commander">
 <meta name="mobile-web-app-capable" content="yes">
@@ -26,7 +26,7 @@
   <div class="appLaunchTitle">FORTRESS<br><span>COMMANDER</span></div>
   <div class="appLaunchSubtitle">Strategie · Verteidigung · Dein Reich</div>
   <div class="appLaunchProgress" aria-hidden="true"><span></span></div>
-  <small>v1.18.6 · Gegnerreichweiten und Nahkampfkontakte werden vorbereitet …</small>
+  <small>v1.18.7 · Neue Kampagnenkarte und mobile Bedienung werden vorbereitet …</small>
  </div>
 </div>
 
@@ -50,7 +50,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Kampagnenkarte öffnen">Spiel starten</button>
-  <div id="gameVersionBadge">v1.18.6</div>
+  <div id="gameVersionBadge">v1.18.7</div>
   <div id="pwaInstallCard" class="hidden">
    <img src="assets/icons/icon-192.png" alt="" width="38" height="38">
    <div><strong>Als Handy-App installieren</strong><span>Vollbild, schneller Start und grundlegende Offline-Nutzung.</span></div>
@@ -69,30 +69,20 @@
   </div>
   <div class="worldMapLayout">
    <div class="fantasyWorldMap" role="group" aria-label="Wähle eine Kampagnenwelt">
-    <div class="mapCompass" aria-hidden="true"><span>N</span><i>✦</i></div>
-    <svg class="worldRouteLayer" viewBox="0 0 1000 620" aria-hidden="true" preserveAspectRatio="none">
-     <path d="M205 430 C310 410 330 315 420 292 S560 165 650 165"/>
-     <path d="M420 292 C520 330 565 430 660 438"/>
-     <path d="M660 438 C755 410 770 300 835 280"/>
-    </svg>
-    <div class="mapRange mapRangeWest" aria-hidden="true"></div>
-    <div class="mapRange mapRangeNorth" aria-hidden="true"></div>
-    <div class="mapForest mapForestOne" aria-hidden="true">♠ ♣ ♠ ♣</div>
-    <div class="mapForest mapForestTwo" aria-hidden="true">♣ ♠ ♣</div>
-    <div class="mapRiver" aria-hidden="true"></div>
-    <button class="worldNode worldPlayable" type="button" data-world-id="borderlands" style="--world-x:20%;--world-y:69%">
+    <div class="worldMapPlayableBadge" aria-hidden="true">SPIELBAR</div>
+    <button class="worldNode worldPlayable" type="button" data-world-id="borderlands" aria-label="Welt 1 Grenzmark auswählen" style="--world-x:17.8%;--world-y:74.0%">
      <span class="worldNodeMarker">🏰</span><b>1</b><small>Grenzmark</small>
     </button>
-    <button class="worldNode worldConstruction" type="button" data-world-id="mistwood" style="--world-x:42%;--world-y:46%">
+    <button class="worldNode worldConstruction" type="button" data-world-id="mistwood" aria-label="Welt 2 Nebelwald ansehen" style="--world-x:39.7%;--world-y:46.2%">
      <span class="worldNodeMarker">🌲</span><b>2</b><small>Nebelwald</small><em>IM AUFBAU</em>
     </button>
-    <button class="worldNode worldConstruction" type="button" data-world-id="frozen-pass" style="--world-x:65%;--world-y:22%">
+    <button class="worldNode worldConstruction" type="button" data-world-id="frozen-pass" aria-label="Welt 3 Eispass ansehen" style="--world-x:56.9%;--world-y:18.1%">
      <span class="worldNodeMarker">❄️</span><b>3</b><small>Eispass</small><em>IM AUFBAU</em>
     </button>
-    <button class="worldNode worldConstruction" type="button" data-world-id="scorched-plains" style="--world-x:66%;--world-y:70%">
+    <button class="worldNode worldConstruction" type="button" data-world-id="scorched-plains" aria-label="Welt 4 Brandland ansehen" style="--world-x:58.9%;--world-y:74.2%">
      <span class="worldNodeMarker">🔥</span><b>4</b><small>Brandland</small><em>IM AUFBAU</em>
     </button>
-    <button class="worldNode worldConstruction" type="button" data-world-id="ironclan-heart" style="--world-x:85%;--world-y:45%">
+    <button class="worldNode worldConstruction" type="button" data-world-id="ironclan-heart" aria-label="Welt 5 Eisenclan ansehen" style="--world-x:78.2%;--world-y:46.0%">
      <span class="worldNodeMarker">🌋</span><b>5</b><small>Eisenclan</small><em>IM AUFBAU</em>
     </button>
    </div>
@@ -177,7 +167,7 @@
   <details class="guideSection">
    <summary>🗺️ Kampagnenkarte &amp; Welten</summary>
    <div class="guideBody">
-    <div class="guideTip"><b>Neue Zwischenstation:</b> Nach dem Startbildschirm öffnet sich die große Kampagnenkarte. Wähle dort eine Welt aus und betrete anschließend ihre Festung.</div>
+    <div class="guideTip"><b>Neue Zwischenstation:</b> Nach dem Startbildschirm öffnet sich die große Kampagnenkarte. Wähle dort eine Welt aus und betrete anschließend ihre Festung.</div><div class="guideTip"><b>Illustrierte Weltkarte:</b> Die fünf Regionen zeigen jetzt bereits ihre spätere Atmosphäre: grüne Grenzlande, dichter Nebelwald, Schnee und Eis am Eispass, verbrannte Dörfer im Brandland sowie Vulkane und Lava beim Eisenclan.</div>
     <div class="guideGrid">
      <article class="guideCard"><h3>🏰 Die Grenzmark</h3><p>Die bisherige 32-Wellen-Kampagne ist jetzt Welt 1. Ein vorhandener v1.16.0-Spielstand kann über „Fortsetzen“ weitergespielt werden.</p></article>
      <article class="guideCard"><h3>🏗 Weitere Welten</h3><p>Nebelwald, gefrorener Pass, verbrannte Ebenen und das Herz des Eisenclans sind bereits sichtbar. Beim Antippen erscheint vorerst nur „Noch im Aufbau“.</p></article>
@@ -520,7 +510,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.18.6 · Faire Nahkampfreichweiten und begrenzte Speerangriffe.</div>
+  <div class="workshopFoot">v1.18.7 · Neue Kampagnenkarte und sicherer erreichbare Einheiteninfos.</div>
  </section>
 </div>
 

@@ -1,3 +1,13 @@
+## v1.18.7 – Neue Kampagnenkarte
+
+- Die bisherige abstrakte Weltkarte wurde durch die ausgewählte illustrierte Kartenvariante ersetzt.
+- Grenzmark, Nebelwald, Eispass, Brandland und Eisenclan besitzen jetzt klar unterscheidbare Landschaften mit Feldern, dichtem Wald, Schnee und Eis, verbrannten Dörfern sowie Vulkanen und Lava.
+- Die vorhandenen Weltknoten und die Kampagnenlogik bleiben als responsive, unsichtbare Klickflächen über der Illustration erhalten. Auswahl, Fokus und Hover werden durch einen goldenen Leuchtring angezeigt.
+- Das fälschlich im Kartenbild enthaltene „Im Aufbau“ bei Grenzmark wird durch ein sichtbares grünes „Spielbar“-Schild überdeckt.
+- Die Karte ist als komprimiertes WebP eingebunden und wird von der installierten PWA offline gespeichert.
+- Der Info-Punkt der Einheitenkarten sitzt insbesondere am Handy kleiner und direkt im rechten oberen Eck, wodurch versehentliche Berührungen seltener werden.
+- Spielstände aus v1.18.6 bleiben vollständig kompatibel.
+
 ## v1.18.6 – Faire Gegnerreichweiten
 
 - Alle Angriffe gegnerischer Einheiten gegen mobile Verteidiger prüfen die tatsächliche Körperdistanz unmittelbar vor dem Schaden erneut.

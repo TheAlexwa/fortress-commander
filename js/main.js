@@ -256,8 +256,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.6";
-const GAME_RELEASE_NAME="Faire Gegnerreichweiten";
+const GAME_VERSION="1.18.7";
+const GAME_RELEASE_NAME="Neue Kampagnenkarte";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true};

@@ -1,3 +1,14 @@
+## v1.18.7 – Neue Kampagnenkarte
+
+- Ausgewählten Weltkarten-Vorschlag 3 als `assets/ui/campaign-map-v1.18.7.webp` integriert.
+- Alte prozedurale Kartenverzierungen, Fluss-, Wald-, Berg- und SVG-Wege in der Kampagnenansicht visuell ersetzt.
+- Fünf vorhandene Weltbuttons als responsive Hotspots an Grenzmark, Nebelwald, Eispass, Brandland und Eisenclan neu ausgerichtet.
+- Auswahl-, Hover- und Tastaturfokus mit einem goldenen Leuchtring ergänzt.
+- Grenzmark erhält ein überlagerndes grünes „Spielbar“-Schild, damit der Status trotz der Beschriftung der Illustration korrekt bleibt.
+- Mobile Kartenansicht auf festes 4:3-Verhältnis umgestellt, damit Illustration und Klickflächen beim Skalieren deckungsgleich bleiben.
+- Info-Schaltflächen der Einheiten-Baukarten kleiner und bündig im rechten oberen Eck positioniert.
+- Neues Prüfskript `tools/validate-world-map.mjs` sowie PWA-Offline-Cache auf v1.18.7 erweitert.
+
 ## v1.18.6 – Faire Gegnerreichweiten
 
 - Pauschale gegnerische Einheitentreffer aus 62 Pixel Entfernung durch körperbasierte Nahkampfreichweiten ersetzt.

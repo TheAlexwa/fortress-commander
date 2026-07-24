@@ -1103,3 +1103,129 @@ header>#startWaveBtn{grid-column:6!important}
  header>#pauseBtn{grid-column:4!important}
  header>#startWaveBtn{grid-column:5!important}
 }
+
+
+/* v1.18.7 – illustrierte Kampagnenkarte (Variante A) */
+.worldMapShell{min-height:0}
+.worldMapLayout{align-items:start}
+.fantasyWorldMap{
+ min-height:0;
+ width:100%;
+ aspect-ratio:4/3;
+ isolation:isolate;
+ border-right:2px solid #806235;
+ background:#080907 url("../assets/ui/campaign-map-v1.18.7.webp") center/100% 100% no-repeat;
+ box-shadow:inset 0 0 0 1px #f2d88a22;
+}
+.fantasyWorldMap:before{display:none}
+.fantasyWorldMap:after{
+ content:"";
+ position:absolute;
+ inset:0;
+ z-index:8;
+ pointer-events:none;
+ background:radial-gradient(circle at 50% 47%,transparent 62%,#03040355 100%);
+ mix-blend-mode:normal;
+}
+.worldRouteLayer,.mapCompass,.mapRange,.mapForest,.mapRiver{display:none!important}
+.fantasyWorldMap .worldNode{
+ position:absolute;
+ left:var(--world-x);
+ top:var(--world-y);
+ z-index:12;
+ width:14.5%;
+ min-height:0;
+ aspect-ratio:1;
+ padding:0;
+ border:0;
+ border-radius:50%;
+ background:transparent;
+ box-shadow:none;
+ color:transparent;
+ text-shadow:none;
+ filter:none;
+ opacity:1;
+ transform:translate(-50%,-50%);
+ cursor:pointer;
+ -webkit-tap-highlight-color:transparent;
+}
+.fantasyWorldMap .worldNode>*{opacity:0;pointer-events:none}
+.fantasyWorldMap .worldNode:before{
+ content:"";
+ position:absolute;
+ inset:7%;
+ border:3px solid transparent;
+ border-radius:50%;
+ box-shadow:0 0 0 0 transparent;
+ transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+.fantasyWorldMap .worldNode:hover,.fantasyWorldMap .worldNode:focus-visible{
+ outline:none;
+ transform:translate(-50%,-50%) scale(1.025);
+}
+.fantasyWorldMap .worldNode:hover:before,.fantasyWorldMap .worldNode:focus-visible:before{
+ border-color:#fff0a5;
+ box-shadow:0 0 0 4px #3b2915aa,0 0 24px #ffe485aa;
+}
+.fantasyWorldMap .worldNode.selected:before{
+ border-color:#fff2a8;
+ box-shadow:0 0 0 5px #4d3517cc,0 0 34px #ffe67dcc,inset 0 0 18px #ffdb4c3b;
+ animation:worldArtSelectionPulse 1.7s ease-in-out infinite;
+}
+@keyframes worldArtSelectionPulse{50%{box-shadow:0 0 0 7px #4d3517bb,0 0 42px #ffe67dee,inset 0 0 22px #ffdb4c55}}
+.worldMapPlayableBadge{
+ position:absolute;
+ z-index:13;
+ left:17.8%;
+ top:84.2%;
+ transform:translate(-50%,-50%);
+ min-width:76px;
+ padding:4px 10px;
+ border:1px solid #e2bd67;
+ border-radius:7px;
+ background:linear-gradient(#315b36,#17331d);
+ box-shadow:0 2px 8px #000b,inset 0 1px #ffffff22;
+ color:#e8ffd9;
+ font:950 9px/1 system-ui,sans-serif;
+ letter-spacing:1px;
+ text-align:center;
+ text-shadow:0 1px #000;
+}
+@media(max-width:820px){
+ .worldMapShell{min-height:100dvh}
+ .worldMapLayout{grid-template-columns:1fr;grid-template-rows:auto auto}
+ .fantasyWorldMap{min-height:0;aspect-ratio:4/3;border-right:0;border-bottom:2px solid #806235}
+ .fantasyWorldMap .worldNode{width:15.5%}
+ .worldMapPlayableBadge{min-width:58px;padding:3px 6px;font-size:7px}
+}
+@media(max-width:430px){
+ .worldMapLayout{grid-template-rows:auto auto}
+ .fantasyWorldMap{min-height:0}
+ .fantasyWorldMap .worldNode{width:17%}
+ .fantasyWorldMap .worldNode:before{border-width:2px}
+ .worldMapPlayableBadge{top:84.4%;min-width:50px;padding:2px 5px;font-size:6px;letter-spacing:.6px}
+}
+
+/* v1.18.7 – Info-Punkt bei Einheitenkarten sicher im rechten oberen Eck */
+.buildBtn[data-group="units"] .buildInfoBtn{
+ right:0!important;
+ top:0!important;
+ width:25px!important;
+ height:25px!important;
+ border-radius:0 14px 0 13px;
+ font-size:12px!important;
+ box-shadow:-2px 2px 7px #000a;
+}
+@media(max-width:700px){
+ .buildBtn[data-group="units"] .buildInfoBtn{
+  right:-1px!important;
+  top:-1px!important;
+  width:31px!important;
+  height:31px!important;
+  border-radius:0 12px 0 14px;
+  font-size:12px!important;
+ }
+}
+@media(orientation:landscape) and (max-height:700px){
+ .buildBtn[data-group="units"] .buildInfoBtn{width:28px!important;height:28px!important;font-size:11px!important}
+}
