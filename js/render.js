@@ -609,15 +609,15 @@ function drawFutureFortressLayout(){
  if(showInsideGuides){
   for(const slot of insideSlots){
    if(slot.building)continue;
-   const statueSlot=slot.role==="statue";
+   const statueSlot=slot.role==="statue",outerSupport=slot.role==="outer-support";
    if(buildConfig.slotRole==="statue"?!statueSlot:statueSlot)continue;
-   ctx.fillStyle=statueSlot?"#d8b66d24":"#d8c79718";
-   ctx.strokeStyle=statueSlot?"#ffe09a99":"#f2dfaa55";
-   ctx.lineWidth=2;ctx.setLineDash(statueSlot?[5,5]:[8,7]);
+   ctx.fillStyle=statueSlot?"#d8b66d24":outerSupport?"#d88d451d":"#d8c79718";
+   ctx.strokeStyle=statueSlot?"#ffe09a99":outerSupport?"#ffbe6b88":"#f2dfaa55";
+   ctx.lineWidth=2;ctx.setLineDash(statueSlot?[5,5]:outerSupport?[5,4]:[8,7]);
    if(statueSlot){ctx.beginPath();ctx.arc(slot.x,slot.y,35,0,TAU);ctx.fill();ctx.stroke();}
    else{ctx.beginPath();ctx.roundRect(slot.x-38,slot.y-31,76,62,14);ctx.fill();ctx.stroke();}
-   ctx.setLineDash([]);ctx.fillStyle=statueSlot?"#ffe8adcc":"#efe0b277";ctx.font="bold 9px system-ui";ctx.textAlign="center";
-   ctx.fillText(statueSlot?"EHRENPLATZ":"BAUPLATZ",slot.x,slot.y+4);
+   ctx.setLineDash([]);ctx.fillStyle=statueSlot?"#ffe8adcc":outerSupport?"#ffd39acc":"#efe0b277";ctx.font="bold 8px system-ui";ctx.textAlign="center";
+   ctx.fillText(statueSlot?"EHRENPLATZ":outerSupport?"AUSSENVERSORGUNG":"BAUPLATZ",slot.x,slot.y+4);
   }
  }
  drawFixedInnerWall(layout.fixedInnerRadius);
@@ -771,11 +771,11 @@ function drawSlots(){
   const wallTower=c?.kind==="tower"&&(s.type==="wall"||s.type==="outer-wall")&&s.towerSpot===true;
   const valid=c&&((c.kind==="tower"&&(s.type==="castle"||wallTower))||(c.kind==="inside"&&s.type==="inside"&&(c.slotRole==="statue"?s.role==="statue":s.role!=="statue")));
   if(!valid)continue;
-  const wallReady=!wallTower||wallTowerSpotReady(s);
+  const wallReady=!wallTower||wallTowerSpotReady(s),outerSupport=s.role==="outer-support";
   ctx.save();
   const pulse=.72+Math.sin(performance.now()*.006+s.x*.01)*.18;
-  ctx.globalAlpha=pulse;ctx.shadowBlur=20;ctx.shadowColor=wallReady?"#ffe38a":"#d76a55";
-  ctx.fillStyle=wallReady?"#c39b4266":"#7d393355";ctx.strokeStyle=wallReady?"#ffe9a2":"#f1a18f";ctx.lineWidth=3;
+  ctx.globalAlpha=pulse;ctx.shadowBlur=20;ctx.shadowColor=!wallReady?"#d76a55":outerSupport?"#ffae55":"#ffe38a";
+  ctx.fillStyle=!wallReady?"#7d393355":outerSupport?"#b66a2f66":"#c39b4266";ctx.strokeStyle=!wallReady?"#f1a18f":outerSupport?"#ffd29a":"#ffe9a2";ctx.lineWidth=3;
   const slotRadius=s.type==="castle"?20:(s.type==="wall"||s.type==="outer-wall")?24:31;
   ctx.beginPath();ctx.arc(s.x,s.y,slotRadius,0,TAU);ctx.fill();ctx.stroke();
   ctx.strokeStyle="#fff3c277";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(s.x,s.y,Math.max(12,slotRadius-9),0,TAU);ctx.stroke();

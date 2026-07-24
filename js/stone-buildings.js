@@ -13,11 +13,11 @@ export const STONE_BUILDING_REPAIR_STONE_PER_TICK = 0.1;
 const STONE_BUILDING_CONFIG = Object.freeze({
   house: Object.freeze({
     label: "Steinhaus",
-    requiredLevel: 2,
+    requiredLevel: 3,
     cost: Object.freeze({ gold: 110, wood: 90, stone: 70, research: 1 }),
     hpMultiplier: 2,
     housingCapacity: 7,
-    description: "+3 Bewohnerplätze, deutlich mehr Leben und besserer Schutz vor Plünderern.",
+    description: "+2 Bewohnerplätze, 6 Truppenplätze, deutlich mehr Leben und besserer Schutz vor Plünderern.",
   }),
   lumber: Object.freeze({
     label: "Steinsägewerk",

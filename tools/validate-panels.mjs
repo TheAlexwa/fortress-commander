@@ -28,10 +28,10 @@ for(const text of [
  'panelPauseBefore'
 ])requireText(main,text,"Fenstersteuerung fehlt");
 for(const text of ["body.fcModalOpen",".fcPanelActive",".panelCornerClose"])requireText(css,text,"Fenster-CSS fehlt");
-for(const text of ['id="marketCloseIconBtn"','id="pauseCloseBtn"','id="displaySettingsCloseBtn"','data-action="unit-overview"'])requireText(html,text,"Schließen-Knopf oder Einheitenbuch fehlt");
+for(const text of ['id="marketCloseIconBtn"','id="pauseCloseBtn"','id="displaySettingsCloseBtn"','data-action="unit-overview"','id="troopOverviewBtn"'])requireText(html,text,"Schließen-Knopf oder Einheitenbuch fehlt");
 for(const file of ["index.html","README.md","CHANGELOG.md","js/main.js"]){
  const content=fs.readFileSync(path.join(root,file),"utf8");
- requireText(content,"1.18.4",`Versionsangabe fehlt in ${file}`);
+ requireText(content,"1.18.5",`Versionsangabe fehlt in ${file}`);
 }
 const forbidden=[
  /panel\.style\.display\s*=/,
@@ -43,4 +43,4 @@ if(failures.length){
  console.error("Fensterprüfung fehlgeschlagen:\n- "+failures.join("\n- "));
  process.exit(1);
 }
-console.log(`Fensterprüfung erfolgreich: ${expected.length} Dialoge, zentrale Steuerung, Einheitenbuch und Version 1.18.4 bestätigt.`);
+console.log(`Fensterprüfung erfolgreich: ${expected.length} Dialoge, zentrale Steuerung, Einheitenbuch, Truppenanzeige und Version 1.18.5 bestätigt.`);

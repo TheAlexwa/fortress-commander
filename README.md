@@ -1,3 +1,16 @@
+## v1.18.5 – Truppenlimit & Außenversorgung
+
+- Eigenständiges Truppenplatz-System ergänzt: 2 Grundplätze der Burg und maximal 24 mobile Truppenplätze als Leistungsschutz.
+- Bogenschützen und Burgwachen belegen jeweils 1 Truppenplatz; Andreas bleibt als einmaliger Held kostenlos.
+- Wohngebäude erhöhen das Limit: Zeltlager +2, Holzhaus +4, großes Holzhaus +5 und Steinhaus +6.
+- Holzhaus-Ausbau um eine dritte Stufe „Großes Holzhaus“ mit 5 Bewohnern und 5 Truppenplätzen erweitert; der Steinausbau folgt danach.
+- HUD zeigt belegte und verfügbare Truppenplätze. Das Einheitenbuch erklärt Kapazität und Überbelegung und bleibt über die neue Anzeige direkt erreichbar.
+- Bei Zerstörung eines Wohngebäudes bleiben vorhandene Einheiten erhalten. Solange das aktuelle Limit überschritten ist, ist nur die weitere Ausbildung gesperrt.
+- Acht neue Versorgungsbauplätze zwischen mittlerem und äußerem Ring ergänzt, jeweils zwei pro Viertel und außerhalb der vier Straßenachsen.
+- Äußere Versorgungsgebäude haben keinen Produktionsbonus, sind aber nach einer Bresche früher für Plünderer erreichbar.
+- Alte Spielstände bleiben kompatibel: Die neuen Slots wurden hinter den bisherigen inneren Plätzen und dem historischen Statuenplatz angefügt.
+- Neue automatische Prüfungen für Truppenplätze und Außenlayout sowie PWA-Cacheversion v1.18.5 ergänzt.
+
 ## v1.18.4 – Andreas-Opfer & Kollisionsfix
 
 - Die Kriegerstatue zeigt jetzt einen deutlich hervorgehobenen „Andreas rufen“-Knopf, damit die Opferfunktion sofort auffällt.

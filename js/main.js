@@ -55,6 +55,15 @@ import {
 } from "./villagers.js";
 
 import {
+ BASE_TROOP_CAPACITY,
+ HARD_TROOP_CAPACITY,
+ troopCapacityForHouse,
+ troopCapacityStatus,
+ troopCapacityBreakdown,
+ troopCostForUnit
+} from "./troops.js";
+
+import {
  getBuildRequirement,
  createEntityAt,
  upgradeEntity,
@@ -245,8 +254,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.4";
-const GAME_RELEASE_NAME="Andreas-Opfer & Kollisionsfix";
+const GAME_VERSION="1.18.5";
+const GAME_RELEASE_NAME="Truppenlimit & Außenversorgung";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true};
@@ -558,6 +567,7 @@ gameHeader?.addEventListener("scroll",resetGameHeaderScroll,{passive:true});
 const ui={
  gold:document.getElementById("gold"),wood:document.getElementById("wood"),stone:document.getElementById("stone"),goldRate:document.getElementById("goldRate"),woodRate:document.getElementById("woodRate"),stoneRate:document.getElementById("stoneRate"),
  resourceOverviewBtn:document.getElementById("resourceOverviewBtn"),populationOverviewBtn:document.getElementById("populationOverviewBtn"),populationBusy:document.getElementById("populationBusy"),populationTotal:document.getElementById("populationTotal"),populationFree:document.getElementById("populationFree"),
+ troopOverviewBtn:document.getElementById("troopOverviewBtn"),troopUsed:document.getElementById("troopUsed"),troopCapacity:document.getElementById("troopCapacity"),troopFree:document.getElementById("troopFree"),
  tacticsMenuBtn:document.getElementById("tacticsMenuBtn"),tacticsMenu:document.getElementById("tacticsMenu"),tacticsMenuIcon:document.getElementById("tacticsMenuIcon"),tacticsMenuBadge:document.getElementById("tacticsMenuBadge"),
  wave:document.getElementById("wave"),status:document.getElementById("waveStatus"),
  start:document.getElementById("startWaveBtn"),pause:document.getElementById("pauseBtn"),toast:document.getElementById("toast"),
@@ -898,8 +908,21 @@ function initMap(){
   insideSlots.push({type:"inside",role:"support",x:CX+ox,y:CY+oy,building:null});
  }
  // Ein eigener Ehrenplatz für die Kriegerstatue. Normale Versorgungsgebäude
- // können diesen Platz nicht belegen.
- insideSlots.push({type:"inside",role:"statue",x:CX+205,y:CY+180,building:null});
+ // können diesen Platz nicht belegen. Der Slot bleibt vor den neuen
+ // Außenplätzen an Index 10, damit alte Spielstände exakt kompatibel bleiben.
+ insideSlots.push({type:"inside",role:"statue",zone:"inner",x:CX+205,y:CY+180,building:null});
+ // Acht zusätzliche Versorgungsplätze zwischen mittlerem und äußerem Ring.
+ // Die Winkel liegen bewusst zwischen den vier Straßen und Torachsen.
+ const outerSupportRadius=WALL_R+(OUTER_WALL_R-WALL_R)*.52;
+ for(let i=0;i<8;i++){
+  const angle=-Math.PI/2+Math.PI/8+i*Math.PI/4;
+  insideSlots.push({
+   type:"inside",role:"outer-support",zone:"outer",outerIndex:i,
+   x:CX+Math.cos(angle)*outerSupportRadius,
+   y:CY+Math.sin(angle)*outerSupportRadius,
+   building:null
+  });
+ }
  const castleCorners=[[-92,-92],[92,-92],[-92,92],[92,92]];
  castleCorners.forEach(([ox,oy],i)=>castleSlots.push({type:"castle",i,x:CX+ox,y:CY+oy,building:null}));
 }
@@ -1822,8 +1845,8 @@ function updateRunnerWeakPoint(enemy,dt){
  const gates=enemy.phase==="outer"?state.outerGates:enemy.phase==="outside"?state.middleGates:null;if(!gates)return;
  const target=weakestGateIndex(enemy,gates);if(Number.isInteger(target)){enemy.approachGateIndex=target;enemy.scoutTargetGateIndex=target}enemy.scoutRetargetCd=1.35;
 }
-function nearestRaidBuilding(enemy,maxRange=190){
- let best=null,bestDistance=maxRange;for(const building of state.buildings){if(building.hp<=0||building.base.kind==="tower"||building.base.decorative||building.key==="statue")continue;const d=Math.hypot(building.slot.x-enemy.x,building.slot.y-enemy.y);if(d<bestDistance){bestDistance=d;best=building}}return best;
+function nearestRaidBuilding(enemy,maxRange=190,zone=null){
+ let best=null,bestDistance=maxRange;for(const building of state.buildings){if(building.hp<=0||building.base.kind==="tower"||building.base.decorative||building.key==="statue")continue;if(zone==="outer"&&building.slot?.role!=="outer-support")continue;if(zone==="inner"&&building.slot?.role==="outer-support")continue;const d=Math.hypot(building.slot.x-enemy.x,building.slot.y-enemy.y);if(d<bestDistance){bestDistance=d;best=building}}return best;
 }
 function earlyLumberProtectionMultiplier(building){
  if(building?.key!=="lumber"||state.wave>6)return 1;
@@ -1977,7 +2000,7 @@ function handleHeroTaunt(enemy,dt){
  const reach=Math.max(44,(Number(enemy.radius)||12)+31);
  if(d<=reach){
   if(enemy.attackCd<=0){enemy.attackCd=enemyAttackInterval(enemy);enemy.attackAnim=.22;hero.hp-=enemyAttackDamage(enemy)*.6*(1-effectiveUnitArmor(hero));burst(hero.x,hero.y,"#b84640",5)}
- }else{const speed=getEffectiveEnemySpeed(enemy);enemy.x+=dx/d*speed*dt;enemy.y+=dy/d*speed*dt}
+ }else{const speed=getEffectiveEnemySpeed(enemy),prevX=enemy.x,prevY=enemy.y;placeMobileEntity(enemy,enemy.x+dx/d*speed*dt,enemy.y+dy/d*speed*dt,prevX,prevY)}
  return true;
 }
 function shoot(from,target,damage,speed,splash=0,color="#f0d176",effects=null){
@@ -2032,7 +2055,8 @@ function buildingUpgradePreview(building){
  const nextLevel=level+1,nextBuilding={...building,level:nextLevel};
  if(building.key==="house"){
   const currentResidents=residentCapacityForHouse(building),nextResidents=residentCapacityForHouse(nextBuilding);
-  return {maxed:false,label:"Bewohner & Einkommen",current:`${currentResidents} Plätze · ${deNumber(currentResidents*.18)} Gold/Sek.`,next:`${nextResidents} Plätze · ${deNumber(nextResidents*.18)} Gold/Sek.`,summary:`Bewohnerplätze ${currentResidents} → ${nextResidents} · Goldproduktion ${deNumber(currentResidents*.18)} → ${deNumber(nextResidents*.18)}/Sek.`};
+  const currentTroops=troopCapacityForHouse(building),nextTroops=troopCapacityForHouse(nextBuilding);
+  return {maxed:false,label:"Bewohner & Truppen",current:`${currentResidents} Bewohner · ${currentTroops} Truppen`,next:`${nextResidents} Bewohner · ${nextTroops} Truppen`,summary:`Bewohnerplätze ${currentResidents} → ${nextResidents} · Truppenplätze ${currentTroops} → ${nextTroops} · Goldproduktion ${deNumber(currentResidents*.18)} → ${deNumber(nextResidents*.18)}/Sek.`};
  }
  if(building.key==="lumber"){
   const current=supportProductionAtLevel(building,level),next=supportProductionAtLevel(building,nextLevel);
@@ -2374,6 +2398,8 @@ function update(dt){
     }
    }
   }else if(e.phase==="outside"){
+   const outerRaidTarget=e.type==="raider"?nearestRaidBuilding(e,235,"outer"):null;
+   if(outerRaidTarget){attackRaidBuilding(e,outerRaidTarget,dt);continue}
    const gate=Number.isInteger(e.approachGateIndex)
     ?state.middleGates[e.approachGateIndex]||null
     :getMiddleGateForPoint(state,e.x,e.y,{CX,CY});
@@ -2928,8 +2954,13 @@ function unitStatsHtml(u){
  <div class="upgradeCard"><b>◎ Reichweite</b><small>${fmt(u.range)} → ${fmt(u.range*1.12)}<br>+12% Angriffsreichweite</small><div class="level">Bisher: ${ups.range||0}×</div></div>
  </div></div>`;
 }
+function houseDisplayName(house){
+ if(house?.material==="stone")return "Steinhaus";
+ const level=Math.max(1,Number(house?.level)||1);
+ return level>=3?"Großes Holzhaus":level>=2?"Holzhaus":"Zeltlager";
+}
 function buildingDisplayName(b){
- const woodenName=b.key==="house"?(b.level>=2?"Holzhaus":"Zeltlager"):b.base.name;
+ const woodenName=b.key==="house"?houseDisplayName(b):b.base.name;
  return stoneBuildingDisplayName(b,woodenName);
 }
 function stoneUpgradeCostText(upgrade){
@@ -2946,7 +2977,7 @@ function stoneUpgradeButtonText(upgrade){
 }
 function buildingProductionInfo(b){
  const active=state.inWave&&!paused&&!gameOver;
- if(b.key==="house")return {label:"Goldproduktion",value:`+${(residentCapacityForHouse(b)*.18).toFixed(2)} Gold/Sek.`,state:active?"läuft":"nur in aktiver Welle"};
+ if(b.key==="house")return {label:"Bewohner & Truppen",value:`${residentCapacityForHouse(b)} Bewohner · +${troopCapacityForHouse(b)} Truppen`,state:`+${(residentCapacityForHouse(b)*.18).toFixed(2)} Gold/Sek. · ${active?"läuft":"nur in aktiver Welle"}`};
  if(b.key==="lumber")return {label:"Holzproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Holz/Sek.`,state:buildingHasWorker(b)?`${Math.round(buildingWorkforceEfficiency(b)*100)} % · ${active?"läuft":"wartet"}`:"kein Bewohner"};
  if(b.key==="quarry")return {label:"Steinproduktion",value:`+${supportProductionPerSecond(b).toFixed(2)} Stein/Sek.`,state:buildingHasWorker(b)?`${Math.round(buildingWorkforceEfficiency(b)*100)} % · ${active?"läuft":"wartet"}`:"kein Bewohner"};
  if(b.key==="repair")return {label:"Reparaturleistung",value:`+${repairHpPerTick(b).toFixed(1).replace(".",",")} HP/Takt · −${repairWoodPerTick().toFixed(2).replace(".",",")} Holz`,state:!buildingHasWorker(b)?"kein Bewohner":b.repairEnabled===false?"gestoppt":`${Math.round(buildingWorkforceEfficiency(b)*100)} % · ${active?"bereit":"wartet"}`};
@@ -2975,7 +3006,8 @@ function buildingStatsHtml(b){
  <div class="statTile"><span>Offene Punkte</span><b>${b.pendingUpgrades||0}</b></div></div>
  <div class="statsSection"><h3>Kampfwerte</h3><div class="statRow header"><div>Wert</div><div>Grundwert</div><div>Aktuell</div><div>Änderung</div></div>${rows}</div>
  <div class="statsHint">⚔ ${towerCounterText(b)}</div>${veteranStatsHtml(b)}<div class="statsHint">Türme werden nicht direkt mit Gold oder Holz verbessert. Individuelle Aufwertungen erfolgen über Kampf-EXP; globale Turmforschung folgt in einem eigenen Schritt.</div>`;
- const prod=buildingProductionInfo(b),workerNeeded=workerCapacityForBuilding(b)>0,workerText=workerNeeded?`${buildingWorkerCount(b)} / ${workerCapacityForBuilding(b)} zugewiesen · ${Math.round(buildingWorkforceEfficiency(b)*100)} %`:b.key==="house"?`${residentCapacityForHouse(b)} Bewohnerplätze`:"Kein Arbeitsplatz";
+ const prod=buildingProductionInfo(b),workerNeeded=workerCapacityForBuilding(b)>0,workerText=workerNeeded?`${buildingWorkerCount(b)} / ${workerCapacityForBuilding(b)} zugewiesen · ${Math.round(buildingWorkforceEfficiency(b)*100)} %`:b.key==="house"?`${residentCapacityForHouse(b)} Bewohner · +${troopCapacityForHouse(b)} Truppenplätze`:"Kein Arbeitsplatz";
+ const locationText=b.slot?.role==="outer-support"?"Äußerer Versorgungsring · erhöhtes Plünderungsrisiko":"Innerer Burgbereich";
  const cost=getBuildingUpgradeCost(b),g=cost.gold,w=cost.wood,maxLevel=cost.maxLevel,canUpgrade=!cost.maxed&&state.gold>=g&&state.wood>=w,preview=buildingUpgradePreview(b);
  const stoneUpgrade=getStoneBuildingUpgrade(b,state);
  const stoneSection=stoneUpgrade.supported?`<div class="statsSection stoneBuildingSection"><h3>🏛️ Steinbau</h3><div class="upgradeCard ${stoneUpgrade.upgraded?"stoneComplete":""}"><b>${stoneUpgrade.upgraded?buildingDisplayName(b):stoneUpgrade.definition.label}</b><small>${stoneUpgrade.definition.description}<br>${stoneUpgrade.upgraded?`Fertiggestellt in Welle ${b.stoneBuiltAtWave||"?"} · Plündererschaden −25 % statt +40 % · Reparatur kostet zusätzlich ${STONE_BUILDING_REPAIR_STONE_PER_TICK.toFixed(1).replace(".",",")} Stein/Takt`:`Voraussetzung: Stufe ${stoneUpgrade.definition.requiredLevel}, Welle 9 und Steinbaukunst.<br>Kosten: ${stoneUpgradeCostText(stoneUpgrade)}${stoneUpgrade.reason?`<br><em>${stoneUpgrade.reason}</em>`:""}`}</small></div></div>`:"";
@@ -2983,6 +3015,7 @@ function buildingStatsHtml(b){
   <div class="statTile"><span>Gebäude</span><b>${buildingDisplayName(b)}</b></div>
   <div class="statTile"><span>Stufe</span><b>${level} / ${maxLevel}</b></div>
   <div class="statTile"><span>Bewohner</span><b>${workerText}</b></div>
+  <div class="statTile"><span>Standort</span><b>${locationText}</b></div>
   <div class="statTile"><span>${prod.label}</span><b>${prod.value}</b><small class="${prod.state.includes("läuft")?"productionLive":"productionStopped"}">${prod.state}</small></div>
  </div>
  <div class="statsSection"><h3>Gebäudewerte</h3><div class="statRow header"><div>Wert</div><div>Grundwert</div><div>Aktuell</div><div>Änderung</div></div>${rows}</div>
@@ -3062,7 +3095,7 @@ function resourceDetailsHtml(){
   <div class="rosterItem"><div class="rosterIcon">🌊</div><div><b>Nächste Wellenbelohnung</b><small>Nach vollständigem Sieg über die aktuelle Welle.</small></div><div class="rosterBadge">+${nextWaveReward}</div></div>
   <div class="statsHint">Wohnhäuser erzeugen während aktiver Wellen Gold. Der Ertrag richtet sich nach ihrer Einwohnerzahl.</div>
  </div>
- <div class="statsSection"><h3>👥 Bevölkerung</h3>${houses.length?houses.map((h,i)=>`<div class="rosterItem"><div class="rosterIcon">${h.level>=2?"🏠":"⛺"}</div><div><b>${h.level>=2?"Holzhaus":"Zeltlager"} ${i+1}</b><small>${residentCapacityForHouse(h)} Bewohner · +${(residentCapacityForHouse(h)*.18).toFixed(2)} Gold/Sek. im Kampf</small></div><div class="rosterBadge">${residentCapacityForHouse(h)} 👥</div></div>`).join(""):'<div class="statsHint">Noch kein Wohnhaus gebaut.</div>'}</div>
+ <div class="statsSection"><h3>👥 Bevölkerung & Truppenplätze</h3>${houses.length?houses.map((h,i)=>`<div class="rosterItem"><div class="rosterIcon">${h.material==="stone"?"🏛️":h.level>=2?"🏠":"⛺"}</div><div><b>${houseDisplayName(h)} ${i+1}</b><small>${residentCapacityForHouse(h)} Bewohner · +${troopCapacityForHouse(h)} Truppenplätze · +${(residentCapacityForHouse(h)*.18).toFixed(2)} Gold/Sek. im Kampf${h.slot?.role==="outer-support"?" · Außenring":""}</small></div><div class="rosterBadge">${troopCapacityForHouse(h)} ⚔️</div></div>`).join(""):'<div class="statsHint">Noch kein Wohnhaus gebaut. Die Burg besitzt dennoch 2 Grund-Truppenplätze.</div>'}</div>
  <div class="statsSection"><h3>🔬 Forschung</h3><div class="rosterItem"><div class="rosterIcon">⚒️</div><div><b>${state.buildings.some(b=>b.key==="workshop")?"Werkstatt betriebsbereit":"Werkstatt fehlt"}</b><small>Forschungspunkte erhältst du nach erfolgreich abgeschlossenen Wellen.</small></div><div class="rosterBadge">${workshopLevels()} Stufen</div></div>${state.buildings.some(b=>b.key==="workshop")?`<button type="button" class="workshopOpenAction" data-open-workshop>Werkstatt & Forschung öffnen</button>`:`<div class="statsHint">Baue eine Werkstatt, um Technologien freizuschalten.</div>`}</div>
  <div class="statsSection"><h3>🪵 Holzversorgung</h3>${woodRows}</div>
  <div class="statsSection"><h3>🪨 Steinversorgung</h3>${stoneRows}</div>
@@ -3106,11 +3139,12 @@ function populationDetailsHtml(){
   ["🪵","Holzfäller","lumberjack"],["🪨","Steinmetze","stonecutter"],["👷","Handwerker","craftsman"],["⚒️","Werkstatt","researcher"],["🏪","Händler","merchant"]
  ].map(([icon,label,job])=>`<div class="populationMiniRow"><span>${icon} ${label}</span><b>${state.residents.filter(r=>r.job===job&&r.workplaceId).length}</b></div>`).join("");
  const soldierCount=state.units.filter(u=>u.key==="soldier").length,guardCount=state.units.filter(u=>u.key==="guard").length,heroCount=state.units.filter(u=>u.key==="hero").length;
+ const troops=troopCapacityStatus(state);
  return `<div class="populationHero"><div><small>ZENTRALE VERWALTUNG</small><h3>👥 Bevölkerung 2.0</h3><p>Verteile Bewohner gezielt auf Wirtschaft, Reparatur und Forschung. Änderungen sind nur zwischen Angriffswellen möglich.</p></div><div class="populationLock ${locked?"locked":"open"}">${locked?"🔒 Angriff läuft":"✓ Zuteilung offen"}</div></div>
  <div class="statsSummary populationSummary"><div class="statTile"><span>Gesamt</span><b>${total}</b></div><div class="statTile"><span>Beschäftigt</span><b>${assigned}</b></div><div class="statTile"><span>Frei</span><b>${free}</b></div><div class="statTile"><span>Mindestreserve</span><b>${population.reserve}</b></div>${displaced?`<div class="statTile populationDisplaced"><span>Geflohen</span><b>${displaced}</b></div>`:""}</div>
  <div class="statsSection"><h3>⚙️ Verteilungsmodus</h3><div class="populationModes">${modes}</div><div class="populationControlRow"><div><b>Mindestreserve</b><small>Diese Bewohner bleiben für Neubauten und Notfälle frei.</small></div><div class="populationReserve"><button type="button" data-pop-reserve="-1" ${locked||population.reserve<=0?"disabled":""}>−</button><b>${population.reserve}</b><button type="button" data-pop-reserve="1" ${locked||population.reserve>=total?"disabled":""}>+</button></div></div>${population.mode!=="manual"?`<button type="button" class="populationRedistribute" data-pop-redistribute ${locked?"disabled":""}>↻ ${POPULATION_MODES[population.mode].label} neu verteilen</button>`:""}</div>
  <div class="statsSection"><h3>🏭 Arbeitsplätze</h3><div class="populationGroups">${groupRows}</div><div class="statsHint">Leistung je Gebäude: 1 Bewohner = 45 %, 2 = 75 %, 3 = 100 %, 4 = 120 %. Manuelle Änderungen schalten automatisch auf „Manuell“.</div></div>
- <div class="populationColumns"><div class="statsSection"><h3>🧑‍🏭 Zivile Berufe</h3>${jobCounts}</div><div class="statsSection"><h3>⚔️ Militär</h3><div class="populationMiniRow"><span>🏹 Bogenschützen</span><b>${soldierCount}</b></div><div class="populationMiniRow"><span>🛡️ Burgwachen</span><b>${guardCount}</b></div><div class="populationMiniRow"><span>👑 Andreas</span><b>${heroCount}</b></div><div class="statsHint">Militäreinheiten werden getrennt von den Bewohnern geführt und belegen keine Arbeitsplätze.</div></div></div>
+ <div class="populationColumns"><div class="statsSection"><h3>🧑‍🏭 Zivile Berufe</h3>${jobCounts}</div><div class="statsSection"><h3>⚔️ Militär</h3><div class="populationMiniRow"><span>🏹 Bogenschützen</span><b>${soldierCount}</b></div><div class="populationMiniRow"><span>🛡️ Burgwachen</span><b>${guardCount}</b></div><div class="populationMiniRow"><span>👑 Andreas</span><b>${heroCount}</b></div><div class="populationMiniRow"><span>⚔️ Truppenplätze</span><b>${troops.used} / ${troops.capacity}</b></div><div class="statsHint">Militäreinheiten werden getrennt von Bewohnern geführt. Bogenschützen und Burgwachen belegen je 1 Truppenplatz; Andreas belegt keinen.</div>${troops.overLimit?`<div class="statsHint warning">Truppenlimit überschritten. Vorhandene Einheiten bleiben, neue Ausbildung ist gesperrt.</div>`:""}</div></div>
  ${displaced?`<div class="statsHint warning">${displaced} Bewohner sind nach der Zerstörung ihres Arbeitsplatzes geflohen. Nach Ende der Welle kehren sie als freie Bewohner zurück.</div>`:""}`;
 }
 function openMarketPanel(options={}){
@@ -3349,16 +3383,18 @@ function unitOverviewHtml(){
   {key:"guard",icon:"🛡️",label:"Burgwachen",description:"Nahkämpfer für Burghalten, Außenring und Ausfall."},
   {key:"hero",icon:"👑",label:"Andreas",description:"Legendärer Held aus der Kriegerstatue."}
  ];
+ const troopStatus=troopCapacityStatus(state),breakdown=troopCapacityBreakdown(state);
  const summary=groups.map(group=>{
   const count=units.filter(unit=>unit.key===group.key).length;
   return `<div class="statTile"><span>${group.label}</span><b>${group.icon} ${count}</b></div>`;
  }).join("");
  const cards=groups.map(group=>{
   const entries=units.filter(unit=>unit.key===group.key);
-  const body=entries.length?entries.map(unit=>`<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(unit)}</div><div><b>${upgradeEntityName(unit)} · EXP-Stufe ${unit.expLevel||1}</b><small>HP ${Math.ceil(unit.hp)}/${Math.ceil(unit.maxHp)} · Schaden ${Math.round(unit.damage)} · ${unit.key==="guard"?`Modus ${guardZoneLabel(unit)}`:unit.key==="soldier"?`Ziel ${targetPriorityLabel(unit)}`:heroAbilityActive(unit)?"Heldenruf aktiv":"Heldenaura aktiv"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="unit:${unit.uid}">Ansehen</button></div></div>`).join(""):'<div class="statsHint">Zurzeit keine Einheit dieses Typs im Feld.</div>';
+  const body=entries.length?entries.map(unit=>`<div class="upgradeCenterCard"><div class="upgradeCenterIcon">${upgradeEntityIcon(unit)}</div><div><b>${upgradeEntityName(unit)} · EXP-Stufe ${unit.expLevel||1}</b><small>HP ${Math.ceil(unit.hp)}/${Math.ceil(unit.maxHp)} · Schaden ${Math.round(unit.damage)} · ⚔️ ${troopCostForUnit(unit)} Platz · ${unit.key==="guard"?`Modus ${guardZoneLabel(unit)}`:unit.key==="soldier"?`Ziel ${targetPriorityLabel(unit)}`:heroAbilityActive(unit)?"Heldenruf aktiv":"Heldenaura aktiv"}</small></div><div class="upgradeCenterActions"><button type="button" class="viewOnly" data-upgrade-focus="unit:${unit.uid}">Ansehen</button></div></div>`).join(""):'<div class="statsHint">Zurzeit keine Einheit dieses Typs im Feld.</div>';
   return `<div class="statsSection"><h3>${group.icon} ${group.label}</h3><div class="statsHint">${group.description}</div>${body}</div>`;
  }).join("");
- return `<div class="statsSummary">${summary}<div class="statTile"><span>Alle Einheiten</span><b>${units.length}</b></div></div><div class="statsHint">Das Einheitenbuch bündelt alle mobilen Truppen mit Schnellzugriff auf ihre Detailwerte. Türme bleiben weiterhin in der Upgrade-Zentrale und in den Bauinformationen.</div>${cards}`;
+ const houseRows=breakdown.houses.length?breakdown.houses.map((house,index)=>`<div class="populationMiniRow"><span>${house.material==="stone"?"🏛️":house.level>=2?"🏠":"⛺"} Wohngebäude ${index+1}</span><b>+${house.capacity}</b></div>`).join(""):'<div class="statsHint">Noch kein Wohngebäude: nur die 2 Grundplätze der Burg.</div>';
+ return `<div class="statsSummary">${summary}<div class="statTile ${troopStatus.overLimit?"populationDisplaced":""}"><span>Truppenplätze</span><b>${troopStatus.used} / ${troopStatus.capacity}</b></div><div class="statTile"><span>Freie Plätze</span><b>${troopStatus.free}</b></div></div><div class="statsSection"><h3>⚔️ Kapazität</h3><div class="populationMiniRow"><span>🏰 Grundkapazität der Burg</span><b>+${BASE_TROOP_CAPACITY}</b></div>${houseRows}<div class="statsHint">Sicherheitslimit: maximal ${HARD_TROOP_CAPACITY} mobile Truppenplätze. Andreas kostet 0, reguläre Einheiten derzeit je 1 Platz.</div>${troopStatus.overLimit?`<div class="statsHint warning">Überbelegung: ${troopStatus.used-troopStatus.capacity} Platz/Plätze zu viel. Einheiten bleiben erhalten, aber neue Ausbildung ist gesperrt.</div>`:""}</div><div class="statsHint">Das Einheitenbuch bündelt alle mobilen Truppen mit Schnellzugriff auf ihre Detailwerte. Türme bleiben weiterhin in der Upgrade-Zentrale und in den Bauinformationen.</div>${cards}`;
 }
 function openStats(target=selected){
  prepareStatsScreen();
@@ -3457,6 +3493,7 @@ testResourcePanel.addEventListener("click",e=>{
 });
 ui.resourceOverviewBtn.addEventListener("click",openResourceDetails);
 ui.populationOverviewBtn.addEventListener("click",openPopulationDetails);
+ui.troopOverviewBtn?.addEventListener("click",openUnitOverview);
 navDisplay?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();closeMoreNav();openDisplaySettings()});
 navSound?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();closeMoreNav();openSoundSettings()});
 document.getElementById("displaySettingsCloseBtn")?.addEventListener("click",()=>closeDisplaySettings());
@@ -3682,12 +3719,12 @@ function updateSelectionHud(){
     ?(selected.base.name||selected.key)
     :selected.base.kind==="tower"
      ?`${selected.base.name||selected.key} · EXP-Stufe ${selected.expLevel||1}`
-     :`${selected.key==="house"?(selected.level>=2?"Holzhaus":"Zeltlager"):(selected.base.name||selected.key)} · Stufe ${selected.level||1}`;
+     :`${selected.key==="house"?houseDisplayName(selected):(selected.base.name||selected.key)} · Stufe ${selected.level||1}`;
    details=selected.base.decorative
     ?"Zierbauwerk"
     :selected.base.kind==="tower"
     ?`❤️ ${Math.ceil(selected.hp)}/${Math.ceil(selected.maxHp)} · 🔵 ${Math.floor(selected.xp||0)}/${Math.floor(selected.xpMax||90)} EXP${isVeteranChoiceReady(selected)?" · ⭐ Veteranenpfad bereit":getVeteranSpecialization(selected)?` · ${veteranSpecializationLabel(selected)}`:""}`
-    :selected.key==="house"?`👥 ${residentCapacityForHouse(selected)} Bewohner · 🪙 +${(residentCapacityForHouse(selected)*.18).toFixed(2)}/Sek.`
+    :selected.key==="house"?`👥 ${residentCapacityForHouse(selected)} Bewohner · ⚔️ +${troopCapacityForHouse(selected)} Plätze · 🪙 +${(residentCapacityForHouse(selected)*.18).toFixed(2)}/Sek.`
     :selected.key==="lumber"?`👥 ${buildingWorkerCount(selected)}/${workerCapacityForBuilding(selected)} · ${Math.round(buildingWorkforceEfficiency(selected)*100)} % · 🪵 ${supportProductionPerSecond(selected).toFixed(2)}/Sek.`
     :selected.key==="quarry"?`👥 ${buildingWorkerCount(selected)}/${workerCapacityForBuilding(selected)} · ${Math.round(buildingWorkforceEfficiency(selected)*100)} % · 🪨 ${supportProductionPerSecond(selected).toFixed(2)}/Sek.`
     :selected.key==="repair"?`👥 ${buildingWorkerCount(selected)}/${workerCapacityForBuilding(selected)} · 👷 ${selected.repairEnabled===false?"gestoppt":`${Math.round(buildingWorkforceEfficiency(selected)*100)} %`}`
@@ -3752,7 +3789,7 @@ function updateSelectionHud(){
  }else if(normalBuildingCanUpgrade){
   const g=normalBuildingCost.gold,w=normalBuildingCost.wood,preview=buildingUpgradePreview(selected);
   selectionUpgradeBtn.querySelector("span").textContent="⬆";
-  selectionUpgradeBtn.querySelector("small").textContent=selected.key==="house"?`Zum Holzhaus · ${g}🪙 ${w}🪵`:`${preview?.label||"Aufwerten"} · ${g}🪙 ${w}🪵`;
+  selectionUpgradeBtn.querySelector("small").textContent=selected.key==="house"?`${selected.level>=2?"Zum großen Holzhaus":"Zum Holzhaus"} · ${g}🪙 ${w}🪵`:`${preview?.label||"Aufwerten"} · ${g}🪙 ${w}🪵`;
   selectionUpgradeBtn.disabled=state.gold<g||state.wood<w;
   selectionUpgradeBtn.title="Gebäudestufe erhöhen";
  }else{

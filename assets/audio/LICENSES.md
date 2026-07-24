@@ -1,4 +1,4 @@
-# Audioquellen – Fortress Commander v1.18.3
+# Audioquellen – Fortress Commander v1.18.5
 
 Die zwölf kurzen Soundeffekte aus v1.18.1 wurden für das Spiel gekürzt, auf Mono/44,1 kHz vereinheitlicht, lautheitsangepasst und als MP3 mit 96 kbit/s exportiert. Die acht in v1.18.2 ergänzten Musik- und Atmosphärendateien wurden aus dem bereitgestellten ZIP unverändert übernommen und ausschließlich auf die unten dokumentierten Projektnamen umbenannt. Die Originaldateien wurden vom Nutzer für die Einbindung in Fortress Commander bereitgestellt.
 

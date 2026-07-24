@@ -3,6 +3,7 @@ import { getWaveTypeInfo } from "./game.js";
 import { getSiegeCampPreview } from "./siege.js";
 import { getBonusObjectiveView } from "./bonus-objectives.js";
 import { CAMPAIGN_FINAL_WAVE, getCampaignView, isCampaignChoiceRequired, isCampaignFinished } from "./campaign.js";
+import { troopCapacityForHouse, troopCapacityStatus } from "./troops.js";
 
 /**
  * Benutzeroberfläche von Fortress Commander.
@@ -91,6 +92,19 @@ export function renderGameUI({
   const mode = state.population?.mode || "manual";
   ui.populationOverviewBtn.title = `${residentTotal}/${residentCapacity} Bewohner · ${busyResidents} beschäftigt · ${availableResidents} frei · Reserve ${reserve} · Modus ${mode}`;
   ui.populationOverviewBtn.setAttribute("aria-label", `Bevölkerungsverwaltung öffnen: ${residentTotal} von ${residentCapacity} Bewohnerplätzen belegt, ${busyResidents} beschäftigt, ${availableResidents} frei`);
+
+  const troops = troopCapacityStatus(state);
+  if (ui.troopUsed) ui.troopUsed.textContent = troops.used;
+  if (ui.troopCapacity) ui.troopCapacity.textContent = troops.capacity;
+  if (ui.troopFree) ui.troopFree.textContent = troops.overLimit ? `${troops.used - troops.capacity} zu viel` : `${troops.free} frei`;
+  if (ui.troopOverviewBtn) {
+    ui.troopOverviewBtn.classList.toggle("overLimit", troops.overLimit);
+    ui.troopOverviewBtn.classList.toggle("isFull", !troops.overLimit && troops.free <= 0);
+    ui.troopOverviewBtn.title = troops.overLimit
+      ? `Truppenlimit überschritten: ${troops.used}/${troops.capacity} · Wohngebäude wiederaufbauen oder ausbauen`
+      : `Truppenplätze: ${troops.used}/${troops.capacity} · ${troops.free} frei`;
+    ui.troopOverviewBtn.setAttribute("aria-label", `Einheitenbuch öffnen: ${troops.used} von ${troops.capacity} Truppenplätzen belegt`);
+  }
 
   const campaignView = getCampaignView(state);
   const campaignChoiceRequired = isCampaignChoiceRequired(state);
@@ -187,16 +201,25 @@ export function renderGameUI({
       (config.kind === "fortification-gate" &&
         builtGates >= MIDDLE_GATE_COUNT &&
         builtOuterGateCount >= OUTER_GATE_COUNT);
+    const troopStatus = config.kind === "unit" ? troopCapacityStatus(state, key) : null;
     button.disabled =
       gameOver ||
       fortificationLocked ||
       fortificationComplete ||
       !requirement.ok ||
+      Boolean(troopStatus && !troopStatus.canTrain) ||
       state.gold < config.gold ||
       state.wood < config.wood ||
       state.stone < (config.stone || 0);
-    button.classList.toggle("unlocked", requirement.ok);
-    button.title = requirement.ok ? "" : requirement.reason;
+    button.classList.toggle("unlocked", requirement.ok && (!troopStatus || troopStatus.canTrain));
+    button.classList.toggle("capacityLocked", Boolean(troopStatus && !troopStatus.canTrain));
+    button.title = !requirement.ok
+      ? requirement.reason
+      : troopStatus && !troopStatus.canTrain
+        ? troopStatus.overLimit
+          ? `Truppenlimit überschritten: ${troopStatus.used}/${troopStatus.capacity}`
+          : `Truppenlimit erreicht: ${troopStatus.used}/${troopStatus.capacity}`
+        : "";
   });
 
   ui.upgrade.disabled = true;
@@ -343,7 +366,8 @@ export function renderGameUI({
 
   if (building.key === "house") {
     const capacity = residentCapacityForHouse(building);
-    supportInfo = `<br>Bewohner: ${capacity} · Gold: +${(capacity * 0.18).toFixed(2)}/Sek. im Kampf`;
+    const troopCapacity = troopCapacityForHouse(building);
+    supportInfo = `<br>Bewohner: ${capacity} · Truppenplätze: +${troopCapacity} · Gold: +${(capacity * 0.18).toFixed(2)}/Sek. im Kampf`;
   }
   if (building.key === "lumber") {
     supportInfo = `<br>Bewohner: ${buildingWorkerCount(building)}/${workerCapacityForBuilding(building)} · Leistung ${Math.round(buildingWorkforceEfficiency(building) * 100)} % · Produktion: ${supportProductionPerSecond(building).toFixed(2)} Holz/Sek.`;
@@ -379,7 +403,7 @@ export function renderGameUI({
   if (building.key === "market") ui.marketTrade.style.display = "inline-block";
 
   const woodenName = building.key === "house"
-    ? building.level >= 2 ? "Holzhaus" : "Zeltlager"
+    ? building.level >= 3 ? "Großes Holzhaus" : building.level >= 2 ? "Holzhaus" : "Zeltlager"
     : building.base.name;
   const stoneNames = {house:"Steinhaus",lumber:"Steinsägewerk",quarry:"Großer Steinbruch",workshop:"Steinwerkstatt",repair:"Steinmetzhütte",market:"Handelshaus"};
   const buildingName = building.material === "stone" ? stoneNames[building.key] || woodenName : woodenName;
@@ -394,7 +418,10 @@ export function renderGameUI({
           : `<br>${upgradePreview.summary}`
       : `<br>Nächste Stufe: ${upgradePreview.summary}<br>Upgrade: ${goldCost} Gold / ${woodCost} Holz`
     : "<br>Keine wirksame Gebäudeaufwertung verfügbar";
-  ui.selected.innerHTML = `<b>${buildingName} Stufe ${building.level}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · ${building.material === "stone" ? "🏛️ Steinbau" : "🪵 Holzbau"}${supportInfo}${upgradeInfo}`;
+  const locationInfo = building.slot?.role === "outer-support"
+    ? "<br>Standort: äußerer Versorgungsring · früh für Plünderer erreichbar"
+    : "";
+  ui.selected.innerHTML = `<b>${buildingName} Stufe ${building.level}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · ${building.material === "stone" ? "🏛️ Steinbau" : "🪵 Holzbau"}${supportInfo}${locationInfo}${upgradeInfo}`;
 
   const maxLevel = getBuildingMaxLevel(building);
   const regularReady = hasBuildingUpgradeEffect(building) && building.level < maxLevel;

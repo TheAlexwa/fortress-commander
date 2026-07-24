@@ -2,6 +2,7 @@ import {
   buildGateAt,
   buildPalisadeAt,
 } from "./fortifications.js";
+import { troopCapacityStatus } from "./troops.js";
 
 /**
  * Bau- und Aufwertungssystem von Fortress Commander.
@@ -11,7 +12,7 @@ import {
  */
 
 const SUPPORT_BUILDING_MAX_LEVEL = Object.freeze({
-  house: 2,
+  house: 3,
   lumber: 5,
   quarry: 5,
   workshop: 5,
@@ -127,6 +128,15 @@ export function createEntityAt(x, y, key, context) {
   }
 
   if (blueprint.kind === "unit") {
+    const troopStatus = troopCapacityStatus(state, key);
+    if (!troopStatus.canTrain) {
+      showToast(
+        troopStatus.overLimit
+          ? `Truppenlimit überschritten: ${troopStatus.used}/${troopStatus.capacity} · Wohngebäude wieder aufbauen`
+          : `Truppenlimit erreicht: ${troopStatus.used}/${troopStatus.capacity} · Wohngebäude ausbauen`
+      );
+      return false;
+    }
     const distanceToCastle = Math.hypot(x - CX, y - CY);
     if (distanceToCastle > WALL_R - 30 || distanceToCastle < 105) {
       showToast("Einheiten im Bereich hinter der Mauer platzieren");
@@ -210,7 +220,7 @@ export function createEntityAt(x, y, key, context) {
         ? "Turm auf einem Mauer- oder Burgplatz errichten"
         : blueprint.slotRole === "statue"
           ? "Kriegerstatue auf dem markierten Ehrenplatz errichten"
-          : "Gebäude auf einem Dorfplatz errichten"
+          : "Gebäude auf einem inneren oder äußeren Versorgungsplatz errichten"
     );
     return false;
   }
@@ -343,7 +353,11 @@ export function upgradeEntity(entity, context) {
 
   if (entity.key === "house") {
     syncResidents();
-    showToast("Zeltlager zum Holzhaus ausgebaut: 4 Bewohner");
+    showToast(
+      entity.level >= 3
+        ? "Holzhaus zum großen Holzhaus ausgebaut: 5 Bewohner · 5 Truppenplätze"
+        : "Zeltlager zum Holzhaus ausgebaut: 4 Bewohner · 4 Truppenplätze"
+    );
   } else if (entity.key === "workshop") {
     showToast(
       `Werkstatt Stufe ${entity.level}: globaler Forschungsanstieg jetzt ${Math.round(

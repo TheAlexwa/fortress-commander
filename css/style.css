@@ -1058,3 +1058,48 @@ body.pwaStandalone #pwaInstallCard,body.pwaStandalone #navInstallApp,body.pwaSta
 .audioVolumeGrid{display:grid;gap:10px;margin-top:13px}.audioVolumeGrid>label{display:grid;gap:7px;padding:10px;border-radius:12px;background:#0c1511;border:1px solid #ffffff13}.audioVolumeGrid>label>span{display:flex;align-items:center;justify-content:space-between;gap:10px}.audioVolumeGrid b{font-size:11px}.audioVolumeGrid output{color:#ffe09a;font-size:10px;font-weight:950;font-variant-numeric:tabular-nums}.audioVolumeGrid input[type="range"]{width:100%;height:24px;accent-color:#d7b75e;cursor:pointer}
 .audioTestButtons{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:7px;margin-top:12px}.audioTestButtons button{min-height:44px;padding:7px;font-size:10px;font-weight:900}
 .audioSettingsStatus{margin-top:9px;padding:8px;border-radius:10px;background:#06100bbb;color:#bfe5c9;text-align:center;font-size:10px;font-weight:900}
+
+/* v1.18.5 – Truppenlimit & Außenversorgung */
+header{
+ grid-template-columns:max-content max-content max-content minmax(42px,1fr) 52px max-content!important;
+}
+header #troopOverviewBtn{
+ position:static!important;align-self:center;height:43px;min-width:82px;max-width:112px;padding:4px 8px;
+ display:grid;grid-template-columns:24px 1fr;grid-template-rows:auto auto;align-items:center;gap:0 5px;
+ border-radius:13px;background:linear-gradient(160deg,#3d3425,#171109);border:1px solid #d7b76d88;
+ box-shadow:inset 0 1px #fff2,0 3px 10px #0008;color:#fff3d0;text-align:left;overflow:hidden;
+ font-variant-numeric:tabular-nums;
+}
+header #troopOverviewBtn .troopIcon{grid-row:1/3;font-size:20px;line-height:1}
+header #troopOverviewBtn .troopCount{font-size:12px;font-weight:950;line-height:1.1;white-space:nowrap;color:#ffe08a}
+header #troopOverviewBtn .troopFree{font-size:8px;font-weight:900;line-height:1.05;white-space:nowrap;color:#9fd6ff}
+header #troopOverviewBtn.isFull{border-color:#e2b45f;background:linear-gradient(160deg,#57421f,#211506)}
+header #troopOverviewBtn.overLimit{border-color:#ff7b6f;background:linear-gradient(160deg,#642c29,#260d0c);box-shadow:0 0 14px #e84c4266,inset 0 1px #fff2}
+header #troopOverviewBtn.overLimit .troopFree{color:#ffb5ad}
+.buildBtn.capacityLocked{border-color:#b25c5555!important}
+.buildBtn.capacityLocked:after{filter:grayscale(.8)}
+@media(max-width:520px){
+ header{grid-template-columns:max-content max-content max-content minmax(32px,1fr) 45px 72px!important;gap:3px!important}
+ header #populationOverviewBtn,header #troopOverviewBtn{height:40px;min-width:58px!important;max-width:68px!important;padding:3px 4px!important;grid-template-columns:18px 1fr!important;gap:0 2px!important}
+ header #troopOverviewBtn .troopIcon,header #populationOverviewBtn .populationIcon{font-size:16px!important}
+ header #troopOverviewBtn .troopCount,header #populationOverviewBtn .populationCount{font-size:9px!important}
+ header #troopOverviewBtn .troopFree,header #populationOverviewBtn .popFree{display:none!important}
+}
+@media(max-width:380px){
+ header{grid-template-columns:max-content max-content max-content 45px 70px!important}
+ header>.grow{display:none!important}
+}
+@media(orientation:landscape) and (max-height:700px){
+ header #troopOverviewBtn{height:var(--fcHeaderControl)!important;min-width:62px!important;max-width:72px!important;padding:2px 4px!important}
+ header #troopOverviewBtn .troopFree{display:none!important}
+}
+header>.waveStat{grid-column:1!important}
+header>#populationOverviewBtn{grid-column:2!important;grid-row:1!important}
+header>#troopOverviewBtn{grid-column:3!important;grid-row:1!important}
+header>.grow{grid-column:4!important}
+header>#pauseBtn{grid-column:5!important}
+header>#startWaveBtn{grid-column:6!important}
+@media(max-width:380px){
+ header>#pauseBtn{grid-column:4!important}
+ header>#startWaveBtn{grid-column:5!important}
+}

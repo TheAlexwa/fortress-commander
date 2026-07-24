@@ -75,7 +75,8 @@ export function workforceEfficiencyForCount(count) {
 }
 
 export function residentCapacityForHouse(house) {
-  const woodenCapacity = (house.level || 1) >= 2 ? 4 : 2;
+  const level = Math.max(1, Number(house?.level) || 1);
+  const woodenCapacity = level >= 3 ? 5 : level >= 2 ? 4 : 2;
   return stoneHousingCapacity(house, woodenCapacity);
 }
 

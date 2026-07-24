@@ -1,3 +1,16 @@
+## v1.18.5 – Truppenlimit & Außenversorgung
+
+- `js/troops.js` als zentrale Quelle für Grundkapazität, Wohngebäude-Boni, Einheitenkosten, Überbelegung und absolutes Sicherheitslimit ergänzt.
+- Ausbildungskarten und Platzierungslogik sperren Bogenschützen und Burgwachen, sobald das Truppenlimit erreicht oder überschritten ist.
+- Neue HUD-Kachel `⚔️ belegt/gesamt` öffnet direkt das Einheitenbuch und markiert volles beziehungsweise überschrittenes Limit.
+- Zeltlager, Holzhaus, großes Holzhaus und Steinhaus liefern +2/+4/+5/+6 Truppenplätze; Andreas kostet 0 Plätze.
+- Wohngebäude-Ausbau auf drei Holzstufen erweitert und Steinbauvoraussetzung für das Steinhaus auf Stufe 3 angehoben.
+- Acht äußere Versorgungsbauplätze mit eigener Darstellung zwischen mittlerem und äußerem Verteidigungsring ergänzt.
+- Plünderer können äußere Versorgungsgebäude bereits nach dem Durchbruch durch den äußeren Ring angreifen.
+- Historische Indizes der bisherigen Versorgungsplätze und des Ehrenplatzes bleiben unverändert, damit v1.18.4-Spielstände korrekt geladen werden.
+- Direkte Bewegung beim Helden-Taunt ebenfalls über den vorhandenen Kollisionsschutz geführt.
+- `tools/validate-troops.mjs` und `tools/validate-layout.mjs` ergänzt; Audio-, PWA- und Fensterprüfungen auf v1.18.5 aktualisiert.
+
 ## v1.18.4 – Andreas-Opfer & Kollisionsfix
 
 - Kriegerstatue-Schaltfläche von „Opfergabe“ auf den deutlich sichtbaren CTA „Andreas rufen“ umgestellt und optisch hervorgehoben.
