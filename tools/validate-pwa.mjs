@@ -23,7 +23,7 @@ for(const text of [
 requireText(main,'initializePwa({version:GAME_VERSION})',"PWA-Initialisierung fehlt");
 for(const text of ["beforeinstallprompt","appinstalled","navigator.serviceWorker.register","controllerchange","registration.update()"])
  requireText(pwa,text,"PWA-Logik fehlt");
-for(const text of ['CACHE_NAME="fortress-commander-v1.18.9"','type==="SKIP_WAITING"','request.mode==="navigate"'])
+for(const text of ['CACHE_NAME="fortress-commander-v1.18.10"','type==="SKIP_WAITING"','request.mode==="navigate"'])
  requireText(sw,text,"Service-Worker-Funktion fehlt");
 
 if(manifest.name!=="Fortress Commander")failures.push("Manifest-Name ist falsch");

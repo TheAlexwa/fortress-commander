@@ -256,16 +256,16 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.9";
-const GAME_RELEASE_NAME="Einheitenanimationen & Trefferfeedback";
+const GAME_VERSION="1.18.10";
+const GAME_RELEASE_NAME="Türme, Schäden & Schlachtfeldfeedback";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
-const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true};
+const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true,cameraEffects:true};
 function loadDisplayPreferences(){
  try{
   const saved=JSON.parse(localStorage.getItem(DISPLAY_PREFERENCES_KEY)||"null");
   const hudSize=["small","normal","large"].includes(saved?.hudSize)?saved.hudSize:DISPLAY_PREFERENCE_DEFAULTS.hudSize;
-  return {hudSize,haptics:saved?.haptics!==false,landscapeHint:saved?.landscapeHint!==false};
+  return {hudSize,haptics:saved?.haptics!==false,landscapeHint:saved?.landscapeHint!==false,cameraEffects:saved?.cameraEffects!==false};
  }catch{return {...DISPLAY_PREFERENCE_DEFAULTS}}
 }
 let displayPreferences=loadDisplayPreferences();
@@ -273,6 +273,7 @@ function persistDisplayPreferences(){try{localStorage.setItem(DISPLAY_PREFERENCE
 function applyDisplayPreferences(){
  document.documentElement.dataset.hudSize=displayPreferences.hudSize;
  document.documentElement.dataset.haptics=displayPreferences.haptics?"on":"off";
+ document.documentElement.dataset.cameraEffects=displayPreferences.cameraEffects?"on":"off";
 }
 function hapticFeedback(type="tap"){
  if(!displayPreferences.haptics||typeof navigator.vibrate!=="function")return false;
@@ -2227,12 +2228,16 @@ function update(dt){
  refreshEnemyAbilityStates(dt);
  const bonus=1;
  for(const b of state.buildings){
+  b.attackVisualTime=Math.max(0,(Number(b.attackVisualTime)||0)-dt);
   if(!isTowerOperational(b))continue;
   b.cooldown-=dt;
   const e=findTowerTarget(state.enemies,b,effectiveTowerRange(b));
   if(e&&b.cooldown<=0){
    const veteran=getVeteranModifiers(b);
    b.cooldown=effectiveAttackCooldown(b)*activeWaveModifier("towerCooldown",1);
+   b.attackAngle=Math.atan2(e.y-b.slot.y,e.x-b.slot.x);
+   b.attackVisualTime=b.key==="catapult"?.48:.34;
+   b.attackVisualVariant=(Number(b.attackVisualVariant)||0)+1;
    let damage=b.damage*bonus*activeWaveModifier("towerDamage",1)*veteran.damageMultiplier;
    let effects=null;
    let splash=b.splash*veteran.splashMultiplier;
@@ -2587,7 +2592,7 @@ function update(dt){
 function draw() {
  renderGameFrame({
   ctx, state, BUILD, wallSlots, insideSlots, castleSlots, selected, buildMode, rangeDisplayMode, unitCommandMode, paused, gameOver,
-  zoom, vw, vh, camX, camY, WORLD_W, WORLD_H, CX, CY, WALL_R, TAU
+  zoom, vw, vh, camX, camY, WORLD_W, WORLD_H, CX, CY, WALL_R, TAU, cameraEffects:displayPreferences.cameraEffects
  });
 }
 let lastDockSignature="";
@@ -3373,12 +3378,14 @@ function refreshDisplaySettingsControls(){
  });
  const hapticsToggle=document.getElementById("hapticsToggle");
  const landscapeHintToggle=document.getElementById("landscapeHintToggle");
+ const cameraEffectsToggle=document.getElementById("cameraEffectsToggle");
  const hapticsTestBtn=document.getElementById("hapticsTestBtn");
  if(hapticsToggle){hapticsToggle.checked=displayPreferences.haptics;hapticsToggle.disabled=typeof navigator.vibrate!=="function"}
  if(landscapeHintToggle)landscapeHintToggle.checked=displayPreferences.landscapeHint;
+ if(cameraEffectsToggle)cameraEffectsToggle.checked=displayPreferences.cameraEffects;
  if(hapticsTestBtn)hapticsTestBtn.disabled=typeof navigator.vibrate!=="function"||!displayPreferences.haptics;
  const status=document.getElementById("displaySettingsStatus");
- if(status)status.textContent=`HUD-Größe: ${displayHudSizeLabel(displayPreferences.hudSize)} · Vibration: ${displayPreferences.haptics?"Ein":"Aus"}`;
+ if(status)status.textContent=`HUD-Größe: ${displayHudSizeLabel(displayPreferences.hudSize)} · Kameraeffekte: ${displayPreferences.cameraEffects?"Ein":"Aus"} · Vibration: ${displayPreferences.haptics?"Ein":"Aus"}`;
 }
 function updateDisplayPreference(key,value){
  displayPreferences={...displayPreferences,[key]:value};persistDisplayPreferences();applyDisplayPreferences();refreshDisplaySettingsControls();syncOrientationHint();
@@ -3514,6 +3521,7 @@ document.getElementById("hudSizeChoices")?.addEventListener("click",event=>{
 });
 document.getElementById("hapticsToggle")?.addEventListener("change",event=>updateDisplayPreference("haptics",Boolean(event.target.checked)));
 document.getElementById("landscapeHintToggle")?.addEventListener("change",event=>{orientationHintDismissed=false;try{sessionStorage.removeItem("fortressCommander.orientationHintDismissed")}catch{}updateDisplayPreference("landscapeHint",Boolean(event.target.checked))});
+document.getElementById("cameraEffectsToggle")?.addEventListener("change",event=>updateDisplayPreference("cameraEffects",Boolean(event.target.checked)));
 document.getElementById("hapticsTestBtn")?.addEventListener("click",()=>{const worked=hapticFeedback("success");const status=document.getElementById("displaySettingsStatus");if(status)status.textContent=worked?"Vibrationstest ausgelöst":"Vibration wird von diesem Gerät oder Browser nicht unterstützt"});
 soundToggleBtn?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();const next=toggleAudioMute();if(!next.muted)playSound("uiClick",{force:true})});
 for(const [id,key] of [["audioMasterVolume","master"],["audioMusicVolume","music"],["audioAmbienceVolume","ambience"],["audioEffectsVolume","effects"],["audioUiVolume","ui"]]){

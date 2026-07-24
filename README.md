@@ -1,3 +1,13 @@
+## v1.18.10 – Türme, Schäden & Schlachtfeldfeedback
+
+- Bogenschützen-, Armbrust- und Katapulttürme besitzen nun eigene sichtbare Schussbewegungen mit Ausrichtung zum Ziel, Rückstoß und kurzem Abschusslicht.
+- Katapultsteine rotieren weiterhin im Flug und erzeugen jetzt beim Einschlag eine Staubwelle, Trümmerpartikel und einen kurz sichtbaren Krater.
+- Pfeile und Armbrustbolzen hinterlassen begrenzte, automatisch verblassende Einschlagsspuren auf dem Schlachtfeld.
+- Türme, Versorgungsgebäude, Mauern und Tore zeigen abhängig vom Lebenszustand deutlichere Risse, Rauch und bei kritischem Schaden einzelne Glutpartikel.
+- Leichte Kamerareaktionen bei Katapulttreffern können unter „Anzeige & Touch“ abgeschaltet werden und werden bei reduzierter Bewegung automatisch unterdrückt.
+- Alle Schlachtfeldspuren und Effekte besitzen feste Obergrenzen, damit lange Wellen und Mobilgeräte nicht durch unbegrenzt wachsende Effektlisten belastet werden.
+- Kampfwerte, Reichweiten, Angriffsgeschwindigkeiten, Zielregeln und Balance bleiben unverändert.
+
 ## v1.18.9 – Einheitenanimationen & Trefferfeedback
 
 - Bogenschützen erhalten eine sichtbare Bogen-, Sehnen- und Pfeilfreigabe mit kurzem Rückstoß.

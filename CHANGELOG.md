@@ -1,3 +1,14 @@
+## v1.18.10 – Türme, Schäden & Schlachtfeldfeedback
+
+- Drei getrennte Turm-Schussanimationen für Bogenturm, Armbrustturm und Katapult ergänzt.
+- Turmzielwinkel und kurze visuelle Angriffsdauer beim bestehenden Abschuss gesetzt; Schadensberechnung und Abklingzeiten bleiben unverändert.
+- Renderseitige Projektilverfolgung ergänzt, die beim Verschwinden eines Projektils kurze Einschläge und zeitlich begrenzte Schlachtfeldspuren erzeugt.
+- Katapulttreffer erzeugen Staubring, Trümmer, Krater und eine optionale leichte Kamerareaktion.
+- Schadensstufen für Türme, Versorgungsgebäude, Mauern und Tore um Risse, Rauch und kritische Glut erweitert.
+- Neue gerätebezogene Einstellung „Kameraeffekte“ ergänzt; vorhandener Einstellschlüssel bleibt kompatibel.
+- Neuer Prüflauf `tools/validate-battlefield.mjs` kontrolliert Turmanimationen, Schadensdarstellung, Effektgrenzen, Kameraoption und Versionsangaben.
+- Service-Worker-Cache und sichtbare Versionsangaben auf v1.18.10 erhöht.
+
 ## v1.18.9 – Einheitenanimationen & Trefferfeedback
 
 - Renderseitige Bogenanimation mit gespannter Sehne, Pfeilfreigabe und Rückstoß für mobile Bogenschützen ergänzt.
