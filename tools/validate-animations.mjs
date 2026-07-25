@@ -25,12 +25,12 @@ for(const text of [
 ])requireText(render,text,"Animationsdarstellung fehlt");
 
 for(const text of [
- 'const GAME_VERSION="1.18.11"',
+ 'const GAME_VERSION="1.18.12"',
  'attackVisualVariant=(Number(u.attackVisualVariant)||0)+1'
 ])requireText(main,text,"Kampfanimationssignal fehlt");
 
-requireText(html,"v1.18.11","HTML-Version fehlt");
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.11"',"PWA-Cacheversion fehlt");
+requireText(html,"v1.18.12","HTML-Version fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.12"',"PWA-Cacheversion fehlt");
 
 const attackSignals=(main.match(/attackVisualVariant=\(Number\(u\.attackVisualVariant\)\|\|0\)\+1/g)||[]).length;
 if(attackSignals<3)failures.push(`Nur ${attackSignals} Angriffssignale gefunden; erwartet sind mindestens 3`);

@@ -1,3 +1,12 @@
+## v1.18.12 – Bewegungs- und Speicherstabilität
+
+- Gegner-Startpositionen werden vor dem Erzeugen auf einen sicheren Abstand außerhalb des äußeren Festungsrings begrenzt.
+- Feststeckende Gegner springen nicht mehr sichtbar, sondern erhalten eine kurze seitliche Ausweichbewegung.
+- Burgwache und Andreas werden bei Überschreitung ihres bestehenden Einsatzradius schrittweise zurückgeführt.
+- Bogenschützen bevorzugen Gegner, die bereits in ihrer aktuellen Reichweite liegen, und können weiterhin über eigene Mauern schießen.
+- Spielstände aus v1.18.x behalten beim Laden die gespeicherten Einheiten- und Kamerapositionen.
+- Schaden, Rüstung und Angriffsgeschwindigkeit bleiben unverändert.
+
 ## v1.18.11 – Animierte Spielermodelle
 
 - Bogenschütze, Burgwache und Andreas werden nun als bewegliche 2D-Gelenkmodelle aus Kopf, Körper, Armen und Beinen gezeichnet.

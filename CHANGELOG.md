@@ -1,3 +1,13 @@
+## v1.18.12 – Bewegungs- und Speicherstabilität
+
+- Sichere Gegner-Startpunkte außerhalb des äußeren Festungsrings ergänzt.
+- Direkte Vier-Pixel-Korrektur feststeckender Gegner durch zeitlich begrenztes seitliches Ausweichen ersetzt.
+- Kollisionskorrektur von Burgwache und Andreas auf kleine Schritte begrenzt und sanfte Rückkehr in den gültigen Einsatzradius ergänzt.
+- Bogenschützen-Zielwahl priorisiert erreichbare Gegner innerhalb der aktuellen Reichweite.
+- v1.18-Spielstände verwenden unverändert ihre gespeicherten Einheiten- und Kamerapositionen.
+- Neuer Prüflauf `tools/validate-v1.18.12-stability.mjs` kontrolliert Spawnabstand, Bewegungsstabilität, Speicherkompatibilität und unveränderte Kampfwerte.
+- Service-Worker-Cache und sichtbare Versionsangaben auf v1.18.12 erhöht.
+
 ## v1.18.11 – Animierte Spielermodelle
 
 - Neues Canvas-Papierpuppensystem `UNIT_RIG_DEFS` für Bogenschütze, Burgwache und Andreas ergänzt.

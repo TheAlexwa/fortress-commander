@@ -256,8 +256,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.11";
-const GAME_RELEASE_NAME="Animierte Spielermodelle";
+const GAME_VERSION="1.18.12";
+const GAME_RELEASE_NAME="Bewegungs- und Speicherstabilität";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true,cameraEffects:true};
@@ -315,6 +315,8 @@ const ENEMY_PULSE_INTERVAL=.11;
 const ENEMY_PULSE_PAUSE=1.25;
 const STRUCTURE_COLLISION_PADDING=6;
 const RING_COLLISION_THICKNESS=22;
+const ENEMY_SAFE_SPAWN_PADDING=110;
+const MELEE_RETURN_MARGIN=8;
 const discoveredEnemies=loadDiscoveredEnemies();
 function discoverEnemy(type){
  if(!ENEMY_CODEX[type]||discoveredEnemies.has(type))return;
@@ -632,6 +634,17 @@ function unitZoneLabel(unit){
  return zone==="inner"?"Innenring":zone==="outer"?"Außenring":"Mittelring";
 }
 function archerZoneRadius(unit){return ARCHER_ZONE_RADII[(unit&&unit.zoneMode)||"middle"]||ARCHER_ZONE_RADII.middle}
+function returnMeleeDefenderInsideLimit(unit,dt){
+ if(!isMeleeHeroUnit(unit))return false;
+ const dx=unit.x-CX,dy=unit.y-CY,d=Math.hypot(dx,dy);
+ const limit=Math.max(100,getGuardRadiusLimit(unit,WALL_R)-MELEE_RETURN_MARGIN);
+ if(d<=limit||d<.001)return false;
+ unit.autoTarget=null;unit.retargetCd=0;
+ const step=Math.min(d-limit,effectiveUnitSpeed(unit)*Math.max(0,dt));
+ const prevX=unit.x,prevY=unit.y;
+ placeMobileEntity(unit,unit.x-dx/d*step,unit.y-dy/d*step,prevX,prevY);
+ return true;
+}
 function nearestArcherMeleeThreat(unit,maxRange=ARCHER_RETREAT_TRIGGER){
  let best=null,bestDistance=maxRange;
  for(const enemy of state.enemies){
@@ -1234,7 +1247,7 @@ function loadGame(){
   hideRepairDecision();hideEndScreen();hideCampaignVictoryScreen();closeEnemyInfo(false);
   selected=null;buildMode=null;unitCommandMode=null;gameOver=false;paused=true;autosaveSuppressed=false;
   syncResidents();assignCraftsmen();ensureCurrentSiege();
-  const sameMapVersion=/^1\.(15|16|17)\./.test(String(loaded.gameVersion||""));
+  const sameMapVersion=/^1\.(15|16|17|18)\./.test(String(loaded.gameVersion||""));
   if(!sameMapVersion){
    const shiftX=CX-1200,shiftY=CY-850;
    for(const unit of state.units){
@@ -1741,12 +1754,26 @@ function startWave(){
  updateBonusObjectiveHud();
  return true;
 }
+function safeEnemySpawnPoint(point,approachGateIndex=null){
+ if(!point||!Number.isFinite(Number(point.x))||!Number.isFinite(Number(point.y)))return null;
+ const x=Number(point.x),y=Number(point.y),dx=x-CX,dy=y-CY,d=Math.hypot(dx,dy);
+ const safeRadius=OUTER_WALL_R+ENEMY_SAFE_SPAWN_PADDING;
+ if(d>=safeRadius)return {x,y};
+ const gateAngles=[-Math.PI/2,0,Math.PI/2,Math.PI];
+ const angle=d>.001?Math.atan2(dy,dx):gateAngles[Math.max(0,Math.min(3,Number(approachGateIndex)||0))];
+ return {x:CX+Math.cos(angle)*safeRadius,y:CY+Math.sin(angle)*safeRadius};
+}
 function spawnEnemy(forcedType=null,spawnPoint=null,approachGateIndex=null,modifiers=null){
- const enemy=createWaveEnemy(state,{WORLD_W,WORLD_H,TAU,enemyStatsFor,discoverEnemy,forcedType,spawnPoint,modifiers});
- if(enemy&&spawnPoint){
+ const safeSpawn=safeEnemySpawnPoint(spawnPoint,approachGateIndex);
+ const enemy=createWaveEnemy(state,{WORLD_W,WORLD_H,TAU,enemyStatsFor,discoverEnemy,forcedType,spawnPoint:safeSpawn,modifiers});
+ if(enemy){
+  const verifiedSpawn=safeEnemySpawnPoint(enemy,approachGateIndex);
+  if(verifiedSpawn){enemy.x=verifiedSpawn.x;enemy.y=verifiedSpawn.y}
+ }
+ if(enemy&&safeSpawn){
   enemy.approachGateIndex=Number.isInteger(approachGateIndex)
    ?approachGateIndex
-   :getNearestMiddleGateIndexForAngle(Math.atan2(spawnPoint.y-CY,spawnPoint.x-CX));
+   :getNearestMiddleGateIndexForAngle(Math.atan2(safeSpawn.y-CY,safeSpawn.x-CX));
  }
  return enemy;
 }
@@ -1813,10 +1840,20 @@ function assaultFormationPoint(enemy,angle,targetRadius,key,frontLimit){
 function moveEnemyToward(enemy,x,y,dt){
  const dx=x-enemy.x,dy=y-enemy.y,d=Math.hypot(dx,dy);
  if(d<=.001)return d;
+ let moveX=dx/d,moveY=dy/d;
+ const sidestepTime=Math.max(0,Number(enemy._sidestepTime)||0);
+ if(sidestepTime>0){
+  const direction=Number(enemy._sidestepDirection)<0?-1:1;
+  const blend=Math.min(.68,.24+sidestepTime*.58);
+  const sideX=-moveY*direction,sideY=moveX*direction;
+  moveX=moveX*(1-blend)+sideX*blend;moveY=moveY*(1-blend)+sideY*blend;
+  const length=Math.hypot(moveX,moveY)||1;moveX/=length;moveY/=length;
+  enemy._sidestepTime=Math.max(0,sidestepTime-Math.max(0,dt));
+ }
  const effectiveSpeed=getEffectiveEnemySpeed(enemy);
  const speed=enemy.queueWaiting?effectiveSpeed*.82:effectiveSpeed;
  const step=Math.min(d,speed*dt),prevX=enemy.x,prevY=enemy.y;
- placeMobileEntity(enemy,enemy.x+dx/d*step,enemy.y+dy/d*step,prevX,prevY);
+ placeMobileEntity(enemy,enemy.x+moveX*step,enemy.y+moveY*step,prevX,prevY);
  return d;
 }
 function enemyIsEnraged(enemy){return enemy?.type==="berserker"&&enemy.hp>0&&enemy.hp<=enemy.maxHp*.5}
@@ -1960,12 +1997,17 @@ function isTowerOperational(building){
  return Boolean(support?.built&&support.hp>0);
 }
 function towerCoverage(enemy){return getTowerCoverage(state.buildings.filter(isTowerOperational),enemy)}
-function chooseAutoTarget(unit){
+function chooseAutoTarget(unit,enemies=state.enemies){
  return chooseAutomaticTarget(unit,{
-  enemies:state.enemies,units:state.units,
+  enemies,units:state.units,
   buildings:state.buildings.filter(building=>building.base?.kind!=="tower"||isTowerOperational(building)),
   centerX:CX,centerY:CY
  });
+}
+function chooseArcherTargetInRange(unit){
+ const range=effectiveUnitRange(unit),rangeSquared=range*range;
+ const reachable=state.enemies.filter(enemy=>enemy&&enemy.hp>0&&(enemy.x-unit.x)**2+(enemy.y-unit.y)**2<=rangeSquared);
+ return reachable.length?chooseAutoTarget(unit,reachable):null;
 }
 function towerBehindWall(index){return getTowerBehindWall(wallSlots,index)}
 function nearestCastleTower(enemy){return findNearestCastleTower(state.buildings,enemy)}
@@ -2254,6 +2296,7 @@ function update(dt){
   const wasEvadingMelee=Boolean(u.evadingMelee);u.evadingMelee=false;
   u.attackCd-=dt;u.retargetCd=(u.retargetCd||0)-dt;
   if(isMeleeHeroUnit(u)){
+   if(returnMeleeDefenderInsideLimit(u,dt))continue;
    // Burgwachen halten ein gültiges Nahkampfziel fest, rücken bis zur
    // Kontaktreichweite vor und suchen nach einem besiegten Ziel sofort neu.
    if(u.retreating){
@@ -2305,8 +2348,10 @@ function update(dt){
   if(u.controlMode==="auto"){
    const targetInvalid=!u.autoTarget||u.autoTarget.hp<=0||!state.enemies.includes(u.autoTarget);
    const currentCover=u.autoTarget?towerCoverage(u.autoTarget).coverage:0;
-   if(targetInvalid||u.retargetCd<=0||currentCover>=2){
-    u.autoTarget=chooseAutoTarget(u);
+   const currentDistance=u.autoTarget?Math.hypot(u.autoTarget.x-u.x,u.autoTarget.y-u.y):Infinity;
+   const reachableTarget=chooseArcherTargetInRange(u);
+   if(targetInvalid||u.retargetCd<=0||currentCover>=2||(currentDistance>effectiveUnitRange(u)&&reachableTarget)){
+    u.autoTarget=reachableTarget||chooseAutoTarget(u);
     u.retargetCd=.38+Math.random()*.22;
    }
    const t=u.autoTarget;
@@ -2513,8 +2558,9 @@ function update(dt){
    }
   }
  }
+ for(const enemy of state.enemies){enemy._separationOriginX=enemy.x;enemy._separationOriginY=enemy.y}
  resolveEnemySeparation(state.enemies,dt);
- for(const enemy of state.enemies)resolveEntityStructureCollision(enemy,enemy.x,enemy.y);
+ for(const enemy of state.enemies)resolveEntityStructureCollision(enemy,enemy._separationOriginX,enemy._separationOriginY);
  for(const e of state.enemies)if(e.hp<=0&&!e.dead){
   e.dead=true;if(e.type==="boss"){registerBonusEnemyDeath(state,e);applyBossDeathShock(e)}state.gold+=e.reward;state.kills++;
   if(e.lastHitEntity){const baseXp=e.type==="boss"?55:e.type==="shield"?22:e.type==="runner"?13:16;grantCombatXp(e.lastHitEntity,baseXp*Math.max(.15,Number(e.xpScale)||1))}

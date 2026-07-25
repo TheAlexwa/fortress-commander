@@ -234,6 +234,8 @@ export const GUARD_OUTER_HOLD_RADIUS_BONUS = 235;
 // Der Ausfall darf bis 250 Einheiten über den äußeren Ring hinausreichen.
 // WALL_R + 235 (äußerer Ring) + 250 = WALL_R + 485.
 export const GUARD_OFFENSE_RADIUS_BONUS = 485;
+export const GUARD_OVERLAP_MAX_STEP = 2.4;
+export const ENEMY_SIDESTEP_DURATION = 0.75;
 export const ENEMY_MELEE_CONTACT_PADDING = 6;
 export const ENEMY_SPEAR_REACH_BONUS = 34;
 
@@ -350,20 +352,9 @@ export function resolveGuardEnemyOverlap(
     }
   }
 
-  const push = minimumDistance - overlapDistance;
+  const push = Math.min(GUARD_OVERLAP_MAX_STEP, minimumDistance - overlapDistance);
   unit.x += (dx / directionLength) * push;
   unit.y += (dy / directionLength) * push;
-
-  if (unit.stance !== "offense") {
-    const ux = unit.x - centerX;
-    const uy = unit.y - centerY;
-    const unitRadius = Math.hypot(ux, uy);
-    const maximumRadius = getGuardRadiusLimit(unit, wallRadius) - 10;
-    if (unitRadius > maximumRadius) {
-      unit.x = centerX + (ux / unitRadius) * maximumRadius;
-      unit.y = centerY + (uy / unitRadius) * maximumRadius;
-    }
-  }
 
   return true;
 }
@@ -480,9 +471,9 @@ export function resolveEnemySeparation(
     if (enemy._stuckTime > 1.7) {
       enemy._ghostTime = 0.9;
       enemy._stuckTime = 0;
-      const angle = (((Number(enemy.eid) || 1) * 1.618034) % (Math.PI * 2));
-      enemy.x += Math.cos(angle) * 4;
-      enemy.y += Math.sin(angle) * 4;
+      enemy._sidestepAttempts = (Number(enemy._sidestepAttempts) || 0) + 1;
+      enemy._sidestepDirection = ((Number(enemy.eid) || 0) + enemy._sidestepAttempts) % 2 ? 1 : -1;
+      enemy._sidestepTime = ENEMY_SIDESTEP_DURATION;
     }
     enemy._progressX = enemy.x;
     enemy._progressY = enemy.y;
