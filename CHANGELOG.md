@@ -1,3 +1,14 @@
+## v1.18.13 – Torwege und Angriffswellen
+
+- Mehrstufige Torwegführung für eigene Einheiten ergänzt: Anlaufpunkt, Tormitte und Austritt werden ohne Teleportation durchlaufen.
+- Kollisionsprüfung unterscheidet eigene Einheiten von Gegnern; intakte Tore sind nur für die Verteidiger passierbar.
+- Dynamische Belagerungsrouten für äußeren und mittleren Ring ergänzt. Tore, intakte Mauerabschnitte, Lücken und Breschen werden nach Weglänge, Haltbarkeit und Auslastung bewertet.
+- Überfüllte Ziele werden gemieden, Frontreihen auf vier Angreifer begrenzt und nachrückende Reihen weiter auseinandergezogen.
+- Angriffsplätze berücksichtigen nun den Einheitenradius; schwere Eisenschilde erreichen Tore und Mauern zuverlässig und behalten ihre Route bis zu einer echten Blockade bei.
+- Feststeckende Gegner markieren ihre aktuelle Route zur Neubewertung und können auf einen benachbarten Angriffspunkt wechseln.
+- Neuer Prüflauf `tools/validate-v1.18.13-gates.mjs` kontrolliert Torpassage, Routenverteilung, Warteschlangen und unveränderte Kampfwerte.
+- Service-Worker-Cache und sichtbare Versionsangaben auf v1.18.13 erhöht.
+
 ## v1.18.12 – Bewegungs- und Speicherstabilität
 
 - Sichere Gegner-Startpunkte außerhalb des äußeren Festungsrings ergänzt.

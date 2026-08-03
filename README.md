@@ -1,3 +1,12 @@
+## v1.18.13 – Torwege und Angriffswellen
+
+- Eigene Einheiten verwenden beim Wechsel zwischen Innen-, Mittel- und Außenring automatisch den nächsten passenden Torweg.
+- Intakte eigene Tore bleiben für Burgwache, Andreas und Bogenschützen passierbar, während Gegner sie weiterhin angreifen müssen.
+- Gegner wählen Tore, Mauerabschnitte und vorhandene Breschen anhand von Entfernung, Zustand und Auslastung dynamisch aus.
+- Überfüllte Angriffswege erhalten einen deutlichen Malus; wartende Reihen halten mehr Abstand und rücken langsamer nach.
+- Blockierte Gegner lösen eine neue Routenprüfung aus und können auf ein weniger belegtes Ziel ausweichen.
+- Schaden, Rüstung und Angriffsgeschwindigkeit bleiben unverändert.
+
 ## v1.18.12 – Bewegungs- und Speicherstabilität
 
 - Gegner-Startpositionen werden vor dem Erzeugen auf einen sicheren Abstand außerhalb des äußeren Festungsrings begrenzt.

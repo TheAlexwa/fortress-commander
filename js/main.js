@@ -256,8 +256,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.12";
-const GAME_RELEASE_NAME="Bewegungs- und Speicherstabilität";
+const GAME_VERSION="1.18.13";
+const GAME_RELEASE_NAME="Torwege und Angriffswellen";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true,cameraEffects:true};
@@ -640,9 +640,7 @@ function returnMeleeDefenderInsideLimit(unit,dt){
  const limit=Math.max(100,getGuardRadiusLimit(unit,WALL_R)-MELEE_RETURN_MARGIN);
  if(d<=limit||d<.001)return false;
  unit.autoTarget=null;unit.retargetCd=0;
- const step=Math.min(d-limit,effectiveUnitSpeed(unit)*Math.max(0,dt));
- const prevX=unit.x,prevY=unit.y;
- placeMobileEntity(unit,unit.x-dx/d*step,unit.y-dy/d*step,prevX,prevY);
+ moveFriendlyUnitToward(unit,CX+dx/d*limit,CY+dy/d*limit,dt);
  return true;
 }
 function nearestArcherMeleeThreat(unit,maxRange=ARCHER_RETREAT_TRIGGER){
@@ -715,16 +713,28 @@ function pushEntityOutsideCircle(entity,cx,cy,radius,previousX=entity.x,previous
  entity.x=cx+dx/d*target;
  entity.y=cy+dy/d*target;
 }
-function isMiddleRingSolidAtAngle(angle){
+function friendlyGateIndexAtAngle(entity,angle,ring){
+ if(entity?.kind!=="unit"||entity.hp<=0)return -1;
+ return ring==="outer"
+  ?getOuterGateIndexForAngle(angle,OUTER_GATE_HALF_ANGLE*.94)
+  :getMiddleGateIndexForAngle(angle,MIDDLE_GATE_HALF_ANGLE*.94);
+}
+function isMiddleRingSolidAtAngle(angle,entity=null){
  const gateIndex=getMiddleGateIndexForAngle(angle,MIDDLE_GATE_HALF_ANGLE*1.08);
- if(gateIndex>=0){const gate=state.middleGates?.[gateIndex];return !!(gate?.built&&gate.hp>0)}
+ if(gateIndex>=0){
+  if(friendlyGateIndexAtAngle(entity,angle,"middle")>=0)return false;
+  const gate=state.middleGates?.[gateIndex];return !!(gate?.built&&gate.hp>0)
+ }
  const segmentIndex=getMiddleWallSegmentIndexForAngle(angle,state.walls.length||MIDDLE_WALL_SEGMENT_COUNT);
  const wall=state.walls?.[segmentIndex];
  return !!(wall?.built&&wall.hp>0&&angleWithinArc(angle,wall.a0,wall.a1,.015));
 }
-function isOuterRingSolidAtAngle(angle){
+function isOuterRingSolidAtAngle(angle,entity=null){
  const gateIndex=getOuterGateIndexForAngle(angle,OUTER_GATE_HALF_ANGLE*1.18);
- if(gateIndex>=0){const gate=state.outerGates?.[gateIndex];return !!(gate?.built&&gate.hp>0)}
+ if(gateIndex>=0){
+  if(friendlyGateIndexAtAngle(entity,angle,"outer")>=0)return false;
+  const gate=state.outerGates?.[gateIndex];return !!(gate?.built&&gate.hp>0)
+ }
  const segmentIndex=getOuterWallSegmentIndexForAngle(angle,state.outerWalls.length||OUTER_WALL_SEGMENT_COUNT);
  const wall=state.outerWalls?.[segmentIndex];
  return !!(wall?.built&&wall.hp>0&&angleWithinArc(angle,wall.a0,wall.a1,.015));
@@ -739,7 +749,7 @@ function resolveEntityAgainstRing(entity,previousX,previousY,ringRadius,isSolidA
  const bandOuter=ringRadius+RING_COLLISION_THICKNESS+radius;
  if(Math.max(currentDistance,previousDistance)<bandInner||Math.min(currentDistance,previousDistance)>bandOuter)return false;
  const angle=Math.atan2(currentDy,currentDx);
- if(!isSolidAtAngle(angle))return false;
+ if(!isSolidAtAngle(angle,entity))return false;
  const approachInside=previousDistance<=ringRadius;
  const targetDistance=approachInside?bandInner:bandOuter;
  const length=currentDistance||Math.hypot(previousX-CX,previousY-CY)||1;
@@ -769,6 +779,83 @@ function resolveEntityStructureCollision(entity,previousX=entity.x,previousY=ent
 function placeMobileEntity(entity,nextX,nextY,previousX=entity.x,previousY=entity.y,{ignoreBuildings=false}={}){
  entity.x=nextX;entity.y=nextY;
  resolveEntityStructureCollision(entity,previousX,previousY,{ignoreBuildings});
+}
+function friendlyGateAngle(ring,index){
+ const gates=ring==="outer"?state.outerGates:state.middleGates;
+ const fallback=[-Math.PI/2,0,Math.PI/2,Math.PI][Math.max(0,Math.min(3,Number(index)||0))];
+ return Number.isFinite(gates?.[index]?.angle)?gates[index].angle:fallback;
+}
+function bestFriendlyGateIndex(unit,targetX,targetY,crossing){
+ let bestIndex=0,bestScore=Infinity;
+ const offset=RING_COLLISION_THICKNESS+entityCollisionRadius(unit)+16;
+ for(let index=0;index<4;index++){
+  const angle=friendlyGateAngle(crossing.ring,index);
+  const approachRadius=crossing.radius-crossing.direction*offset;
+  const exitRadius=crossing.radius+crossing.direction*offset;
+  const approachX=CX+Math.cos(angle)*approachRadius,approachY=CY+Math.sin(angle)*approachRadius;
+  const exitX=CX+Math.cos(angle)*exitRadius,exitY=CY+Math.sin(angle)*exitRadius;
+  const score=Math.hypot(unit.x-approachX,unit.y-approachY)+Math.hypot(targetX-exitX,targetY-exitY);
+  if(score<bestScore){bestScore=score;bestIndex=index}
+ }
+ return bestIndex;
+}
+function friendlyGateCrossing(unit,targetX,targetY){
+ if(unit?.kind!=="unit")return null;
+ const currentRadius=Math.hypot(unit.x-CX,unit.y-CY);
+ const targetRadius=Math.hypot(targetX-CX,targetY-CY);
+ const margin=Math.max(10,entityCollisionRadius(unit)+4);
+ const candidates=[];
+ for(const [ring,radius] of [["middle",WALL_R],["outer",OUTER_WALL_R]]){
+  let direction=0;
+  if(currentRadius<radius-margin&&targetRadius>radius+margin)direction=1;
+  else if(currentRadius>radius+margin&&targetRadius<radius-margin)direction=-1;
+  else if(Math.abs(currentRadius-radius)<=margin){
+   if(targetRadius>radius+margin)direction=1;
+   else if(targetRadius<radius-margin)direction=-1;
+  }
+  if(direction)candidates.push({ring,radius,direction,distance:Math.abs(currentRadius-radius)});
+ }
+ if(!candidates.length)return null;
+ candidates.sort((a,b)=>a.distance-b.distance);
+ const crossing=candidates[0];
+ crossing.index=bestFriendlyGateIndex(unit,targetX,targetY,crossing);
+ return crossing;
+}
+function friendlyGateWaypoint(unit,targetX,targetY){
+ let transit=unit?._gateTransit||null;
+ const targetRadius=Math.hypot(targetX-CX,targetY-CY);
+ if(transit){
+  const currentRadius=Math.hypot(unit.x-CX,unit.y-CY);
+  const targetStillAcross=transit.direction>0
+   ?targetRadius>transit.radius+10
+   :targetRadius<transit.radius-10;
+  const completed=transit.direction>0
+   ?currentRadius>=transit.radius+transit.exitOffset-3
+   :currentRadius<=transit.radius-transit.exitOffset+3;
+  if(!targetStillAcross||completed){unit._gateTransit=null;transit=null}
+ }
+ if(!transit){
+  const crossing=friendlyGateCrossing(unit,targetX,targetY);
+  if(!crossing)return {x:targetX,y:targetY,transit:false};
+  transit={...crossing,stage:"approach",approachOffset:RING_COLLISION_THICKNESS+entityCollisionRadius(unit)+12,exitOffset:RING_COLLISION_THICKNESS+entityCollisionRadius(unit)+18};
+  unit._gateTransit=transit;
+ }
+ const angle=friendlyGateAngle(transit.ring,transit.index);
+ const approachRadius=transit.radius-transit.direction*transit.approachOffset;
+ const exitRadius=transit.radius+transit.direction*transit.exitOffset;
+ const approachX=CX+Math.cos(angle)*approachRadius,approachY=CY+Math.sin(angle)*approachRadius;
+ if(transit.stage==="approach"&&Math.hypot(unit.x-approachX,unit.y-approachY)<=18)transit.stage="cross";
+ const waypointRadius=transit.stage==="cross"?exitRadius:approachRadius;
+ return {x:CX+Math.cos(angle)*waypointRadius,y:CY+Math.sin(angle)*waypointRadius,transit:true};
+}
+function moveFriendlyUnitToward(unit,targetX,targetY,dt,{speed=effectiveUnitSpeed(unit)}={}){
+ if(!unit||unit.hp<=0)return Infinity;
+ const waypoint=friendlyGateWaypoint(unit,targetX,targetY);
+ const dx=waypoint.x-unit.x,dy=waypoint.y-unit.y,d=Math.hypot(dx,dy);
+ if(d<=.001)return d;
+ const step=Math.min(d,Math.max(0,Number(speed)||0)*Math.max(0,Number(dt)||0));
+ placeMobileEntity(unit,unit.x+dx/d*step,unit.y+dy/d*step,unit.x,unit.y);
+ return Math.hypot(targetX-unit.x,targetY-unit.y);
 }
 function getAndreas(){return state.units.find(unit=>unit.key==="hero"&&unit.hp>0)||null}
 function hasActiveKriegerstatue(){return state.buildings.some(building=>building.key==="statue")}
@@ -1803,11 +1890,15 @@ function getSpawnDelay(entry,nextEntry){
 function enemyAssaultKey(enemy){
  if(!enemy)return "";
  if(enemy.phase==="outer"){
-  if(Number.isInteger(enemy.approachGateIndex))return `og:${enemy.approachGateIndex}`;
+  if(enemy.outerRouteKind==="wall"&&Number.isInteger(enemy.outerRouteIndex))return `ow:${enemy.outerRouteIndex}`;
+  if(enemy.outerRouteKind==="gate"&&Number.isInteger(enemy.outerRouteIndex))return `og:${enemy.outerRouteIndex}`;
+  if(Number.isInteger(enemy.outerGateIndex))return `og:${enemy.outerGateIndex}`;
   if(Number.isInteger(enemy.outerWallIndex))return `ow:${enemy.outerWallIndex}`;
  }
  if(enemy.phase==="outside"){
-  if(Number.isInteger(enemy.approachGateIndex))return `mg:${enemy.approachGateIndex}`;
+  if(enemy.middleRouteKind==="wall"&&Number.isInteger(enemy.middleRouteIndex))return `mw:${enemy.middleRouteIndex}`;
+  if(enemy.middleRouteKind==="gate"&&Number.isInteger(enemy.middleRouteIndex))return `mg:${enemy.middleRouteIndex}`;
+  if(Number.isInteger(enemy.middleGateIndex))return `mg:${enemy.middleGateIndex}`;
   if(Number.isInteger(enemy.wallIndex))return `mw:${enemy.wallIndex}`;
  }
  if(enemy.phase==="inside"||enemy.phase==="core")return enemy.assaultKey||"";
@@ -1824,9 +1915,11 @@ function assaultFormationPoint(enemy,angle,targetRadius,key,frontLimit){
  const queueIndex=inFront?rank:rank-limit;
  const row=inFront?0:1+Math.floor(queueIndex/limit);
  const slot=inFront?rank:queueIndex%limit;
- const spacing=Math.max(14,Math.min(20,(Number(enemy.radius)||12)*1.05));
- const tangentOffset=(slot-(limit-1)/2)*spacing;
- const radialOffset=row*Math.max(22,(Number(enemy.radius)||12)*1.55);
+ const radius=Math.max(10,Number(enemy.radius)||12);
+ const spacing=Math.max(22,Math.min(46,radius*2+4));
+ const laneBias=((Number(enemy.eid)||0)%2?1:-1)*Math.min(5,row*1.5);
+ const tangentOffset=(slot-(limit-1)/2)*spacing+laneBias;
+ const radialOffset=row*Math.max(34,radius*2+8);
  const rx=Math.cos(angle),ry=Math.sin(angle),tx=-ry,ty=rx;
  enemy.queueWaiting=!inFront;
  return {
@@ -1836,6 +1929,11 @@ function assaultFormationPoint(enemy,angle,targetRadius,key,frontLimit){
   row,
   rank
  };
+}
+function enemyReachedAssaultPoint(enemy,assault,distance){
+ if(!assault?.canAttack)return false;
+ const radius=Math.max(10,Number(enemy?.radius)||12);
+ return Number(distance)<=Math.max(10,radius+3);
 }
 function moveEnemyToward(enemy,x,y,dt){
  const dx=x-enemy.x,dy=y-enemy.y,d=Math.hypot(dx,dy);
@@ -1851,7 +1949,7 @@ function moveEnemyToward(enemy,x,y,dt){
   enemy._sidestepTime=Math.max(0,sidestepTime-Math.max(0,dt));
  }
  const effectiveSpeed=getEffectiveEnemySpeed(enemy);
- const speed=enemy.queueWaiting?effectiveSpeed*.82:effectiveSpeed;
+ const speed=enemy.queueWaiting?effectiveSpeed*.58:effectiveSpeed;
  const step=Math.min(d,speed*dt),prevX=enemy.x,prevY=enemy.y;
  placeMobileEntity(enemy,enemy.x+moveX*step,enemy.y+moveY*step,prevX,prevY);
  return d;
@@ -1875,6 +1973,73 @@ function refreshEnemyAbilityStates(dt){
  for(const shield of active.filter(enemy=>enemy.type==="shield"&&(Number(enemy.armorBreakTime)||0)<=0))for(const ally of active){if(ally!==shield&&Math.hypot(ally.x-shield.x,ally.y-shield.y)<=76)ally.shieldProtected=true}
 }
 function angularDistance(a,b){let d=Math.abs(a-b)%(Math.PI*2);return d>Math.PI?Math.PI*2-d:d}
+function enemyRouteFields(phase){
+ return phase==="outer"
+  ?{kind:"outerRouteKind",index:"outerRouteIndex",cooldown:"outerRouteCooldown"}
+  :{kind:"middleRouteKind",index:"middleRouteIndex",cooldown:"middleRouteCooldown"};
+}
+function enemyRouteCandidate(phase,kind,index){
+ const outer=phase==="outer";
+ const source=kind==="gate"?(outer?state.outerGates:state.middleGates):(outer?state.outerWalls:state.walls);
+ const item=source?.[index];
+ if(!item)return null;
+ const angle=Number.isFinite(item.angle)?item.angle:Number.isFinite(item.am)?item.am:0;
+ return {phase,kind,index,item,angle,key:`${outer?"o":"m"}${kind==="gate"?"g":"w"}:${index}`};
+}
+function enemyRouteLoad(phase,kind,index,enemy){
+ const fields=enemyRouteFields(phase);
+ let load=0;
+ for(const candidate of state.enemies){
+  if(candidate===enemy||candidate.hp<=0||candidate.phase!==phase)continue;
+  if(candidate[fields.kind]===kind&&candidate[fields.index]===index)load++;
+ }
+ return load;
+}
+function enemyRouteNearbyLoad(route,ringRadius,enemy){
+ const targetX=CX+Math.cos(route.angle)*ringRadius,targetY=CY+Math.sin(route.angle)*ringRadius;
+ let nearby=0;
+ for(const candidate of state.enemies){
+  if(candidate===enemy||candidate.hp<=0||candidate.phase!==route.phase)continue;
+  if(Math.hypot(candidate.x-targetX,candidate.y-targetY)<=115)nearby++;
+ }
+ return nearby;
+}
+function enemyRouteIsValid(route){return !!route?.item}
+function selectEnemyAssaultRoute(enemy,phase,dt){
+ const fields=enemyRouteFields(phase);
+ enemy[fields.cooldown]=Math.max(0,(Number(enemy[fields.cooldown])||0)-Math.max(0,dt));
+ let current=enemyRouteCandidate(phase,enemy[fields.kind],enemy[fields.index]);
+ if(current&&!enemy._routeRecheck)return current;
+ if(current&&enemy._routeRecheck&&enemy[fields.cooldown]>0)return current;
+ enemy._routeRecheck=false;
+ const outer=phase==="outer",gates=outer?state.outerGates:state.middleGates,walls=outer?state.outerWalls:state.walls;
+ const enemyAngle=Math.atan2(enemy.y-CY,enemy.x-CX);
+ const ringRadius=outer?OUTER_WALL_R:WALL_R;
+ let best=null,bestScore=Infinity;
+ const candidates=[];
+ for(let index=0;index<(gates?.length||0);index++){const route=enemyRouteCandidate(phase,"gate",index);if(route)candidates.push(route)}
+ for(let index=0;index<(walls?.length||0);index++){const route=enemyRouteCandidate(phase,"wall",index);if(route)candidates.push(route)}
+ for(const route of candidates){
+  const open=!route.item.built||Number(route.item.hp)<=0;
+  const healthRatio=open?0:Math.max(0,Number(route.item.hp)||0)/Math.max(1,Number(route.item.maxHp)||1);
+  const load=enemyRouteLoad(phase,route.kind,route.index,enemy);
+  const nearby=enemyRouteNearbyLoad(route,ringRadius,enemy);
+  let score=angularDistance(enemyAngle,route.angle)*1.05;
+  score+=load*.38+nearby*.12;
+  score+=open?-4.2:(route.kind==="gate"?.2:.92)+healthRatio*(route.kind==="gate"?1.05:1.38);
+  if(route.kind==="gate"&&Number(enemy.approachGateIndex)===route.index)score-=.28;
+  if(route.kind==="gate"&&Number(enemy.scoutTargetGateIndex)===route.index)score-=enemy.type==="runner"?1.15:.2;
+  if(current&&route.kind===current.kind&&route.index===current.index)score-=.55;
+  if(load>=6)score+=(load-5)*.55;
+  if(score<bestScore){bestScore=score;best=route}
+ }
+ if(!enemyRouteIsValid(best))best=current;
+ if(best){
+  enemy[fields.kind]=best.kind;enemy[fields.index]=best.index;
+  enemy[fields.cooldown]=3.6+((Number(enemy.eid)||0)%5)*.18;
+ }
+ return best;
+}
 function weakestGateIndex(enemy,gates){
  if(!gates?.length)return null;const angle=Math.atan2(enemy.y-CY,enemy.x-CX);let best=null,bestScore=Infinity;
  for(const gate of gates){const ratio=!gate?.built||gate.hp<=0?-1:gate.hp/Math.max(1,gate.maxHp);const score=ratio*3+angularDistance(angle,gate.angle)*.28;if(score<bestScore){bestScore=score;best=gate.i}}
@@ -1883,7 +2048,10 @@ function weakestGateIndex(enemy,gates){
 function updateRunnerWeakPoint(enemy,dt){
  if(enemy?.type!=="runner")return;enemy.scoutRetargetCd=(Number(enemy.scoutRetargetCd)||0)-dt;if(enemy.scoutRetargetCd>0)return;
  const gates=enemy.phase==="outer"?state.outerGates:enemy.phase==="outside"?state.middleGates:null;if(!gates)return;
- const target=weakestGateIndex(enemy,gates);if(Number.isInteger(target)){enemy.approachGateIndex=target;enemy.scoutTargetGateIndex=target}enemy.scoutRetargetCd=1.35;
+ const target=weakestGateIndex(enemy,gates);if(Number.isInteger(target)){
+  enemy.scoutTargetGateIndex=target;
+  const fields=enemyRouteFields(enemy.phase);enemy[fields.cooldown]=0;enemy._routeRecheck=true;
+ }enemy.scoutRetargetCd=1.35;
 }
 function nearestRaidBuilding(enemy,maxRange=190,zone=null){
  let best=null,bestDistance=maxRange;for(const building of state.buildings){if(building.hp<=0||building.base.kind==="tower"||building.base.decorative||building.key==="statue")continue;if(zone==="outer"&&building.slot?.role!=="outer-support")continue;if(zone==="inner"&&building.slot?.role==="outer-support")continue;const d=Math.hypot(building.slot.x-enemy.x,building.slot.y-enemy.y);if(d<bestDistance){bestDistance=d;best=building}}return best;
@@ -2302,7 +2470,7 @@ function update(dt){
    if(u.retreating){
     u.autoTarget=null;
     const dx=u.homeX-u.x,dy=u.homeY-u.y,d=Math.hypot(dx,dy);
-    if(d>4){const step=Math.min(d,effectiveUnitSpeed(u)*dt),prevX=u.x,prevY=u.y;placeMobileEntity(u,u.x+dx/d*step,u.y+dy/d*step,prevX,prevY)}
+    if(d>4)moveFriendlyUnitToward(u,u.homeX,u.homeY,dt)
     else{
      placeMobileEntity(u,u.homeX,u.homeY,u.x,u.y);
      u.retreatTimer=Math.max(0,(u.retreatTimer||0)-dt);
@@ -2333,15 +2501,15 @@ function update(dt){
     }else{
      const stopDistance=Math.max(10,meleeReach-4);
      const travel=Math.max(0,d-stopDistance);
-     const step=Math.min(travel,effectiveUnitSpeed(u)*dt);let nx=u.x+dx/d*step,ny=u.y+dy/d*step;
+     let nx=u.x+dx/d*travel,ny=u.y+dy/d*travel;
      const nr=Math.hypot(nx-CX,ny-CY);
      const movementLimit=getGuardRadiusLimit(u,WALL_R);
      if(nr>movementLimit){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(movementLimit-2);ny=CY+Math.sin(a)*(movementLimit-2)}
-     placeMobileEntity(u,nx,ny,u.x,u.y);
+     moveFriendlyUnitToward(u,nx,ny,dt);
     }
    }else{
     const tx=u.stance==="defend"?u.homeX:u.targetX,ty=u.stance==="defend"?u.homeY:u.targetY;
-    const dx=tx-u.x,dy=ty-u.y,d=Math.hypot(dx,dy);if(d>4){const step=Math.min(d,effectiveUnitSpeed(u)*dt),prevX=u.x,prevY=u.y;placeMobileEntity(u,u.x+dx/d*step,u.y+dy/d*step,prevX,prevY)}
+    const dx=tx-u.x,dy=ty-u.y,d=Math.hypot(dx,dy);if(d>4)moveFriendlyUnitToward(u,tx,ty,dt)
    }
    continue;
   }
@@ -2360,16 +2528,13 @@ function update(dt){
    const meleeThreat=nearestArcherMeleeThreat(u,wasEvadingMelee?ARCHER_SAFE_DISTANCE:ARCHER_RETREAT_TRIGGER);
    if(meleeThreat){moveArcherAwayFromThreat(u,meleeThreat,dt);continue}
    if(t&&distance>effectiveUnitRange(u)){
-    const dx=t.x-u.x,dy=t.y-u.y,d=Math.max(1,distance);
-    const moveSpeed=effectiveUnitSpeed(u);const desiredX=u.x+dx/d*moveSpeed*dt,desiredY=u.y+dy/d*moveSpeed*dt;
-    const dc=Math.hypot(desiredX-CX,desiredY-CY);
-    const zoneR=archerZoneRadius(u);
-    if(dc<zoneR&&dc>92){placeMobileEntity(u,desiredX,desiredY,u.x,u.y)}
+    const targetRadius=Math.hypot(t.x-CX,t.y-CY),zoneR=archerZoneRadius(u);
+    if(targetRadius<zoneR&&targetRadius>92){moveFriendlyUnitToward(u,t.x,t.y,dt)}
     else{
      const a=Math.atan2(t.y-CY,t.x-CX),r=zoneR-4;
      u.targetX=CX+Math.cos(a)*r;u.targetY=CY+Math.sin(a)*r;
      const mdx=u.targetX-u.x,mdy=u.targetY-u.y,md=Math.hypot(mdx,mdy);
-     if(md>4){const step=Math.min(md,effectiveUnitSpeed(u)*dt),prevX=u.x,prevY=u.y;placeMobileEntity(u,u.x+mdx/md*step,u.y+mdy/md*step,prevX,prevY)}
+     if(md>4)moveFriendlyUnitToward(u,u.targetX,u.targetY,dt)
     }
    }
   }else{
@@ -2380,12 +2545,11 @@ function update(dt){
    }else{
     const dx=u.targetX-u.x,dy=u.targetY-u.y,d=Math.hypot(dx,dy);
     if(d>4){
-      const step=Math.min(d,effectiveUnitSpeed(u)*dt);
-      let nx=u.x+dx/d*step,ny=u.y+dy/d*step;
+      let nx=u.targetX,ny=u.targetY;
       const zoneR=archerZoneRadius(u);
       const nd=Math.hypot(nx-CX,ny-CY);
       if(nd>zoneR){const a=Math.atan2(ny-CY,nx-CX);nx=CX+Math.cos(a)*(zoneR-2);ny=CY+Math.sin(a)*(zoneR-2)}
-      placeMobileEntity(u,nx,ny,u.x,u.y);
+      moveFriendlyUnitToward(u,nx,ny,dt);
     }
    }
   }
@@ -2425,69 +2589,61 @@ function update(dt){
   if(e.attackAnim>0)e.attackAnim=Math.max(0,e.attackAnim-dt);
   const dx=CX-e.x,dy=CY-e.y,dCenter=Math.max(1,Math.hypot(dx,dy));
   if(e.phase==="outer"){
-   const outerGate=Number.isInteger(e.approachGateIndex)
-    ?state.outerGates[e.approachGateIndex]||null
-    :getOuterGateForPoint(state,e.x,e.y,{CX,CY});
+   const route=selectEnemyAssaultRoute(e,"outer",dt);
    const targetR=OUTER_WALL_R+e.radius+4;
-   if(outerGate){
-    e.outerGateIndex=outerGate.i;e.outerWallIndex=null;
-    const baseX=CX+Math.cos(outerGate.angle)*targetR,baseY=CY+Math.sin(outerGate.angle)*targetR;
+   if(route?.kind==="gate"){
+    const outerGate=route.item;e.outerGateIndex=route.index;e.outerWallIndex=null;
+    const baseX=CX+Math.cos(route.angle)*targetR,baseY=CY+Math.sin(route.angle)*targetR;
     if(!outerGate.built||outerGate.hp<=0){
-     const d=moveEnemyToward(e,baseX,baseY,dt);if(d<5)e.phase="outside";
+     const d=moveEnemyToward(e,baseX,baseY,dt);if(d<5){e.phase="outside";e.middleRouteCooldown=0}
     }else{
      const gateDefender=nearestGateDefender(e,outerGate,OUTER_WALL_R);
      if(gateDefender){enemyAttackDefender(e,gateDefender)}else{
-      const assault=assaultFormationPoint(e,outerGate.angle,targetR,`og:${outerGate.i}`,6);
+      const assault=assaultFormationPoint(e,route.angle,targetR,`og:${route.index}`,4);
       const d=moveEnemyToward(e,assault.x,assault.y,dt);
-      if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const gateDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.35);
+      if(enemyReachedAssaultPoint(e,assault,d)&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const gateDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.35);
        outerGate.hp=Math.max(0,outerGate.hp-gateDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#775039",6);if(outerGate.hp<=0)showToast(`Das ${outerGate.name} wurde durchbrochen!`)}
      }
     }
-   }else{
-    const wi=getOuterWallSegmentIndexForAngle(Math.atan2(e.y-CY,e.x-CX),state.outerWalls.length);
-    const wall=getOuterWallSegmentStatus(state,wi);
-    e.outerWallIndex=wi;e.outerGateIndex=null;
-    const wallAngle=Number.isFinite(wall?.am)?wall.am:Math.atan2(e.y-CY,e.x-CX);
-    const baseX=CX+Math.cos(wallAngle)*targetR,baseY=CY+Math.sin(wallAngle)*targetR;
-    if(!wall||!wall.built||wall.hp<=0){
-     const d=moveEnemyToward(e,baseX,baseY,dt);if(d<5)e.phase="outside";
+   }else if(route){
+    const wall=route.item,wi=route.index;e.outerWallIndex=wi;e.outerGateIndex=null;
+    const baseX=CX+Math.cos(route.angle)*targetR,baseY=CY+Math.sin(route.angle)*targetR;
+    if(!wall.built||wall.hp<=0){
+     const d=moveEnemyToward(e,baseX,baseY,dt);if(d<5){e.phase="outside";e.middleRouteCooldown=0}
     }else{
-     const assault=assaultFormationPoint(e,wallAngle,targetR,`ow:${wi}`,4);
+     const assault=assaultFormationPoint(e,route.angle,targetR,`ow:${wi}`,4);
      const d=moveEnemyToward(e,assault.x,assault.y,dt);
-     if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const wallDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.25);
+     if(enemyReachedAssaultPoint(e,assault,d)&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const wallDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.25);
       wall.hp=Math.max(0,wall.hp-wallDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#8a5d3c",5);if(wall.hp<=0)showToast(`Bresche in äußerer Palisade: ${wall.name||getOuterWallSegmentName(wi,state.outerWalls.length)}!`)}
     }
    }
   }else if(e.phase==="outside"){
    const outerRaidTarget=e.type==="raider"?nearestRaidBuilding(e,235,"outer"):null;
    if(outerRaidTarget){attackRaidBuilding(e,outerRaidTarget,dt);continue}
-   const gate=Number.isInteger(e.approachGateIndex)
-    ?state.middleGates[e.approachGateIndex]||null
-    :getMiddleGateForPoint(state,e.x,e.y,{CX,CY});
+   const route=selectEnemyAssaultRoute(e,"outside",dt);
    const targetR=WALL_R+e.radius+4;
-   if(gate){
-    e.middleGateIndex=gate.i;e.wallIndex=null;
-    const baseX=CX+Math.cos(gate.angle)*targetR,baseY=CY+Math.sin(gate.angle)*targetR;
+   if(route?.kind==="gate"){
+    const gate=route.item;e.middleGateIndex=route.index;e.wallIndex=null;
+    const baseX=CX+Math.cos(route.angle)*targetR,baseY=CY+Math.sin(route.angle)*targetR;
     if(!gate.built||gate.hp<=0){
      const d=moveEnemyToward(e,baseX,baseY,dt);if(d<5)e.phase="inside";
     }else{
      const gateDefender=nearestGateDefender(e,gate,WALL_R);
      if(gateDefender){enemyAttackDefender(e,gateDefender)}else{
-      const assault=assaultFormationPoint(e,gate.angle,targetR,`mg:${gate.i}`,6);
+      const assault=assaultFormationPoint(e,route.angle,targetR,`mg:${route.index}`,4);
       const d=moveEnemyToward(e,assault.x,assault.y,dt);
-      if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const gateDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.35);
+      if(enemyReachedAssaultPoint(e,assault,d)&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const gateDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.35);
        gate.hp=Math.max(0,gate.hp-gateDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#8c5734",6);if(gate.hp<=0)showToast(`Das ${gate.name} wurde durchbrochen!`)}
      }
     }
-   }else{
-    const wi=angleIndex(e.x,e.y),wall=state.walls[wi];e.wallIndex=wi;e.middleGateIndex=null;
-    const wallAngle=Number.isFinite(wall?.am)?wall.am:Math.atan2(e.y-CY,e.x-CX);
-    const baseX=CX+Math.cos(wallAngle)*targetR,baseY=CY+Math.sin(wallAngle)*targetR;
-    if(!wall.built||wall.hp<=0){e.phase="inside"}
+   }else if(route){
+    const wall=route.item,wi=route.index;e.wallIndex=wi;e.middleGateIndex=null;
+    const baseX=CX+Math.cos(route.angle)*targetR,baseY=CY+Math.sin(route.angle)*targetR;
+    if(!wall.built||wall.hp<=0){const d=moveEnemyToward(e,baseX,baseY,dt);if(d<5)e.phase="inside"}
     else{
-     const assault=assaultFormationPoint(e,wallAngle,targetR,`mw:${wi}`,4);
+     const assault=assaultFormationPoint(e,route.angle,targetR,`mw:${wi}`,4);
      const d=moveEnemyToward(e,assault.x,assault.y,dt);
-     if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const wallDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.25);
+     if(enemyReachedAssaultPoint(e,assault,d)&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const wallDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.25);
       wall.hp=Math.max(0,wall.hp-wallDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in mittlerer Palisade: ${wall.name||getMiddleWallSegmentName(wi,state.walls.length)}!`)}
     }
    }
@@ -2518,7 +2674,7 @@ function update(dt){
     const targetR=FIXED_INNER_WALL_RADIUS+e.radius+5;
     const assault=assaultFormationPoint(e,innerWall.am,targetR,`iw:${innerWall.i}`,5);
     const d=moveEnemyToward(e,assault.x,assault.y,dt);
-    if(d<5&&assault.canAttack&&e.attackCd<=0){
+    if(enemyReachedAssaultPoint(e,assault,d)&&e.attackCd<=0){
      e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;
      const wallDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.3);
      innerWall.hp=Math.max(0,innerWall.hp-wallDamage*fortificationDamageMultiplier());
@@ -2554,7 +2710,7 @@ function update(dt){
    if(!Number.isFinite(e.coreAssaultAngle))e.coreAssaultAngle=Math.atan2(e.y-CY,e.x-CX);
    const assault=assaultFormationPoint(e,e.coreAssaultAngle,44,"core",8);
     const d=moveEnemyToward(e,assault.x,assault.y,dt);
-    if(d<5&&assault.canAttack&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;state.hp-=enemyAttackDamage(e);burst(CX,CY,e.color,8)}
+    if(enemyReachedAssaultPoint(e,assault,d)&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;state.hp-=enemyAttackDamage(e);burst(CX,CY,e.color,8)}
    }
   }
  }

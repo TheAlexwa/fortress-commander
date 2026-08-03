@@ -474,6 +474,7 @@ export function resolveEnemySeparation(
       enemy._sidestepAttempts = (Number(enemy._sidestepAttempts) || 0) + 1;
       enemy._sidestepDirection = ((Number(enemy.eid) || 0) + enemy._sidestepAttempts) % 2 ? 1 : -1;
       enemy._sidestepTime = ENEMY_SIDESTEP_DURATION;
+      enemy._routeRecheck = true;
     }
     enemy._progressX = enemy.x;
     enemy._progressY = enemy.y;

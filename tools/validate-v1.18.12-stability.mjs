@@ -20,8 +20,8 @@ const assert=(condition,message)=>{if(!condition)failures.push(message)};
 const requireText=(source,text,label)=>{if(!source.includes(text))failures.push(`${label}: ${text}`)};
 
 for(const text of [
-  'const GAME_VERSION="1.18.12"',
-  'const GAME_RELEASE_NAME="Bewegungs- und Speicherstabilität"',
+  'const GAME_VERSION="1.18.13"',
+  'const GAME_RELEASE_NAME="Torwege und Angriffswellen"',
   'function safeEnemySpawnPoint(',
   'const safeRadius=OUTER_WALL_R+ENEMY_SAFE_SPAWN_PADDING',
   'function returnMeleeDefenderInsideLimit(',
@@ -32,8 +32,8 @@ for(const text of [
   'resolveEntityStructureCollision(enemy,enemy._separationOriginX,enemy._separationOriginY)'
 ])requireText(main,text,"Stabilitaetslogik fehlt");
 
-requireText(html,"v1.18.12","HTML-Version fehlt");
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.12"',"PWA-Cacheversion fehlt");
+requireText(html,"v1.18.13","HTML-Version fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.13-r1"',"PWA-Cacheversion fehlt");
 
 const spawnStart=main.indexOf("function safeEnemySpawnPoint(");
 const spawnEnd=main.indexOf("function spawnEnemy(",spawnStart);
@@ -65,7 +65,7 @@ assert(guard.x-beforeX<=GUARD_OVERLAP_MAX_STEP+1e-9,"Burgwache wird bei Kollisio
 assert(guard.x>beforeX,"Kollisionskorrektur der Burgwache fehlt");
 
 const expectedHashes={
-  "js/enemies.js":"e2c4ecd7f583af6f0a6a4caea213845efa948ce7e98b6d2a5dc48e761e7f49ea"
+  "js/enemies.js":"b9750130eea9343399fccc0a99ac542b7b98f9f8e85f57e04045408bb4d9aa05"
 };
 for(const [file,expected] of Object.entries(expectedHashes)){
   const actual=crypto.createHash("sha256").update(fs.readFileSync(path.join(root,file))).digest("hex");
@@ -79,7 +79,7 @@ for(const text of [
 ])requireText(main,text,"Einheiten-Kampfwert wurde veraendert");
 
 if(failures.length){
-  console.error("v1.18.12-Stabilitaetspruefung fehlgeschlagen:\n- "+failures.join("\n- "));
+  console.error("v1.18.13-Stabilitaetspruefung fehlgeschlagen:\n- "+failures.join("\n- "));
   process.exit(1);
 }
-console.log("v1.18.12-Stabilitaetspruefung erfolgreich: sichere Spawns, sanfte Rueckfuehrung, seitliches Ausweichen, Bogenschuetzen-Zielwahl, Speicherpositionen und unveraenderte Kampfwerte bestaetigt.");
+console.log("v1.18.13-Stabilitaetspruefung erfolgreich: sichere Spawns, sanfte Rueckfuehrung, seitliches Ausweichen, Bogenschuetzen-Zielwahl, Speicherpositionen und unveraenderte Kampfwerte bestaetigt.");
