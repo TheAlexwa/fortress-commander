@@ -264,8 +264,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.15";
-const GAME_RELEASE_NAME="Abriss & Rückerstattung";
+const GAME_VERSION="1.18.16";
+const GAME_RELEASE_NAME="Update-Details & Anleitung";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true,cameraEffects:true};

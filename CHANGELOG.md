@@ -1,3 +1,13 @@
+## v1.18.16 – Update-Details & Anleitung
+
+- Updatehinweis um einen mobilen „Patchdetails“-Button vor „Jetzt aktualisieren“ erweitert.
+- Neues Patchdetails-Fenster mit Version, Zusammenfassung, Änderungsliste, Spielstand-Hinweis und direkter Update-Aktion ergänzt.
+- `release-notes.json` als pflegbare Quelle für zukünftige Updateinformationen ergänzt; Abruf erfolgt netzwerkzuerst mit Offline-Fallback.
+- Spielanleitung auf aktuellen Stand geprüft und korrigiert: dynamische Belagerungsrouten, Torpassage eigener Einheiten, Einsatzbereiche, Handwerkerziele, Abrisssystem und Kommandantenpunkte.
+- Veraltete Festungstexte und feste Zuordnung der Außenlager zu einzelnen Toren entfernt.
+- Neuer Prüflauf `tools/validate-v1.18.16-update-details.mjs` kontrolliert Update-UI, Release-Daten, Anleitung und unveränderte Kampfwerte.
+- Service-Worker-Cache und sichtbare Versionsangaben auf v1.18.16 erhöht.
+
 ## v1.18.15 – Abriss & Rückerstattung
 
 - Auswahlfenster um einen mobilen Abriss-Workflow für Gebäude, Türme, mittlere/äußere Mauern und Tore ergänzt.

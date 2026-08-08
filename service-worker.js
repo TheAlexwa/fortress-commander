@@ -1,8 +1,9 @@
-const CACHE_NAME="fortress-commander-v1.18.15-r1";
+const CACHE_NAME="fortress-commander-v1.18.16";
 const INDEX_URL=new URL("index.html",self.registration.scope).href;
 const APP_SHELL=[
  './index.html',
  './manifest.webmanifest',
+ './release-notes.json',
  './css/mobile.css',
  './css/style.css',
  './css/ui.css',
@@ -129,6 +130,19 @@ self.addEventListener("fetch",event=>{
  if(request.method!=="GET")return;
  const url=new URL(request.url);
  if(url.origin!==self.location.origin)return;
+ if(url.pathname.endsWith("/release-notes.json")){
+  event.respondWith((async()=>{
+   const cache=await caches.open(CACHE_NAME);
+   try{
+    const response=await fetch(request,{cache:"no-store"});
+    if(response.ok)await cache.put(new URL("release-notes.json",self.registration.scope).href,response.clone());
+    return response;
+   }catch{
+    return await cache.match(new URL("release-notes.json",self.registration.scope).href)||new Response("{}",{status:503,headers:{"Content-Type":"application/json; charset=utf-8"}});
+   }
+  })());
+  return;
+ }
  if(request.mode==="navigate"){
   event.respondWith((async()=>{
    const cache=await caches.open(CACHE_NAME);

@@ -1,3 +1,12 @@
+## v1.18.16 – Update-Details & Anleitung
+
+- Das PWA-Updatefenster besitzt links neben „Jetzt aktualisieren“ einen neuen Button „Patchdetails“.
+- Patchdetails werden aus `release-notes.json` netzwerkfrisch geladen und zeigen Version, Release-Titel, Änderungen und Spielstand-Kompatibilität vor der Installation.
+- Der Service Worker behandelt Patchdetails netzwerkzuerst und hält eine Offline-Fallbackkopie bereit.
+- Die Spielanleitung wurde vollständig auf die aktuellen Torwege, Belagerungsrouten, Handwerkerreparaturen, Abrissregeln und Kommandantenpunkte abgestimmt.
+- Veraltete Hinweise zum frühen Festungslayout und zu festen Gegner-Torzuordnungen wurden entfernt.
+- Keine Änderungen an Schaden, Rüstung oder Angriffsgeschwindigkeit.
+
 ## v1.18.15 – Abriss & Rückerstattung
 
 - Gebäude, Türme, mittlere/äußere Mauern und Tore können direkt im Auswahlfenster abgerissen werden.

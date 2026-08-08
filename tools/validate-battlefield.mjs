@@ -26,16 +26,16 @@ for(const text of [
 ])requireText(render,text,"Schlachtfelddarstellung fehlt");
 
 for(const text of [
- 'const GAME_VERSION="1.18.15"',
- 'const GAME_RELEASE_NAME="Abriss & Rückerstattung"',
+ 'const GAME_VERSION="1.18.16"',
+ 'const GAME_RELEASE_NAME="Update-Details & Anleitung"',
  'b.attackAngle=Math.atan2(e.y-b.slot.y,e.x-b.slot.x)',
  'b.attackVisualTime=b.key==="catapult"?.48:.34',
  'cameraEffects:saved?.cameraEffects!==false',
  'cameraEffects:displayPreferences.cameraEffects'
 ])requireText(main,text,"Visuelles Turm- oder Kamera-Signal fehlt");
 
-for(const text of ['id="cameraEffectsToggle"','v1.18.15'])requireText(html,text,"Anzeigeoption oder Version fehlt");
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.15-r1"',"PWA-Cacheversion fehlt");
+for(const text of ['id="cameraEffectsToggle"','v1.18.16'])requireText(html,text,"Anzeigeoption oder Version fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.16"',"PWA-Cacheversion fehlt");
 requireText(readme,"Kampfwerte, Reichweiten, Angriffsgeschwindigkeiten, Zielregeln und Balance bleiben unverändert","README-Balancehinweis fehlt");
 requireText(changelog,"validate-battlefield.mjs","CHANGELOG-Prüfung fehlt");
 

@@ -1,0 +1,15 @@
+{
+  "version": "1.18.16",
+  "title": "Update-Details & Anleitung",
+  "summary": "Das Updatefenster zeigt die wichtigsten Änderungen jetzt vor der Installation. Gleichzeitig wurde die Spielanleitung auf den aktuellen Stand der Festungs-, Einheiten- und Reparatursysteme gebracht.",
+  "changes": [
+    "Neuer Button 'Patchdetails' links neben 'Jetzt aktualisieren' im Updatehinweis.",
+    "Patchdetails zeigen Versionsnummer, Release-Titel, Änderungen und Spielstand-Kompatibilität vor dem Update.",
+    "Die Anleitung erklärt jetzt dynamische Tor-, Breschen- und Mauerrouten der Belagerungs-KI korrekt.",
+    "Eigene Torwege, Einsatzbereiche von Burgwache und Andreas sowie die vollständige Handwerker-Reparatur wurden aktualisiert beschrieben.",
+    "Abriss mit 50 Prozent Ressourcenrückgabe, Schutz des inneren Burgwalls und die Sicherheitsbestätigung sind jetzt in der Anleitung dokumentiert.",
+    "Kommandantenpunkte werden mit 1 Punkt pro Bonusziel, 5 Punkten pro Boss und 20 Punkten für den Kampagnenabschluss erklärt.",
+    "Keine Änderungen an Schaden, Rüstung oder Angriffsgeschwindigkeit."
+  ],
+  "saveCompatible": true
+}

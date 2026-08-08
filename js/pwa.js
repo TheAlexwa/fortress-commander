@@ -2,6 +2,7 @@ const INSTALL_BUTTON_IDS=["startInstallAppBtn","navInstallApp","installAppSettin
 let deferredInstallPrompt=null;
 let serviceWorkerRegistration=null;
 let updateReloadRequested=false;
+let latestReleaseNotes=null;
 
 function byId(id){return document.getElementById(id)}
 function isStandalone(){return window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true}
@@ -53,22 +54,57 @@ function updateConnectionStatus(){
  if(!offline&&updateConnectionStatus.wasOffline)showStatus("Internetverbindung wiederhergestellt.","success");
  updateConnectionStatus.wasOffline=offline;
 }
+function normalizeReleaseNotes(data){
+ if(!data||typeof data!=="object")return null;
+ const changes=Array.isArray(data.changes)?data.changes.filter(item=>typeof item==="string"&&item.trim()).slice(0,12):[];
+ if(!data.version&&!data.title&&!changes.length)return null;
+ return {version:String(data.version||"").trim(),title:String(data.title||"Patchdetails").trim(),summary:String(data.summary||"").trim(),changes,saveCompatible:data.saveCompatible!==false};
+}
+function renderReleaseNotes(notes){
+ const safe=notes||{version:"",title:"Patchdetails",summary:"Die Patchdetails konnten nicht geladen werden.",changes:["Bitte stelle eine Internetverbindung her und versuche es erneut."],saveCompatible:true};
+ setText("appUpdateDetailsTitle",safe.title||"Patchdetails");
+ setText("appUpdateDetailsVersion",safe.version?`Version ${safe.version}`:"Neue Version");
+ setText("appUpdateDetailsSummary",safe.summary||"Die wichtigsten Änderungen dieser Version:");
+ const list=byId("appUpdateDetailsList");if(list){list.textContent="";(safe.changes.length?safe.changes:["Keine weiteren Details hinterlegt."]).forEach(change=>{const item=document.createElement("li");item.textContent=change;list.appendChild(item)})}
+ setText("appUpdateSaveNote",safe.saveCompatible?"💾 Dein vorhandener Spielstand bleibt beim Update erhalten.":"⚠️ Beachte die Hinweise zur Spielstand-Kompatibilität in den Patchdetails.");
+ const bannerText=byId("appUpdateBannerText");if(bannerText)bannerText.textContent=safe.version?`Version ${safe.version} ist bereit. Dein Spielstand bleibt erhalten.`:"Das Update ist bereit. Dein Spielstand bleibt erhalten.";
+}
+async function loadReleaseNotes({force=false}={}){
+ if(latestReleaseNotes&&!force){renderReleaseNotes(latestReleaseNotes);return latestReleaseNotes}
+ try{
+  const notesUrl=new URL("../release-notes.json",import.meta.url);
+  const response=await fetch(notesUrl,{cache:"no-store"});
+  if(!response.ok)throw new Error(`HTTP ${response.status}`);
+  const notes=normalizeReleaseNotes(await response.json());
+  if(!notes)throw new Error("Unvollständige Patchdetails");
+  latestReleaseNotes=notes;renderReleaseNotes(notes);return notes;
+ }catch(error){console.warn("Patchdetails konnten nicht geladen werden:",error);renderReleaseNotes(null);return null}
+}
 function showUpdateBanner(registration){
  serviceWorkerRegistration=registration||serviceWorkerRegistration;
  setHidden(byId("appUpdateBanner"),false);
+ loadReleaseNotes({force:true});
 }
 function hideUpdateBanner(){setHidden(byId("appUpdateBanner"),true)}
+function showUpdateDetails(){setHidden(byId("appUpdateDetailsOverlay"),false);document.body.classList.add("pwaUpdateDetailsOpen");loadReleaseNotes()}
+function hideUpdateDetails(){setHidden(byId("appUpdateDetailsOverlay"),true);document.body.classList.remove("pwaUpdateDetailsOpen")}
+function applyWaitingUpdate(){
+ const waiting=serviceWorkerRegistration?.waiting;
+ if(!waiting){hideUpdateDetails();hideUpdateBanner();showStatus("Das Update ist noch nicht vollständig bereit. Bitte versuche es gleich erneut.");return}
+ updateReloadRequested=true;
+ for(const id of ["appUpdateNowBtn","appUpdateDetailsNowBtn"]){const button=byId(id);if(button){button.disabled=true;button.textContent="Update wird geladen …"}}
+ waiting.postMessage({type:"SKIP_WAITING"});
+}
 function bindPwaControls(){
  INSTALL_BUTTON_IDS.forEach(id=>byId(id)?.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();requestInstall()}));
- byId("appUpdateLaterBtn")?.addEventListener("click",hideUpdateBanner);
- byId("appUpdateNowBtn")?.addEventListener("click",()=>{
-  const waiting=serviceWorkerRegistration?.waiting;
-  if(!waiting){hideUpdateBanner();return}
-  updateReloadRequested=true;
-  byId("appUpdateNowBtn").disabled=true;
-  byId("appUpdateNowBtn").textContent="Update wird geladen …";
-  waiting.postMessage({type:"SKIP_WAITING"});
- });
+ byId("appUpdateLaterBtn")?.addEventListener("click",()=>{hideUpdateDetails();hideUpdateBanner()});
+ byId("appUpdateDetailsBtn")?.addEventListener("click",showUpdateDetails);
+ byId("appUpdateDetailsCloseBtn")?.addEventListener("click",hideUpdateDetails);
+ byId("appUpdateDetailsBackBtn")?.addEventListener("click",hideUpdateDetails);
+ byId("appUpdateDetailsOverlay")?.addEventListener("click",event=>{if(event.target===byId("appUpdateDetailsOverlay"))hideUpdateDetails()});
+ byId("appUpdateNowBtn")?.addEventListener("click",applyWaitingUpdate);
+ byId("appUpdateDetailsNowBtn")?.addEventListener("click",applyWaitingUpdate);
+ document.addEventListener("keydown",event=>{if(event.key==="Escape"&&!byId("appUpdateDetailsOverlay")?.classList.contains("hidden"))hideUpdateDetails()});
 }
 async function registerServiceWorker(){
  if(!("serviceWorker" in navigator)||!/^https?:$/.test(location.protocol))return;
