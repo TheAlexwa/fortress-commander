@@ -256,8 +256,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.13";
-const GAME_RELEASE_NAME="Torwege und Angriffswellen";
+const GAME_VERSION="1.18.14";
+const GAME_RELEASE_NAME="Handwerker-Reparaturwege";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true,cameraEffects:true};
@@ -713,8 +713,9 @@ function pushEntityOutsideCircle(entity,cx,cy,radius,previousX=entity.x,previous
  entity.x=cx+dx/d*target;
  entity.y=cy+dy/d*target;
 }
+function canUseFriendlyGate(entity){return !!entity&&((entity.kind==="unit"&&entity.hp>0)||entity.job==="craftsman")}
 function friendlyGateIndexAtAngle(entity,angle,ring){
- if(entity?.kind!=="unit"||entity.hp<=0)return -1;
+ if(!canUseFriendlyGate(entity))return -1;
  return ring==="outer"
   ?getOuterGateIndexForAngle(angle,OUTER_GATE_HALF_ANGLE*.94)
   :getMiddleGateIndexForAngle(angle,MIDDLE_GATE_HALF_ANGLE*.94);
@@ -800,7 +801,7 @@ function bestFriendlyGateIndex(unit,targetX,targetY,crossing){
  return bestIndex;
 }
 function friendlyGateCrossing(unit,targetX,targetY){
- if(unit?.kind!=="unit")return null;
+ if(!canUseFriendlyGate(unit))return null;
  const currentRadius=Math.hypot(unit.x-CX,unit.y-CY);
  const targetRadius=Math.hypot(targetX-CX,targetY-CY);
  const margin=Math.max(10,entityCollisionRadius(unit)+4);
@@ -2309,15 +2310,26 @@ function marketOutput(amount,building){return Math.floor(amount*(1-marketLossPer
 function runSupportTick(){
  return runEconomySupportTick(state,{paused,gameOver,syncResidents,residentCapacityForHouse,buildingHasWorker,productionMultiplier:activeWaveModifier("production",1)});
 }
-function repairTargetInfo(target){
+function repairTargetInfo(target,craftsman=null){
  if(!target)throw new Error("Ungültiges Reparaturziel");
  if(target.kind==="castle")return {x:CX,y:CY-12,need:()=>state.maxHp-state.hp,apply:v=>state.hp=Math.min(state.maxHp,state.hp+v)};
- // Mauersegmente besitzen historisch kein kind-Feld. Deshalb zusätzlich an Winkel/HP erkennen.
+ const workerRadius=entityCollisionRadius(craftsman||{job:"craftsman"});
+ // Mauersegmente und Tore werden von der Seite repariert, auf der sich der Handwerker befindet.
+ // So muss er nicht in den Kollisionskörper des Segments hineinlaufen.
  if(target.kind==="wall"||(Number.isFinite(target.am)&&Number.isFinite(target.hp)&&Number.isFinite(target.maxHp))){
   const radius=target.ring==="inner"?FIXED_INNER_WALL_RADIUS:target.ring==="outer"?OUTER_WALL_R:WALL_R;
-  return {x:CX+Math.cos(target.am)*radius,y:CY+Math.sin(target.am)*radius,need:()=>target.maxHp-target.hp,apply:v=>target.hp=Math.min(target.maxHp,target.hp+v)};
+  const angle=Number.isFinite(target.am)?target.am:Number(target.angle)||0;
+  const workerDistance=craftsman?Math.hypot(craftsman.x-CX,craftsman.y-CY):radius-1;
+  const side=workerDistance>=radius?1:-1;
+  const contactRadius=radius+side*(RING_COLLISION_THICKNESS+workerRadius+6);
+  return {x:CX+Math.cos(angle)*contactRadius,y:CY+Math.sin(angle)*contactRadius,need:()=>target.maxHp-target.hp,apply:v=>target.hp=Math.min(target.maxHp,target.hp+v)};
  }
- if(target.slot)return {x:target.slot.x,y:target.slot.y,need:()=>target.maxHp-target.hp,apply:v=>target.hp=Math.min(target.maxHp,target.hp+v)};
+ if(target.slot){
+  const clearance=buildingCollisionRadius(target)+workerRadius+STRUCTURE_COLLISION_PADDING+5;
+  let dx=(craftsman?.x??CX)-target.slot.x,dy=(craftsman?.y??CY)-target.slot.y,d=Math.hypot(dx,dy);
+  if(d<.001){dx=CX-target.slot.x;dy=CY-target.slot.y;d=Math.hypot(dx,dy)||1}
+  return {x:target.slot.x+dx/d*clearance,y:target.slot.y+dy/d*clearance,need:()=>target.maxHp-target.hp,apply:v=>target.hp=Math.min(target.maxHp,target.hp+v)};
+ }
  throw new Error("Reparaturziel ohne Position");
 }
 function damagedRepairTargets(){
@@ -2348,11 +2360,10 @@ function assignCraftsmen(){
  }
 }
 function moveCraftsman(c,x,y,dt){
- const dx=x-c.x,dy=y-c.y,d=Math.hypot(dx,dy);
- if(d<=4){placeMobileEntity(c,x,y,c.x,c.y);return true}
- const step=Math.min(d,craftsmanMoveSpeed()*dt),prevX=c.x,prevY=c.y;placeMobileEntity(c,c.x+dx/d*step,c.y+dy/d*step,prevX,prevY);return false;
+ const remaining=moveFriendlyUnitToward(c,x,y,dt,{speed:craftsmanMoveSpeed()});
+ return remaining<=6;
 }
-function sendCraftsmanHome(c){c.target=null;c.mode="returning";c.repairTimer=0}
+function sendCraftsmanHome(c){c.target=null;c.mode="returning";c.repairTimer=0;c._gateTransit=null}
 function chooseCraftsmanTarget(c){
  const targets=damagedRepairTargets();
  if(!targets.length){sendCraftsmanHome(c);return false}
@@ -2362,7 +2373,7 @@ function chooseCraftsmanTarget(c){
  const available=repairable.filter(t=>!occupied.has(t));
  const pool=available.length?available:repairable;
  pool.sort((a,b)=>{
-  const ai=repairTargetInfo(a),bi=repairTargetInfo(b);
+  const ai=repairTargetInfo(a,c),bi=repairTargetInfo(b,c);
   return Math.hypot(ai.x-c.x,ai.y-c.y)-Math.hypot(bi.x-c.x,bi.y-c.y);
  });
  c.target=pool[0];c.mode="outbound";c.repairTimer=0;return true;
@@ -2385,12 +2396,12 @@ function updateCraftsmen(dt){
   if(c.home.repairEnabled===false){goHome(c);continue}
   let targetValid=false;
   if(c.target){
-   try{targetValid=repairTargetInfo(c.target).need()>.01}catch(_){targetValid=false}
+   try{targetValid=repairTargetInfo(c.target,c).need()>.01}catch(_){targetValid=false}
   }
   if(!targetValid)chooseCraftsmanTarget(c);
   if(!c.target){goHome(c);continue}
   let info;
-  try{info=repairTargetInfo(c.target)}catch(_){c.target=null;goHome(c);continue}
+  try{info=repairTargetInfo(c.target,c)}catch(_){c.target=null;goHome(c);continue}
   if(!Number.isFinite(info.x)||!Number.isFinite(info.y)){c.target=null;goHome(c);continue}
   if(!moveCraftsman(c,info.x,info.y,dt))continue;
   c.mode="repairing";c.repairTimer=(c.repairTimer||0)+dt;

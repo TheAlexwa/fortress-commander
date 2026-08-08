@@ -14,8 +14,8 @@ const assert=(condition,message)=>{if(!condition)failures.push(message)};
 const requireText=(source,text,message)=>assert(source.includes(text),`${message}: ${text}`);
 
 for(const marker of [
-  'const GAME_VERSION="1.18.13"',
-  'const GAME_RELEASE_NAME="Torwege und Angriffswellen"',
+  'const GAME_VERSION="1.18.14"',
+  'const GAME_RELEASE_NAME="Handwerker-Reparaturwege"',
   'function friendlyGateIndexAtAngle(',
   'function friendlyGateCrossing(',
   'function friendlyGateWaypoint(',
@@ -30,8 +30,8 @@ for(const marker of [
   'assaultFormationPoint(e,route.angle,targetR,`mg:${route.index}`,4)'
 ])requireText(marker.includes("_routeRecheck")?combat:main,marker,"Tor- oder Routenlogik fehlt");
 
-requireText(html,"v1.18.13","HTML-Version fehlt");
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.13-r1"',"PWA-Cacheversion fehlt");
+requireText(html,"v1.18.14","HTML-Version fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.14"',"PWA-Cacheversion fehlt");
 
 function extractFunction(source,name){
   const start=source.indexOf(`function ${name}(`);
@@ -69,7 +69,7 @@ try{
       outerGates:cardinal.map((angle,index)=>({i:index,angle,built:true,hp:760,maxHp:760})),
       walls:[],outerWalls:[],enemies:[]
     },
-    entityCollisionRadius:unit=>unit.key==="hero"?16:unit.key==="guard"?14:12,
+    entityCollisionRadius:unit=>unit?.job==="craftsman"?10:unit?.key==="hero"?16:unit?.key==="guard"?14:12,
     getNearestMiddleGateIndexForAngle:nearestGate,
     getMiddleGateIndexForAngle:(angle,tolerance=.105)=>{
       const index=nearestGate(angle);
@@ -85,7 +85,7 @@ try{
     }
   };
   vm.createContext(context);
-  for(const name of ["friendlyGateAngle","bestFriendlyGateIndex","friendlyGateCrossing","friendlyGateWaypoint"]){
+  for(const name of ["canUseFriendlyGate","friendlyGateAngle","bestFriendlyGateIndex","friendlyGateCrossing","friendlyGateWaypoint"]){
     vm.runInContext(extractFunction(main,name),context);
   }
   const guard={kind:"unit",key:"guard",hp:180,x:0,y:-250};
@@ -96,6 +96,10 @@ try{
   const second=context.friendlyGateWaypoint(guard,0,-470);
   assert(guard._gateTransit?.stage==="cross","Torweg wechselt am Anlaufpunkt nicht in die Durchgangsphase");
   assert(Math.hypot(second.x,second.y)>355,"Toraustritt liegt nicht auf der anderen Seite der mittleren Mauer");
+  const craftsman={job:"craftsman",x:0,y:-250};
+  const craftsmanGate=context.friendlyGateWaypoint(craftsman,0,-470);
+  assert(craftsmanGate.transit===true,"Handwerker startet keinen Weg durch das eigene Tor");
+  assert(craftsman._gateTransit?.ring==="middle","Handwerker nutzt fuer ein Ziel ausserhalb des Mittelrings keinen mittleren Torweg");
 
   context.MIDDLE_GATE_HALF_ANGLE=.105;
   context.OUTER_GATE_HALF_ANGLE=.082;
@@ -107,7 +111,7 @@ try{
   context.angleWithinArc=()=>true;
   context.state.walls=[{built:true,hp:420,a0:-2,a1:2}];
   context.state.outerWalls=[{built:true,hp:420,a0:-2,a1:2}];
-  for(const name of ["friendlyGateIndexAtAngle","isMiddleRingSolidAtAngle","resolveEntityAgainstRing"]){
+  for(const name of ["canUseFriendlyGate","friendlyGateIndexAtAngle","isMiddleRingSolidAtAngle","resolveEntityAgainstRing"]){
     vm.runInContext(extractFunction(main,name),context);
   }
   const friendly={kind:"unit",key:"guard",hp:180,x:0,y:-340};
@@ -175,7 +179,7 @@ for(const forbidden of [
 ])assert(!combat.includes(forbidden),`Alte Teleportkorrektur ist wieder vorhanden: ${forbidden}`);
 
 if(failures.length){
-  console.error("v1.18.13-Torpruefung fehlgeschlagen:\n- "+failures.join("\n- "));
+  console.error("v1.18.14-Torpruefung fehlgeschlagen:\n- "+failures.join("\n- "));
   process.exit(1);
 }
-console.log("v1.18.13-Torpruefung erfolgreich: eigene Torpassage, mehrstufige Wegpunkte, dynamische Angriffsziele, Überlastungsmalus und Breschenwahl bestaetigt.");
+console.log("v1.18.14-Torpruefung erfolgreich: eigene Torpassage, mehrstufige Wegpunkte, dynamische Angriffsziele, Überlastungsmalus und Breschenwahl bestaetigt.");

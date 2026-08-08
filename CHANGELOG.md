@@ -1,3 +1,11 @@
+## v1.18.14 – Handwerker-Reparaturwege
+
+- Handwerker dürfen intakte eigene Tore passieren und können dadurch Reparaturziele auf Mittel- und Außenring erreichen.
+- Reparaturpunkte für Mauern, Tore, Türme und Gebäude liegen außerhalb ihrer Kollisionskörper, damit Handwerker nicht am Ziel hängen bleiben.
+- Die bestehende Reparaturzielliste für Burg, Mauern, Tore, Türme und reguläre Gebäude bleibt erhalten.
+- Neuer Prüflauf `tools/validate-v1.18.14-craftsmen.mjs` kontrolliert Torpassage, erreichbare Reparaturpunkte und unveränderte Kampfwerte.
+- Service-Worker-Cache und sichtbare Versionsangaben auf v1.18.14 erhöht.
+
 ## v1.18.13 – Torwege und Angriffswellen
 
 - Mehrstufige Torwegführung für eigene Einheiten ergänzt: Anlaufpunkt, Tormitte und Austritt werden ohne Teleportation durchlaufen.

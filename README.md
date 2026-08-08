@@ -1,3 +1,11 @@
+## v1.18.14 – Handwerker-Reparaturwege
+
+- Handwerker nutzen jetzt die eigenen intakten Tore, um Reparaturziele auf anderen Verteidigungsringen zu erreichen.
+- Tore und Mauern werden von einer erreichbaren Seite repariert statt direkt im Kollisionskörper.
+- Türme und Versorgungsgebäude erhalten einen erreichbaren Reparaturpunkt außerhalb ihrer Gebäudekollision.
+- Burg, Mauern, Tore, Türme und reguläre Gebäude bleiben weiterhin gültige Reparaturziele; zerstörte Gebäude werden nicht automatisch wiederaufgebaut.
+- Schaden, Rüstung und Angriffsgeschwindigkeit bleiben unverändert.
+
 ## v1.18.13 – Torwege und Angriffswellen
 
 - Eigene Einheiten verwenden beim Wechsel zwischen Innen-, Mittel- und Außenring automatisch den nächsten passenden Torweg.
