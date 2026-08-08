@@ -6,10 +6,10 @@ const sw=fs.readFileSync("service-worker.js","utf8");
 const failures=[];
 const requireText=(source,text,message)=>{if(!source.includes(text))failures.push(message)};
 
-requireText(main,'const GAME_VERSION="1.18.16"',"Spielversion fehlt");
-requireText(main,'const GAME_RELEASE_NAME="Update-Details & Anleitung"',"Release-Name fehlt");
-requireText(html,"v1.18.16","HTML-Version fehlt");
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.16"',"PWA-Cacheversion fehlt");
+requireText(main,'const GAME_VERSION="1.18.17"',"Spielversion fehlt");
+requireText(main,'const GAME_RELEASE_NAME="Reparaturstabilität"',"Release-Name fehlt");
+requireText(html,"v1.18.17","HTML-Version fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.17-r2"',"PWA-Cacheversion fehlt");
 
 requireText(main,'function canUseFriendlyGate(entity)',"Freundliche Torfreigabe fehlt");
 requireText(main,'entity.job==="craftsman"',"Handwerker sind nicht fuer eigene Tore freigegeben");
@@ -28,7 +28,7 @@ for(const forbidden of [
 ]) requireText(main,forbidden,"Geschuetzter Kampfwert fehlt oder wurde veraendert");
 
 if(failures.length){
-  console.error("v1.18.16-Handwerkerpruefung fehlgeschlagen:\n- "+failures.join("\n- "));
+  console.error("v1.18.17-Handwerkerpruefung fehlgeschlagen:\n- "+failures.join("\n- "));
   process.exit(1);
 }
-console.log("v1.18.16-Handwerkerpruefung erfolgreich: eigene Torpassage, erreichbare Reparaturpunkte fuer Mauern, Tore, Tuerme und Gebaeude sowie unveraenderte Kampfwerte bestaetigt.");
+console.log("v1.18.17-Handwerkerpruefung erfolgreich: eigene Torpassage, erreichbare Reparaturpunkte fuer Mauern, Tore, Tuerme und Gebaeude sowie unveraenderte Kampfwerte bestaetigt.");

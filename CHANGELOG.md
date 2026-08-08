@@ -1,3 +1,12 @@
+## v1.18.17 – Reparaturstabilität
+
+- Zerstörte mittlere und äußere Mauern und Tore sind keine Handwerker- oder Wellenreparaturziele mehr und müssen regulär neu errichtet werden.
+- Der feste innere Ring bleibt als Sonderfall reparierbar, da für ihn kein separater Neubauweg existiert.
+- Bei mehreren Handwerkern eines Hauses werden Reparaturleistung sowie Holz- und Steinkosten nun mit derselben Teamgröße geteilt.
+- Der Stabilitätsvalidator vergleicht geschützte Dateien nach Normalisierung der CRLF/LF-Zeilenenden.
+- Neuer Prüflauf `tools/validate-v1.18.17-repairs.mjs` kontrolliert zerstörte Befestigungen, Teamkosten und unveränderte Kampfwerte.
+- Service-Worker-Cache und sichtbare Versionsangaben auf v1.18.17 erhöht.
+
 ## v1.18.16 – Update-Details & Anleitung
 
 - Updatehinweis um einen mobilen „Patchdetails“-Button vor „Jetzt aktualisieren“ erweitert.

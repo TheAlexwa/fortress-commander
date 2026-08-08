@@ -1,3 +1,11 @@
+## v1.18.17 – Reparaturstabilität
+
+- Zerstörte mittlere und äußere Mauern oder Tore werden nicht mehr durch Handwerker oder die kostenlose Wellenreparatur von 0 HP wiederbelebt; sie müssen zwischen den Wellen regulär neu errichtet werden.
+- Der feste innere Ring bleibt reparierbar, weil er keinen separaten Neubauplatz besitzt.
+- Mehrere Handwerker eines Handwerkerhauses teilen jetzt neben der Reparaturleistung auch Holz- und Steinkosten proportional, sodass zusätzliche Arbeiter den Materialverbrauch nicht mehrfach berechnen.
+- Der Stabilitätsvalidator normalisiert CRLF/LF-Zeilenenden vor dem Hashvergleich und meldet Windows-Arbeitskopien nicht mehr fälschlich als Kampfwertänderung.
+- Keine Änderungen an Schaden, Rüstung oder Angriffsgeschwindigkeit.
+
 ## v1.18.16 – Update-Details & Anleitung
 
 - Das PWA-Updatefenster besitzt links neben „Jetzt aktualisieren“ einen neuen Button „Patchdetails“.

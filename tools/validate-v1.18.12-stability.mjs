@@ -11,6 +11,7 @@ import {
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const read=file=>fs.readFileSync(path.join(root,file),"utf8");
+const normalizedUtf8=file=>read(file).replace(/\r\n?/g,"\n");
 const main=read("js/main.js");
 const combat=read("js/combat.js");
 const html=read("index.html");
@@ -20,8 +21,8 @@ const assert=(condition,message)=>{if(!condition)failures.push(message)};
 const requireText=(source,text,label)=>{if(!source.includes(text))failures.push(`${label}: ${text}`)};
 
 for(const text of [
-  'const GAME_VERSION="1.18.16"',
-  'const GAME_RELEASE_NAME="Update-Details & Anleitung"',
+  'const GAME_VERSION="1.18.17"',
+  'const GAME_RELEASE_NAME="Reparaturstabilität"',
   'function safeEnemySpawnPoint(',
   'const safeRadius=OUTER_WALL_R+ENEMY_SAFE_SPAWN_PADDING',
   'function returnMeleeDefenderInsideLimit(',
@@ -32,8 +33,8 @@ for(const text of [
   'resolveEntityStructureCollision(enemy,enemy._separationOriginX,enemy._separationOriginY)'
 ])requireText(main,text,"Stabilitaetslogik fehlt");
 
-requireText(html,"v1.18.16","HTML-Version fehlt");
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.16"',"PWA-Cacheversion fehlt");
+requireText(html,"v1.18.17","HTML-Version fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.17-r2"',"PWA-Cacheversion fehlt");
 
 const spawnStart=main.indexOf("function safeEnemySpawnPoint(");
 const spawnEnd=main.indexOf("function spawnEnemy(",spawnStart);
@@ -68,7 +69,7 @@ const expectedHashes={
   "js/enemies.js":"b9750130eea9343399fccc0a99ac542b7b98f9f8e85f57e04045408bb4d9aa05"
 };
 for(const [file,expected] of Object.entries(expectedHashes)){
-  const actual=crypto.createHash("sha256").update(fs.readFileSync(path.join(root,file))).digest("hex");
+  const actual=crypto.createHash("sha256").update(normalizedUtf8(file),"utf8").digest("hex");
   assert(actual===expected,`Geschuetzte Kampfwertdatei wurde veraendert: ${file}`);
 }
 
@@ -79,7 +80,7 @@ for(const text of [
 ])requireText(main,text,"Einheiten-Kampfwert wurde veraendert");
 
 if(failures.length){
-  console.error("v1.18.16-Stabilitaetspruefung fehlgeschlagen:\n- "+failures.join("\n- "));
+  console.error("v1.18.17-Stabilitaetspruefung fehlgeschlagen:\n- "+failures.join("\n- "));
   process.exit(1);
 }
-console.log("v1.18.16-Stabilitaetspruefung erfolgreich: sichere Spawns, sanfte Rueckfuehrung, seitliches Ausweichen, Bogenschuetzen-Zielwahl, Speicherpositionen und unveraenderte Kampfwerte bestaetigt.");
+console.log("v1.18.17-Stabilitaetspruefung erfolgreich: sichere Spawns, sanfte Rueckfuehrung, seitliches Ausweichen, Bogenschuetzen-Zielwahl, Speicherpositionen und unveraenderte Kampfwerte bestaetigt.");

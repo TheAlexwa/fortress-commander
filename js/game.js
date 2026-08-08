@@ -332,6 +332,7 @@ export function applyWaveAutoRepair(state, percent) {
     ...(state.outerGates || []),
   ]) {
     if (!wall.built) continue;
+    if (wall.ring !== "inner" && Number(wall.hp) <= 0) continue;
     const gain = Math.min(wall.maxHp - wall.hp, wall.maxHp * percent);
     if (gain > 0) {
       wall.hp += gain;
@@ -353,7 +354,11 @@ export function getTotalRepairDamage(state) {
     ...(state.middleGates || []),
     ...(state.outerGates || []),
   ].reduce(
-    (sum, wall) => sum + (wall.built ? Math.max(0, wall.maxHp - wall.hp) : 0),
+    (sum, wall) =>
+      sum +
+      (wall.built && (wall.ring === "inner" || Number(wall.hp) > 0)
+        ? Math.max(0, wall.maxHp - wall.hp)
+        : 0),
     0
   );
 

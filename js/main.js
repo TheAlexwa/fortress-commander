@@ -264,8 +264,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.16";
-const GAME_RELEASE_NAME="Update-Details & Anleitung";
+const GAME_VERSION="1.18.17";
+const GAME_RELEASE_NAME="Reparaturstabilität";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true,cameraEffects:true};
@@ -1089,8 +1089,11 @@ const REPAIR_TICK_SECONDS=1;
 const BASE_REPAIR_WOOD_PER_TICK=0.5;
 function researchLevel(id){return getResearchLevel(state.research,id)}
 function repairHpPerTick(building){return getRepairHpPerTick(state.research,getRepairBuildingBaseHpPerTick(building))*buildingWorkforceEfficiency(building)*activeWaveModifier("repairSpeed",1)}
-function repairHpPerCraftsmanTick(building){const workers=Math.max(1,buildingWorkerCount(building));return repairHpPerTick(building)/workers}
+function craftsmanTeamSize(building){return Math.max(1,buildingWorkerCount(building))}
+function repairHpPerCraftsmanTick(building){return repairHpPerTick(building)/craftsmanTeamSize(building)}
 function repairWoodPerTick(){return getRepairWoodPerTick(state.research,BASE_REPAIR_WOOD_PER_TICK)*activeWaveModifier("repairCost",1)}
+function repairWoodPerCraftsmanTick(building){return repairWoodPerTick()/craftsmanTeamSize(building)}
+function repairStonePerCraftsmanTick(building,target){return (isStoneBuilding(target)?STONE_BUILDING_REPAIR_STONE_PER_TICK:0)/craftsmanTeamSize(building)}
 function craftsmanMoveSpeed(){return getCraftsmanMoveSpeed(state.research)}
 function fortressAutoRepairPercent(){return getFortressAutoRepairPercent(state.research)}
 function researchedUnitStats(key){return getResearchedUnitStats(key,BUILD,state.research)}
@@ -1945,6 +1948,9 @@ function enemyReachedAssaultPoint(enemy,assault,distance){
  const radius=Math.max(10,Number(enemy?.radius)||12);
  return Number(distance)<=Math.max(10,radius+3);
 }
+function enemyFortificationAssaultRadius(ringRadius,enemy,gap=2){
+ return ringRadius+RING_COLLISION_THICKNESS+Math.max(10,Number(enemy?.radius)||12)+gap;
+}
 function moveEnemyToward(enemy,x,y,dt){
  const dx=x-enemy.x,dy=y-enemy.y,d=Math.hypot(dx,dy);
  if(d<=.001)return d;
@@ -1975,6 +1981,12 @@ function enemyAttackDamage(enemy){
  if(enemy?.bossAura)multiplier*=1.15;
  if((Number(enemy?.moraleBreakTime)||0)>0)multiplier*=.8;
  return Math.max(0,(Number(enemy?.damage)||0)*multiplier);
+}
+function markBuildableFortificationDestroyed(target){
+ if(!target||target.ring==="inner"||Number(target.hp)>0)return false;
+ target.hp=0;target.built=false;
+ for(const craftsman of state.craftsmen||[])if(craftsman?.target===target)sendCraftsmanHome(craftsman);
+ return true;
 }
 function refreshEnemyAbilityStates(dt){
  const active=state.enemies.filter(enemy=>enemy&&enemy.hp>0);
@@ -2395,6 +2407,7 @@ function repairTargetInfo(target,craftsman=null){
  // Mauersegmente und Tore werden von der Seite repariert, auf der sich der Handwerker befindet.
  // So muss er nicht in den Kollisionskörper des Segments hineinlaufen.
  if(target.kind==="wall"||(Number.isFinite(target.am)&&Number.isFinite(target.hp)&&Number.isFinite(target.maxHp))){
+  if(target.ring!=="inner"&&target.hp<=0)throw new Error("Zerstörte Befestigung ist kein Reparaturziel");
   const radius=target.ring==="inner"?FIXED_INNER_WALL_RADIUS:target.ring==="outer"?OUTER_WALL_R:WALL_R;
   const angle=Number.isFinite(target.am)?target.am:Number(target.angle)||0;
   const workerDistance=craftsman?Math.hypot(craftsman.x-CX,craftsman.y-CY):radius-1;
@@ -2413,7 +2426,7 @@ function repairTargetInfo(target,craftsman=null){
 function damagedRepairTargets(){
  const list=[];
  if(state.hp<state.maxHp)list.push({kind:"castle"});
- list.push(...[...state.outerWalls,...state.outerGates,...state.walls,...state.innerWalls,...state.middleGates].filter(w=>w.built&&w.hp<w.maxHp).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp));
+ list.push(...[...state.outerWalls,...state.outerGates,...state.walls,...state.innerWalls,...state.middleGates].filter(w=>w.built&&w.hp<w.maxHp&&(w.ring==="inner"||w.hp>0)).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp));
  list.push(...state.buildings.filter(b=>b.base.kind==="tower"&&b.hp>0&&b.hp<b.maxHp).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp));
  list.push(...state.buildings.filter(b=>b.base.kind!=="tower"&&!b.base.decorative&&b.key!=="statue"&&b.hp>0&&b.hp<b.maxHp).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp));
  return list;
@@ -2446,7 +2459,10 @@ function chooseCraftsmanTarget(c){
  const targets=damagedRepairTargets();
  if(!targets.length){sendCraftsmanHome(c);return false}
  const occupied=new Set(state.craftsmen.filter(o=>o!==c&&o.target).map(o=>o.target));
- const repairable=targets.filter(t=>!isStoneBuilding(t)||state.stone>=STONE_BUILDING_REPAIR_STONE_PER_TICK);
+ const repairable=targets.filter(t=>{
+  const stoneCost=repairStonePerCraftsmanTick(c.home,t);
+  return !isStoneBuilding(t)||state.stone>=stoneCost;
+ });
  if(!repairable.length){sendCraftsmanHome(c);return false}
  const available=repairable.filter(t=>!occupied.has(t));
  const pool=available.length?available:repairable;
@@ -2484,10 +2500,11 @@ function updateCraftsmen(dt){
   if(!moveCraftsman(c,info.x,info.y,dt))continue;
   c.mode="repairing";c.repairTimer=(c.repairTimer||0)+dt;
   if(c.repairTimer>=REPAIR_TICK_SECONDS&&info.need()>.01){
-   const stoneRepairCost=isStoneBuilding(c.target)?STONE_BUILDING_REPAIR_STONE_PER_TICK:0;
-   if(state.wood<repairWoodPerTick()||state.stone<stoneRepairCost){c.repairTimer=0;c.mode="waiting";goHome(c);continue}
+   const woodRepairCost=repairWoodPerCraftsmanTick(c.home);
+   const stoneRepairCost=repairStonePerCraftsmanTick(c.home,c.target);
+   if(state.wood<woodRepairCost||state.stone<stoneRepairCost){c.repairTimer=0;c.mode="waiting";goHome(c);continue}
    c.repairTimer-=REPAIR_TICK_SECONDS;
-   state.wood=Math.max(0,state.wood-repairWoodPerTick());
+   state.wood=Math.max(0,state.wood-woodRepairCost);
    state.stone=Math.max(0,state.stone-stoneRepairCost);
    const repaired=Math.min(repairHpPerCraftsmanTick(c.home),Math.max(0,info.need()));
    info.apply(repaired);state.repairedHp+=repaired;
@@ -2679,7 +2696,7 @@ function update(dt){
   const dx=CX-e.x,dy=CY-e.y,dCenter=Math.max(1,Math.hypot(dx,dy));
   if(e.phase==="outer"){
    const route=selectEnemyAssaultRoute(e,"outer",dt);
-   const targetR=OUTER_WALL_R+e.radius+4;
+   const targetR=enemyFortificationAssaultRadius(OUTER_WALL_R,e);
    if(route?.kind==="gate"){
     const outerGate=route.item;e.outerGateIndex=route.index;e.outerWallIndex=null;
     const baseX=CX+Math.cos(route.angle)*targetR,baseY=CY+Math.sin(route.angle)*targetR;
@@ -2691,7 +2708,7 @@ function update(dt){
       const assault=assaultFormationPoint(e,route.angle,targetR,`og:${route.index}`,4);
       const d=moveEnemyToward(e,assault.x,assault.y,dt);
       if(enemyReachedAssaultPoint(e,assault,d)&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const gateDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.35);
-       outerGate.hp=Math.max(0,outerGate.hp-gateDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#775039",6);if(outerGate.hp<=0)showToast(`Das ${outerGate.name} wurde durchbrochen!`)}
+       outerGate.hp=Math.max(0,outerGate.hp-gateDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#775039",6);if(outerGate.hp<=0){markBuildableFortificationDestroyed(outerGate);showToast(`Das ${outerGate.name} wurde durchbrochen!`)}}
      }
     }
    }else if(route){
@@ -2703,14 +2720,14 @@ function update(dt){
      const assault=assaultFormationPoint(e,route.angle,targetR,`ow:${wi}`,4);
      const d=moveEnemyToward(e,assault.x,assault.y,dt);
      if(enemyReachedAssaultPoint(e,assault,d)&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const wallDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.25);
-      wall.hp=Math.max(0,wall.hp-wallDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#8a5d3c",5);if(wall.hp<=0)showToast(`Bresche in äußerer Palisade: ${wall.name||getOuterWallSegmentName(wi,state.outerWalls.length)}!`)}
+      wall.hp=Math.max(0,wall.hp-wallDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#8a5d3c",5);if(wall.hp<=0){markBuildableFortificationDestroyed(wall);showToast(`Bresche in äußerer Palisade: ${wall.name||getOuterWallSegmentName(wi,state.outerWalls.length)}!`)}}
     }
    }
   }else if(e.phase==="outside"){
    const outerRaidTarget=e.type==="raider"?nearestRaidBuilding(e,235,"outer"):null;
    if(outerRaidTarget){attackRaidBuilding(e,outerRaidTarget,dt);continue}
    const route=selectEnemyAssaultRoute(e,"outside",dt);
-   const targetR=WALL_R+e.radius+4;
+   const targetR=enemyFortificationAssaultRadius(WALL_R,e);
    if(route?.kind==="gate"){
     const gate=route.item;e.middleGateIndex=route.index;e.wallIndex=null;
     const baseX=CX+Math.cos(route.angle)*targetR,baseY=CY+Math.sin(route.angle)*targetR;
@@ -2722,7 +2739,7 @@ function update(dt){
       const assault=assaultFormationPoint(e,route.angle,targetR,`mg:${route.index}`,4);
       const d=moveEnemyToward(e,assault.x,assault.y,dt);
       if(enemyReachedAssaultPoint(e,assault,d)&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const gateDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.35);
-       gate.hp=Math.max(0,gate.hp-gateDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#8c5734",6);if(gate.hp<=0)showToast(`Das ${gate.name} wurde durchbrochen!`)}
+       gate.hp=Math.max(0,gate.hp-gateDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#8c5734",6);if(gate.hp<=0){markBuildableFortificationDestroyed(gate);showToast(`Das ${gate.name} wurde durchbrochen!`)}}
      }
     }
    }else if(route){
@@ -2733,7 +2750,7 @@ function update(dt){
      const assault=assaultFormationPoint(e,route.angle,targetR,`mw:${wi}`,4);
      const d=moveEnemyToward(e,assault.x,assault.y,dt);
      if(enemyReachedAssaultPoint(e,assault,d)&&e.attackCd<=0){e.attackCd=enemyAttackInterval(e);e.attackAnim=.22;const wallDamage=enemyAttackDamage(e)*(["shield","berserker","boss"].includes(e.type)?1:.25);
-      wall.hp=Math.max(0,wall.hp-wallDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#9c6a3d",5);if(wall.hp<=0)showToast(`Bresche in mittlerer Palisade: ${wall.name||getMiddleWallSegmentName(wi,state.walls.length)}!`)}
+      wall.hp=Math.max(0,wall.hp-wallDamage*fortificationDamageMultiplier());burst(baseX,baseY,"#9c6a3d",5);if(wall.hp<=0){markBuildableFortificationDestroyed(wall);showToast(`Bresche in mittlerer Palisade: ${wall.name||getMiddleWallSegmentName(wi,state.walls.length)}!`)}}
     }
    }
   }else if(e.phase==="inside"){
@@ -2760,7 +2777,7 @@ function update(dt){
    }else if(!innerWall||innerWall.hp<=0){
     e.phase="core";
    }else{
-    const targetR=FIXED_INNER_WALL_RADIUS+e.radius+5;
+    const targetR=enemyFortificationAssaultRadius(FIXED_INNER_WALL_RADIUS,e,3);
     const assault=assaultFormationPoint(e,innerWall.am,targetR,`iw:${innerWall.i}`,5);
     const d=moveEnemyToward(e,assault.x,assault.y,dt);
     if(enemyReachedAssaultPoint(e,assault,d)&&e.attackCd<=0){

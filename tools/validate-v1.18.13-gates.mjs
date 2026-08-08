@@ -14,8 +14,8 @@ const assert=(condition,message)=>{if(!condition)failures.push(message)};
 const requireText=(source,text,message)=>assert(source.includes(text),`${message}: ${text}`);
 
 for(const marker of [
-  'const GAME_VERSION="1.18.16"',
-  'const GAME_RELEASE_NAME="Update-Details & Anleitung"',
+  'const GAME_VERSION="1.18.17"',
+  'const GAME_RELEASE_NAME="Reparaturstabilität"',
   'function friendlyGateIndexAtAngle(',
   'function friendlyGateCrossing(',
   'function friendlyGateWaypoint(',
@@ -30,8 +30,8 @@ for(const marker of [
   'assaultFormationPoint(e,route.angle,targetR,`mg:${route.index}`,4)'
 ])requireText(marker.includes("_routeRecheck")?combat:main,marker,"Tor- oder Routenlogik fehlt");
 
-requireText(html,"v1.18.16","HTML-Version fehlt");
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.16"',"PWA-Cacheversion fehlt");
+requireText(html,"v1.18.17","HTML-Version fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.17-r2"',"PWA-Cacheversion fehlt");
 
 function extractFunction(source,name){
   const start=source.indexOf(`function ${name}(`);
@@ -179,7 +179,7 @@ for(const forbidden of [
 ])assert(!combat.includes(forbidden),`Alte Teleportkorrektur ist wieder vorhanden: ${forbidden}`);
 
 if(failures.length){
-  console.error("v1.18.16-Torpruefung fehlgeschlagen:\n- "+failures.join("\n- "));
+  console.error("v1.18.17-Torpruefung fehlgeschlagen:\n- "+failures.join("\n- "));
   process.exit(1);
 }
-console.log("v1.18.16-Torpruefung erfolgreich: eigene Torpassage, mehrstufige Wegpunkte, dynamische Angriffsziele, Überlastungsmalus und Breschenwahl bestaetigt.");
+console.log("v1.18.17-Torpruefung erfolgreich: eigene Torpassage, mehrstufige Wegpunkte, dynamische Angriffsziele, Überlastungsmalus und Breschenwahl bestaetigt.");
