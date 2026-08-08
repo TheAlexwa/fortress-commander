@@ -1,3 +1,12 @@
+## v1.18.15 – Abriss & Rückerstattung
+
+- Gebäude, Türme, mittlere/äußere Mauern und Tore können direkt im Auswahlfenster abgerissen werden.
+- Vor dem Abriss zeigt das Infofenster die Rückerstattung an; eine Bestätigung schützt vor versehentlichem Löschen.
+- Zurückgegeben werden 50 % der tatsächlich investierten Bauressourcen inklusive regulärer Gebäude- und Steinausbauten.
+- Der feste innere Burgwall bleibt geschützt; Mauersegmente mit aufgesetztem Turm müssen zuerst vom Turm befreit werden.
+- Abriss ist nur zwischen Angriffswellen möglich. Einheitenverkauf bleibt unverändert.
+- Schaden, Rüstung und Angriffsgeschwindigkeit bleiben unverändert.
+
 ## v1.18.14 – Handwerker-Reparaturwege
 
 - Handwerker nutzen jetzt die eigenen intakten Tore, um Reparaturziele auf anderen Verteidigungsringen zu erreichen.

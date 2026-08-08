@@ -1,3 +1,13 @@
+## v1.18.15 – Abriss & Rückerstattung
+
+- Auswahlfenster um einen mobilen Abriss-Workflow für Gebäude, Türme, mittlere/äußere Mauern und Tore ergänzt.
+- Der Abrissbutton zeigt 50 % Rückerstattung an und verlangt vor der Ausführung eine Bestätigung.
+- Gebäude verwenden ihre gespeicherten Investitionen; Befestigungen berücksichtigen Holzbau und vorhandenen Steinausbau.
+- Innerer Burgwall und Mauersegmente mit aufgesetztem Turm sind gegen unbeabsichtigten Abriss geschützt.
+- Bewohner, Handwerker, Bauplätze und Festungsrouten werden nach einem Abriss sauber aktualisiert.
+- Neuer Prüflauf `tools/validate-v1.18.15-demolition.mjs` kontrolliert Abrissziele, Rückerstattung, Sicherheitsregeln und unveränderte Kampfwerte.
+- Service-Worker-Cache und sichtbare Versionsangaben auf v1.18.15 erhöht.
+
 ## v1.18.14 – Handwerker-Reparaturwege
 
 - Handwerker dürfen intakte eigene Tore passieren und können dadurch Reparaturziele auf Mittel- und Außenring erreichen.

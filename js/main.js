@@ -207,13 +207,21 @@ import { FIXED_INNER_WALL_RADIUS, OUTER_WALL_OFFSET } from "./map-layout.js";
 import {
   MIDDLE_WALL_SECTION_COUNT,
   MIDDLE_WALL_SEGMENT_COUNT,
+  MIDDLE_WALL_BUILD_WOOD,
   MIDDLE_WALL_WOOD_MAX_HP,
+  MIDDLE_WALL_STONE_COST,
   MIDDLE_GATE_COUNT,
+  MIDDLE_GATE_BUILD_WOOD,
+  MIDDLE_GATE_STONE_COST,
   MIDDLE_GATE_HALF_ANGLE,
   isMiddleTowerSpotSegment,
   isOuterTowerSpotSegment,
   OUTER_WALL_SEGMENT_COUNT,
+  OUTER_WALL_BUILD_WOOD,
+  OUTER_WALL_STONE_COST,
   OUTER_GATE_COUNT,
+  OUTER_GATE_BUILD_WOOD,
+  OUTER_GATE_STONE_COST,
   OUTER_GATE_HALF_ANGLE,
   createInnerWallSegments,
   createMiddleGates,
@@ -256,8 +264,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.14";
-const GAME_RELEASE_NAME="Handwerker-Reparaturwege";
+const GAME_VERSION="1.18.15";
+const GAME_RELEASE_NAME="Abriss & Rückerstattung";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true,cameraEffects:true};
@@ -1594,7 +1602,8 @@ function updateUI(){
   waveCount,buildRequirement,residentCapacityForHouse,buildingHasWorker,buildingWorkerCount,buildingWorkforceEfficiency,workerCapacityForBuilding,
   supportProductionPerSecond,repairHpPerTick,workshopLevels,
   globalResearchIncreaseRate,marketLossPercent,buildingUpgradePreview,
-  getBuildingUpgradeCost,getBuildingMaxLevel,hasBuildingUpgradeEffect,getStoneBuildingUpgrade,HERO_OFFERING_TARGET
+  getBuildingUpgradeCost,getBuildingMaxLevel,hasBuildingUpgradeEffect,getStoneBuildingUpgrade,
+  demolitionRefund,formatDemolitionRefund,canDemolish,HERO_OFFERING_TARGET
  });
  updateWarCouncilHud();
  updateBonusObjectiveHud();
@@ -2121,16 +2130,85 @@ function upgradeSelected(){
  }else{hapticFeedback("error");playSound("uiError")}
  return upgraded;
 }
+function demolitionInvestment(entity){
+ if(!entity)return {gold:0,wood:0,stone:0};
+ if(entity.kind==="building")return {
+  gold:Math.max(0,Number(entity.investedGold)||0),
+  wood:Math.max(0,Number(entity.investedWood)||0),
+  stone:Math.max(0,Number(entity.investedStone)||0)
+ };
+ if(entity.kind==="gate"){
+  const outer=entity.ring==="outer";
+  return {gold:0,wood:outer?OUTER_GATE_BUILD_WOOD:MIDDLE_GATE_BUILD_WOOD,stone:entity.material==="stone"?(outer?OUTER_GATE_STONE_COST:MIDDLE_GATE_STONE_COST):0};
+ }
+ if(entity.kind==="wall"||entity.kind==="wall-section"){
+  if(entity.ring==="inner")return {gold:0,wood:0,stone:0};
+  const outer=entity.ring==="outer";
+  return {gold:0,wood:outer?OUTER_WALL_BUILD_WOOD:MIDDLE_WALL_BUILD_WOOD,stone:entity.material==="stone"?(outer?OUTER_WALL_STONE_COST:MIDDLE_WALL_STONE_COST):0};
+ }
+ return {gold:0,wood:0,stone:0};
+}
+function demolitionRefund(entity){
+ const invested=demolitionInvestment(entity);
+ return {gold:Math.floor(invested.gold*.5),wood:Math.floor(invested.wood*.5),stone:Math.floor(invested.stone*.5)};
+}
+function formatDemolitionRefund(refund){
+ const parts=[];
+ if(refund.gold>0)parts.push(`${refund.gold} Gold`);
+ if(refund.wood>0)parts.push(`${refund.wood} Holz`);
+ if(refund.stone>0)parts.push(`${refund.stone} Stein`);
+ return parts.join(" · ")||"keine Bauressourcen";
+}
+function wallTowerOnFortification(entity){
+ if(!entity||(entity.kind!=="wall"&&entity.kind!=="wall-section"))return null;
+ const slotType=entity.ring==="outer"?"outer-wall":entity.ring==="middle"?"wall":null;
+ if(!slotType)return null;
+ return wallSlots.find(slot=>slot.type===slotType&&slot.i===entity.i)?.building||null;
+}
+function canDemolish(entity){
+ if(!entity||!["building","gate","wall","wall-section"].includes(entity.kind))return {ok:false,reason:"Dieses Objekt kann nicht abgerissen werden"};
+ if(state.inWave)return {ok:false,reason:"Abriss ist nur zwischen den Angriffswellen möglich"};
+ if(Number(entity.hp)<=0)return {ok:false,reason:"Zerstörte Objekte geben keine Ressourcen zurück"};
+ if((entity.kind==="gate"||entity.kind==="wall"||entity.kind==="wall-section")&&!entity.built)return {ok:false,reason:"Dieses Befestigungsteil ist nicht errichtet"};
+ if((entity.kind==="wall"||entity.kind==="wall-section")&&entity.ring==="inner")return {ok:false,reason:"Der feste innere Burgwall kann nicht abgerissen werden"};
+ const tower=wallTowerOnFortification(entity);
+ if(tower)return {ok:false,reason:"Zuerst den Turm auf diesem Mauersegment abreißen"};
+ if(entity.kind==="building"&&entity.key==="statue"&&((state.heroOffering||0)>0||state.heroSummoned))return {ok:false,reason:"Die Kriegerstatue ist durch das Ritual gebunden"};
+ return {ok:true,reason:""};
+}
+function demolishSelected(){
+ const entity=selected;
+ const allowed=canDemolish(entity);
+ if(!allowed.ok){showToast(allowed.reason);hapticFeedback("error");playSound("uiError");return false}
+ const refund=demolitionRefund(entity);
+ const name=entity.kind==="building"?(entity.base?.name||"Gebäude"):(entity.name||(entity.kind==="gate"?"Tor":"Mauersegment"));
+ const refundText=formatDemolitionRefund(refund);
+ if(!window.confirm(`${name} wirklich abreißen?\n\nRückerstattung: ${refundText} (50 %)\n\nDer Abriss kann nicht rückgängig gemacht werden.`))return false;
+ state.gold+=refund.gold;state.wood+=refund.wood;state.stone+=refund.stone;
+ if(entity.kind==="building"){
+  if(typeof releaseBuildingResidents==="function")releaseBuildingResidents(entity,{displaced:false});
+  state.craftsmen=state.craftsmen.filter(c=>c.home!==entity&&c.homeId!==entity.bid);
+  if(entity.slot)entity.slot.building=null;
+  state.buildings=state.buildings.filter(building=>building!==entity);
+  syncResidents();assignCraftsmen();
+  if(entity.base?.kind!=="tower")reapplyPopulationProfile();
+ }else{
+  entity.built=false;entity.hp=0;entity.material="wood";
+  for(const enemy of state.enemies)enemy._routeRecheck=true;
+ }
+ selected=null;
+ showToast(`${name} abgerissen · ${refundText} zurück`);
+ hapticFeedback("success");playSound("buildPlace");
+ updateUI();
+ if(!state.inWave)saveGame(true);
+ return true;
+}
 function sellSelected(){
- if(selected?.kind==="unit"&&selected.key==="hero")return showToast("Andreas kann nicht verkauft werden");
- if(selected?.kind==="building"&&selected.key==="statue"&&((state.heroOffering||0)>0||state.heroSummoned))return showToast("Die Kriegerstatue ist durch das Ritual gebunden");
- const soldEntity=selected;
- const sold=sellEntity(selected,{
-  state,syncResidents,releaseBuildingResidents,showToast,
-  setSelected:value=>{selected=value}
- });
- if(sold&&soldEntity?.kind==="building"&&soldEntity.base?.kind!=="tower")reapplyPopulationProfile();
- return sold;
+ if(selected?.kind==="unit"){
+  if(selected.key==="hero")return showToast("Andreas kann nicht verkauft werden");
+  return sellEntity(selected,{state,syncResidents,releaseBuildingResidents,showToast,setSelected:value=>{selected=value}});
+ }
+ return demolishSelected();
 }
 let residentAssignmentBusy=false;
 function setBuildingResident(building,delta=1){
@@ -3134,6 +3212,7 @@ const selectionOffenseBtn=document.getElementById("selectionOffenseBtn");
 const selectionHeroAbilityBtn=document.getElementById("selectionHeroAbilityBtn");
 const selectionUpgradeBtn=document.getElementById("selectionUpgradeBtn");
 const selectionDetailsBtn=document.getElementById("selectionDetailsBtn");
+const selectionDemolishBtn=document.getElementById("selectionDemolishBtn");
 const selectionRangeBtn=document.getElementById("selectionRangeBtn");
 const selectionTalentBar=document.getElementById("selectionTalentBar");
 const selectionCollapseBtn=document.getElementById("selectionCollapseBtn");
@@ -3880,6 +3959,11 @@ selectionDetailsBtn.addEventListener("click",e=>{
  e.stopPropagation();
  openStats(selected);
 });
+selectionDemolishBtn.addEventListener("click",e=>{
+ e.preventDefault();e.stopPropagation();
+ if(!selected)return;
+ demolishSelected();
+});
 selectionRangeBtn.addEventListener("click",e=>{
  e.stopPropagation();
  rangeDisplayMode=(rangeDisplayMode+1)%3;
@@ -3977,7 +4061,17 @@ function updateSelectionHud(){
  ui.selectionPortrait.classList.toggle("heroPortrait",heroSelected);
  if(heroSelected)ui.selectionPortrait.innerHTML='<img src="assets/ui/andreas-portrait.webp" alt="">';
  else ui.selectionPortrait.textContent=icon;
+ const demolitionStatus=canDemolish(selected);
+ const showDemolition=["building","gate","wall","wall-section"].includes(selected.kind);
+ if(showDemolition){
+  const refundText=formatDemolitionRefund(demolitionRefund(selected));
+  details+=` · 🔨 ${refundText} zurück`;
+ }
  ui.selectionText.innerHTML=`<b>${name}</b><span>${details}</span>`;
+ selectionDemolishBtn.classList.toggle("hidden",!showDemolition);
+ selectionDemolishBtn.disabled=!showDemolition||!demolitionStatus.ok;
+ selectionDemolishBtn.title=showDemolition?(demolitionStatus.reason||`Abreißen · 50 % zurück: ${formatDemolitionRefund(demolitionRefund(selected))}`):"";
+ selectionDemolishBtn.querySelector("small").textContent=showDemolition?"Abreißen · 50 %":"Abreißen";
  selectionMoveBtn.classList.toggle("hidden",!isUnit);
  selectionAutoBtn.classList.toggle("hidden",!isUnit);
  selectionModeBtn.classList.toggle("hidden",!isUnit);

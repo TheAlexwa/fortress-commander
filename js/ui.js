@@ -56,6 +56,9 @@ export function renderGameUI({
   getBuildingMaxLevel,
   hasBuildingUpgradeEffect,
   getStoneBuildingUpgrade,
+  demolitionRefund,
+  formatDemolitionRefund,
+  canDemolish,
   HERO_OFFERING_TARGET = 2000
 }) {
   ui.gold.textContent = Math.floor(state.gold);
@@ -226,6 +229,8 @@ export function renderGameUI({
   ui.upgrade.style.display = "inline-block";
   ui.upgrade.textContent = "Verbessern";
   ui.sell.disabled = true;
+  ui.sell.textContent = "Verkaufen";
+  ui.sell.title = "";
   ui.repairWall.disabled = true;
   ui.repairWall.textContent = "Bewohner";
   ui.craftsmanToggle.style.display = "none";
@@ -238,6 +243,18 @@ export function renderGameUI({
   const workshopResearchButton = document.getElementById("workshopResearchBtn");
   if (workshopResearchButton) workshopResearchButton.style.display = "none";
 
+  const demolitionLine = (entity) => {
+    if (typeof demolitionRefund !== "function" || typeof formatDemolitionRefund !== "function") return "";
+    const refund = demolitionRefund(entity);
+    return `<br>Abriss: 50 % zurück · ${formatDemolitionRefund(refund)}`;
+  };
+  const configureDemolition = (entity) => {
+    ui.sell.textContent = "Abreißen · 50 %";
+    const status = typeof canDemolish === "function" ? canDemolish(entity) : { ok: true, reason: "" };
+    ui.sell.disabled = !status.ok;
+    ui.sell.title = status.reason || "50 % der investierten Bauressourcen zurück";
+  };
+
   if (!selected) {
     ui.selected.textContent = "Nichts ausgewählt";
     return;
@@ -248,7 +265,7 @@ export function renderGameUI({
     const ringLabel = selected.ring === "outer" ? "Äußerer Verteidigungsring" : "Mittlerer Verteidigungsring";
     const upgrade = getMiddleFortificationUpgrade(selected);
     const materialLabel = upgrade.upgraded ? "Steintor" : "Holztor";
-    ui.selected.innerHTML = `<b>${selected.name}</b><br>Lebenspunkte: ${Math.ceil(selected.hp)} / ${selected.maxHp}<br>Status: ${destroyed ? "zerstört" : "errichtet"}<br>${ringLabel} · ${materialLabel}`;
+    ui.selected.innerHTML = `<b>${selected.name}</b><br>Lebenspunkte: ${Math.ceil(selected.hp)} / ${selected.maxHp}<br>Status: ${destroyed ? "zerstört" : "errichtet"}<br>${ringLabel} · ${materialLabel}${demolitionLine(selected)}`;
     if (upgrade.eligible && !upgrade.upgraded && !destroyed && selected.built) {
       ui.upgrade.style.display = "inline-block";
       ui.upgrade.textContent = `Zu Steintor · ${upgrade.cost} 🪨`;
@@ -256,6 +273,7 @@ export function renderGameUI({
     } else {
       ui.upgrade.style.display = "none";
     }
+    configureDemolition(selected);
     return;
   }
 
@@ -272,7 +290,7 @@ export function renderGameUI({
         : upgrade.upgraded
           ? "Mittlere Steinmauer"
           : "Mittlere Holzpalisade";
-    ui.selected.innerHTML = `<b>${title}${label}</b><br>Lebenspunkte: ${Math.ceil(selected.hp)} / ${selected.maxHp}<br>Status: ${stateLabel}`;
+    ui.selected.innerHTML = `<b>${title}${label}</b><br>Lebenspunkte: ${Math.ceil(selected.hp)} / ${selected.maxHp}<br>Status: ${stateLabel}${demolitionLine(selected)}`;
     if (upgrade.eligible && !upgrade.upgraded && !destroyed && selected.built) {
       ui.upgrade.style.display = "inline-block";
       ui.upgrade.textContent = `Zu Steinmauer · ${upgrade.cost} 🪨`;
@@ -280,6 +298,7 @@ export function renderGameUI({
     } else {
       ui.upgrade.style.display = "none";
     }
+    configureDemolition(selected);
     return;
   }
 
@@ -322,7 +341,7 @@ export function renderGameUI({
     const heroState = state.heroSummoned
       ? state.heroFallen ? "Andreas ist im Kampf gefallen." : "Andreas kämpft für die Festung."
       : `Noch ${remaining.toLocaleString("de-DE")} Opferpunkte bis zur Beschwörung.`;
-    ui.selected.innerHTML = `<b>Kriegerstatue</b><br>Festungsmoral: +5 % Einheitenschaden innerhalb der Festung<br>Opfergaben: ${progress.toLocaleString("de-DE")} / ${HERO_OFFERING_TARGET.toLocaleString("de-DE")}<br>${heroState}`;
+    ui.selected.innerHTML = `<b>Kriegerstatue</b><br>Festungsmoral: +5 % Einheitenschaden innerhalb der Festung<br>Opfergaben: ${progress.toLocaleString("de-DE")} / ${HERO_OFFERING_TARGET.toLocaleString("de-DE")}<br>${heroState}${demolitionLine(building)}`;
     ui.upgrade.style.display = "none";
     if (ui.statueOffering) {
       ui.statueOffering.style.display = "inline-block";
@@ -330,7 +349,7 @@ export function renderGameUI({
       ui.statueOffering.disabled = false;
       ui.statueOffering.classList.toggle("cta", !state.heroSummoned);
     }
-    ui.sell.disabled = progress > 0 || state.heroSummoned;
+    configureDemolition(building);
     return;
   }
 
@@ -352,9 +371,9 @@ export function renderGameUI({
       : building.key === "crossbow"
         ? "Durchdringt 50 % Rüstung · stark gegen Eisenschilde, Berserker und Häuptlinge"
         : "Flächenschaden · 4 Sek. Rüstungsbruch und Verlangsamung";
-    ui.selected.innerHTML = `<b>${building.base.name} · EXP-Stufe ${building.expLevel || 1}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · EXP ${Math.floor(building.xp || 0)}/${Math.floor(building.xpMax || 90)}<br>Schaden ${Math.round(building.damage)} · Reichweite ${Math.round(building.range)}${building.pendingUpgrades ? ` · <b>${building.pendingUpgrades} EXP-Aufwertung bereit</b>` : ""}${placementInfo}<br>⚔ ${counterInfo}<br>Aufwertung: nur über EXP und Forschung`;
+    ui.selected.innerHTML = `<b>${building.base.name} · EXP-Stufe ${building.expLevel || 1}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · EXP ${Math.floor(building.xp || 0)}/${Math.floor(building.xpMax || 90)}<br>Schaden ${Math.round(building.damage)} · Reichweite ${Math.round(building.range)}${building.pendingUpgrades ? ` · <b>${building.pendingUpgrades} EXP-Aufwertung bereit</b>` : ""}${placementInfo}<br>⚔ ${counterInfo}<br>Aufwertung: nur über EXP und Forschung${demolitionLine(building)}`;
     ui.upgrade.style.display = "none";
-    ui.sell.disabled = false;
+    configureDemolition(building);
     return;
   }
 
@@ -421,7 +440,7 @@ export function renderGameUI({
   const locationInfo = building.slot?.role === "outer-support"
     ? "<br>Standort: äußerer Versorgungsring · früh für Plünderer erreichbar"
     : "";
-  ui.selected.innerHTML = `<b>${buildingName} Stufe ${building.level}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · ${building.material === "stone" ? "🏛️ Steinbau" : "🪵 Holzbau"}${supportInfo}${locationInfo}${upgradeInfo}`;
+  ui.selected.innerHTML = `<b>${buildingName} Stufe ${building.level}</b><br>HP ${Math.ceil(building.hp)} / ${Math.ceil(building.maxHp)} · ${building.material === "stone" ? "🏛️ Steinbau" : "🪵 Holzbau"}${supportInfo}${locationInfo}${upgradeInfo}${demolitionLine(building)}`;
 
   const maxLevel = getBuildingMaxLevel(building);
   const regularReady = hasBuildingUpgradeEffect(building) && building.level < maxLevel;
@@ -431,5 +450,5 @@ export function renderGameUI({
   ui.upgrade.disabled = stoneReady
     ? !stoneUpgrade.canUpgrade
     : !regularReady || state.gold < goldCost || state.wood < woodCost;
-  ui.sell.disabled = false;
+  configureDemolition(building);
 }

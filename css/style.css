@@ -389,6 +389,11 @@ footer:before,footer:after{display:none}
  background:linear-gradient(#6b5322,#2f240f);
  border-color:#deb552;color:#fff1b2
 }
+.selectionAction.demolitionAction{
+ background:linear-gradient(#70342f,#311513);
+ border-color:#e78078;color:#ffe4df
+}
+.selectionAction.demolitionAction:disabled{opacity:.5;filter:saturate(.55)}
 .selectionAction.upgradeAction.hidden,.selectionAction.hidden{display:none}
 #selectionTalentBar{
  display:grid;grid-template-columns:repeat(5,minmax(68px,1fr));gap:5px;margin-top:7px;
