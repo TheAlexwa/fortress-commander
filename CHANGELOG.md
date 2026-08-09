@@ -1,3 +1,13 @@
+## v1.18.18 – Marktplatz & Lesbarkeit
+
+- Marktplatz um eine gemeinsame Gold-/Holz-/Steinübersicht und klar getrennte Handelsbereiche erweitert.
+- Große Holzlieferung ergänzt: 500 Gold werden mit der bestehenden Marktrate in Holz umgewandelt.
+- Neue teure Steinlieferungen ergänzt: 1.500 Gold für 100 Basis-Stein oder 5.250 Gold für 350 Basis-Stein; der vorhandene Handelsabschlag bestimmt die tatsächliche Liefermenge.
+- Goldproduktion und bisheriger Holzhandel bleiben unverändert; überschüssiges Gold erhält eine zusätzliche freiwillige Verwendung statt einer pauschalen Einkommenskürzung.
+- Gebäudenamen und Beschreibungstexte in der Arbeitsverteilung kontrastreicher gestaltet, besonders für die mobile Ansicht.
+- Neuer Prüflauf `tools/validate-v1.18.18-market.mjs` kontrolliert Marktlieferungen, UI-Kontrast, Versionsstand und geschützte Wirtschafts-/Kampfdateien.
+- Service-Worker-Cache und sichtbare Versionsangaben auf v1.18.18 erhöht.
+
 ## v1.18.17 – Reparaturstabilität
 
 - Zerstörte mittlere und äußere Mauern und Tore sind keine Handwerker- oder Wellenreparaturziele mehr und müssen regulär neu errichtet werden.

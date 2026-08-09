@@ -8,10 +8,10 @@ const sw = read("service-worker.js");
 const failures = [];
 const requireText = (content, text, message) => { if (!content.includes(text)) failures.push(message); };
 
-requireText(main, 'const GAME_VERSION="1.18.17"', "Spielversion fehlt");
-requireText(main, 'const GAME_RELEASE_NAME="Reparaturstabilität"', "Release-Name fehlt");
-requireText(html, "v1.18.17", "HTML-Version fehlt");
-requireText(sw, 'CACHE_NAME="fortress-commander-v1.18.17-r2"', "Cacheversion fehlt");
+requireText(main, 'const GAME_VERSION="1.18.18"', "Spielversion fehlt");
+requireText(main, 'const GAME_RELEASE_NAME="Marktplatz & Lesbarkeit"', "Release-Name fehlt");
+requireText(html, "v1.18.18", "HTML-Version fehlt");
+requireText(sw, 'CACHE_NAME="fortress-commander-v1.18.18"', "Cacheversion fehlt");
 
 for (const marker of [
   "function demolitionInvestment(entity)",
@@ -69,8 +69,8 @@ for (const marker of [
 ]) requireText(main, marker, `Abrissbutton-Verkabelung fehlt: ${marker}`);
 
 if (failures.length) {
-  console.error("v1.18.17-Abrisspruefung fehlgeschlagen:\n- " + failures.join("\n- "));
+  console.error("v1.18.18-Abrisspruefung fehlgeschlagen:\n- " + failures.join("\n- "));
   process.exit(1);
 }
 
-console.log("v1.18.17-Abrisspruefung erfolgreich: 50-Prozent-Rueckerstattung, Bestaetigung, Gebaeude/Tuerme/Mauern/Tore, Schutzregeln und unveraenderte Kampfwerte bestaetigt.");
+console.log("v1.18.18-Abrisspruefung erfolgreich: 50-Prozent-Rueckerstattung, Bestaetigung, Gebaeude/Tuerme/Mauern/Tore, Schutzregeln und unveraenderte Kampfwerte bestaetigt.");

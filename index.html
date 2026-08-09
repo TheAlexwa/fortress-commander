@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
-<title>Fortress Commander v1.18.17 – Reparaturstabilität</title>
+<title>Fortress Commander v1.18.18 – Marktplatz & Lesbarkeit</title>
 <meta name="theme-color" content="#0b1b2d">
 <meta name="application-name" content="Fortress Commander">
 <meta name="mobile-web-app-capable" content="yes">
@@ -26,7 +26,7 @@
   <div class="appLaunchTitle">FORTRESS<br><span>COMMANDER</span></div>
   <div class="appLaunchSubtitle">Strategie · Verteidigung · Dein Reich</div>
   <div class="appLaunchProgress" aria-hidden="true"><span></span></div>
-  <small>v1.18.17 · Reparaturstabilität wird vorbereitet …</small>
+  <small>v1.18.18 · Marktplatz & Lesbarkeit wird vorbereitet …</small>
  </div>
 </div>
 
@@ -61,7 +61,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Kampagnenkarte öffnen">Spiel starten</button>
-  <div id="gameVersionBadge">v1.18.17</div>
+  <div id="gameVersionBadge">v1.18.18</div>
   <div id="pwaInstallCard" class="hidden">
    <img src="assets/icons/icon-192.png" alt="" width="38" height="38">
    <div><strong>Als Handy-App installieren</strong><span>Vollbild, schneller Start und grundlegende Offline-Nutzung.</span></div>
@@ -245,7 +245,7 @@
     <article class="guideCard"><h3>🗿 Kriegerstatue</h3><p>Stärkt Einheiten innerhalb der Festung mit +5 % Schaden. Spende Gold, Holz oder Stein: Bei 2.000 Opferpunkten erscheint einmalig Andreas, der große Held.</p><div class="guideMeta"><span>45 Gold</span><span>15 Stein</span><span>Held bei 2.000 Punkten</span></div></article>
     <article class="guideCard"><h3>👷 Handwerkerhaus</h3><p>Bis zu <b>3 Handwerker</b> im Holzbau reparieren während eines Angriffs Burg, beschädigte Befestigungen, Türme und Versorgungsgebäude. Sie benutzen eigene Tore, laufen zu erreichbaren Reparaturpunkten außerhalb der Gebäudekollision und kehren danach zum Handwerkerhaus zurück. Zerstörte mittlere und äußere Mauern oder Tore müssen zwischen den Wellen neu errichtet werden.</p><div class="guideMeta"><span>90 Gold</span><span>35 Holz</span><span>3 Arbeitsplätze</span></div></article>
     <article class="guideCard"><h3>⚒️ Werkstatt</h3><p>Öffnet das Forschungszentrum. Bis zu <b>3 Bewohner</b> im Holzbau beeinflussen die Forschungskosten: ohne Personal +25 %, mit einem +10 %, mit zwei normal und mit drei −10 %. Der Gebäudeausbau senkt zusätzlich den globalen Aufschlag.</p><div class="guideMeta"><span>110 Gold</span><span>3 Arbeitsplätze</span><span>Forschungskosten</span></div></article>
-    <article class="guideCard"><h3>🏪 Marktplatz</h3><p>Spätes Wirtschaftsgebäude für zusätzliche Goldeinnahmen und Ressourcentausch. Zwei Händler erreichen den bisherigen vollen Marktertrag; das Handelshaus bietet später einen dritten Arbeitsplatz.</p><div class="guideMeta"><span>150 Gold</span><span>2 Arbeitsplätze</span><span>Ressourcentausch</span></div></article>
+    <article class="guideCard"><h3>🏪 Marktplatz</h3><p>Spätes Wirtschaftsgebäude für zusätzliche Goldeinnahmen und Ressourcentausch. Neben Holz ↔ Gold können große Goldreserven jetzt für Vorrats- und Steinlieferungen ausgegeben werden. Stein bleibt teuer: 1.500 Gold bestellen 100 Basis-Stein, 5.250 Gold 350 Basis-Stein; der Handelsabschlag bestimmt die tatsächlich ankommende Menge. Zwei Händler erreichen den bisherigen vollen Marktertrag; das Handelshaus bietet später einen dritten Arbeitsplatz.</p><div class="guideMeta"><span>150 Gold</span><span>2 Arbeitsplätze</span><span>Gold → Stein</span></div></article>
    </div><div class="guideTip"><b>Freischaltfolge:</b> Zeltlager → Holzfäller → Steinbruch oder Handwerkerhaus → Werkstatt → Marktplatz.</div><div class="guideTip"><b>🪵 Versorgungsreserve:</b> Wird der letzte Holzfäller zerstört, sammelt die Burg während aktiver Wellen 0,22 Notfallholz pro Sekunde, bis der Vorrat 70 Holz erreicht. Das ersetzt keinen Holzfäller, verhindert aber einen vollständigen Wirtschafts-Stillstand.</div><div class="guideTip"><b>🏗 Umbauhinweis:</b> Beide Verteidigungsringe können mit Stein verstärkt werden. Der mittlere Ring besitzt acht und der äußere Ring zwölf feste Mauerturmplätze; intakte Holzpalisaden reichen bereits als Unterlage.</div></div>
   </details>
 
@@ -523,7 +523,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.18.17 · Zerstörte Außenbefestigungen müssen neu errichtet werden; Handwerkerkosten werden fair im Team geteilt.</div>
+  <div class="workshopFoot">v1.18.18 · Der Marktplatz nutzt große Goldreserven für Holz- und Steinlieferungen; Arbeitsplätze sind besser lesbar.</div>
  </section>
 </div>
 
@@ -573,7 +573,7 @@
   <button id="marketCloseIconBtn" class="panelCornerClose" type="button" aria-label="Marktplatz schließen">✕</button>
   <h2>🏪 Marktplatz</h2>
   <p id="marketRateText">Tausche Ressourcen. Der Handelsabschlag verbessert sich durch Ausbaustufen.</p>
-  <div class="marketSummary"><div class="marketStat"><span>🪙 GOLD</span><b id="marketGoldValue">0</b></div><div class="marketStat"><span>🪵 HOLZ</span><b id="marketWoodValue">0</b></div></div>
+  <div class="marketSummary"><div class="marketStat"><span>🪙 GOLD</span><b id="marketGoldValue">0</b></div><div class="marketStat"><span>🪵 HOLZ</span><b id="marketWoodValue">0</b></div><div class="marketStat"><span>🪨 STEIN</span><b id="marketStoneValue">0</b></div></div>
   <div id="marketTradeGrid" class="tradeGrid"></div>
   <button id="marketCloseBtn" class="marketClose primary" type="button">Schließen</button>
  </section>

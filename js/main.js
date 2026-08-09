@@ -264,8 +264,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.17";
-const GAME_RELEASE_NAME="Reparaturstabilität";
+const GAME_VERSION="1.18.18";
+const GAME_RELEASE_NAME="Marktplatz & Lesbarkeit";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true,cameraEffects:true};
@@ -3475,9 +3475,11 @@ function populationDetailsHtml(){
 function openMarketPanel(options={}){
  if(!selected||selected.kind!=="building"||selected.key!=="market")return showToast("Marktplatz auswählen");
  const grid=document.getElementById("marketTradeGrid");if(!grid)return;
- document.getElementById("marketGoldValue").textContent=Math.floor(state.gold);document.getElementById("marketWoodValue").textContent=Math.floor(state.wood);
- document.getElementById("marketRateText").textContent=`Stufe ${selected.level}: ${marketLossPercent(selected)}% Handelsabschlag. Goldproduktion ${supportProductionPerSecond(selected).toFixed(2)}/Sek. im Kampf.`;
- grid.innerHTML=[25,50,100].map(a=>`<button type="button" data-trade="wood-gold" data-amount="${a}">🪵 ${a} → 🪙 ${marketOutput(a,selected)}</button><button type="button" data-trade="gold-wood" data-amount="${a}">🪙 ${a} → 🪵 ${marketOutput(a,selected)}</button>`).join("");
+ document.getElementById("marketGoldValue").textContent=Math.floor(state.gold);document.getElementById("marketWoodValue").textContent=Math.floor(state.wood);document.getElementById("marketStoneValue").textContent=Math.floor(state.stone);
+ document.getElementById("marketRateText").textContent=`Stufe ${selected.level}: ${marketLossPercent(selected)}% Handelsabschlag. Holzhandel und Steinlieferungen nutzen dieselbe Marktrate.`;
+ const directTrades=[25,50,100].map(a=>`<button type="button" data-trade="wood-gold" data-amount="${a}">🪵 ${a} → 🪙 ${marketOutput(a,selected)}</button><button type="button" data-trade="gold-wood" data-amount="${a}">🪙 ${a} → 🪵 ${marketOutput(a,selected)}</button>`).join("");
+ const stoneSmall=marketOutput(100,selected),stoneLarge=marketOutput(350,selected);
+ grid.innerHTML=`<div class="tradeSectionTitle"><b>Direkter Handel</b><small>Holz und Gold flexibel tauschen.</small></div>${directTrades}<div class="tradeSectionTitle"><b>Goldreserven einsetzen</b><small>Große Vorräte kaufen oder teure Steinlieferungen bestellen.</small></div><button type="button" class="marketSupplyBtn" data-trade="gold-wood" data-amount="500"><b>🪵 Vorratslieferung</b><span>🪙 500 → 🪵 ${marketOutput(500,selected)}</span></button><button type="button" class="marketSupplyBtn" data-trade="gold-stone" data-amount="100"><b>🪨 Steinlieferung</b><span>🪙 1500 → 🪨 ${stoneSmall}</span></button><button type="button" class="marketSupplyBtn marketSupplyWide" data-trade="gold-stone" data-amount="350"><b>🪨 Große Steinlieferung</b><span>🪙 5250 → 🪨 ${stoneLarge}</span></button>`;
  openBlockingPanel("marketPanel",{pauseGame:true,...options});updateUI();
 }
 function closeMarketPanel(resume=true,options={}){
@@ -3486,7 +3488,10 @@ function closeMarketPanel(resume=true,options={}){
 function executeMarketTrade(type,amount){
  if(!selected||selected.key!=="market")return;const out=marketOutput(amount,selected);
  if(type==="wood-gold"){if(state.wood<amount)return showToast("Nicht genug Holz");state.wood-=amount;state.gold+=out;showToast(`${amount} Holz gegen ${out} Gold getauscht`)}
- else{if(state.gold<amount)return showToast("Nicht genug Gold");state.gold-=amount;state.wood+=out;showToast(`${amount} Gold gegen ${out} Holz getauscht`)}
+ else if(type==="gold-wood"){if(state.gold<amount)return showToast("Nicht genug Gold");state.gold-=amount;state.wood+=out;showToast(`${amount} Gold gegen ${out} Holz getauscht`)}
+ else if(type==="gold-stone"){const goldCost=amount*15;if(state.gold<goldCost)return showToast("Nicht genug Gold");state.gold-=goldCost;state.stone+=out;showToast(`${goldCost} Gold für ${out} Stein ausgegeben`)}
+ else return;
+ if(!state.inWave)saveGame(true);
  openMarketPanel();updateUI();
 }
 function prepareStatsScreen(options={}){hideRepairDecision({skipHistory:true});openBlockingPanel("statsScreen",{pauseGame:true,...options})}

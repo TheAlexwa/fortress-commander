@@ -1,3 +1,11 @@
+## v1.18.18 – Marktplatz & Lesbarkeit
+
+- Der Marktplatz zeigt Gold, Holz und Stein gemeinsam und bietet neben dem bisherigen Holzhandel größere Gold-Ausgaben an.
+- 500 Gold können als Vorratslieferung in Holz getauscht werden; Steinlieferungen kosten 1.500 Gold für 100 Basis-Stein beziehungsweise 5.250 Gold für 350 Basis-Stein. Der vorhandene Handelsabschlag reduziert wie bisher die tatsächlich ankommende Menge.
+- Die laufende Goldproduktion bleibt unverändert. Der neue Handel dient als freiwillige Goldsenke für das spätere Spiel.
+- Die Gebäudenamen und Beschreibungstexte in der Arbeitsverteilung sind auf den dunklen Karten deutlich heller und auf dem Handy besser lesbar.
+- Keine Änderungen an Schaden, Rüstung oder Angriffsgeschwindigkeit.
+
 ## v1.18.17 – Reparaturstabilität
 
 - Zerstörte mittlere und äußere Mauern oder Tore werden nicht mehr durch Handwerker oder die kostenlose Wellenreparatur von 0 HP wiederbelebt; sie müssen zwischen den Wellen regulär neu errichtet werden.

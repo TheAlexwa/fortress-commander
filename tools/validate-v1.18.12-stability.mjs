@@ -21,8 +21,8 @@ const assert=(condition,message)=>{if(!condition)failures.push(message)};
 const requireText=(source,text,label)=>{if(!source.includes(text))failures.push(`${label}: ${text}`)};
 
 for(const text of [
-  'const GAME_VERSION="1.18.17"',
-  'const GAME_RELEASE_NAME="Reparaturstabilität"',
+  'const GAME_VERSION="1.18.18"',
+  'const GAME_RELEASE_NAME="Marktplatz & Lesbarkeit"',
   'function safeEnemySpawnPoint(',
   'const safeRadius=OUTER_WALL_R+ENEMY_SAFE_SPAWN_PADDING',
   'function returnMeleeDefenderInsideLimit(',
@@ -33,8 +33,8 @@ for(const text of [
   'resolveEntityStructureCollision(enemy,enemy._separationOriginX,enemy._separationOriginY)'
 ])requireText(main,text,"Stabilitaetslogik fehlt");
 
-requireText(html,"v1.18.17","HTML-Version fehlt");
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.17-r2"',"PWA-Cacheversion fehlt");
+requireText(html,"v1.18.18","HTML-Version fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.18"',"PWA-Cacheversion fehlt");
 
 const spawnStart=main.indexOf("function safeEnemySpawnPoint(");
 const spawnEnd=main.indexOf("function spawnEnemy(",spawnStart);
@@ -80,7 +80,7 @@ for(const text of [
 ])requireText(main,text,"Einheiten-Kampfwert wurde veraendert");
 
 if(failures.length){
-  console.error("v1.18.17-Stabilitaetspruefung fehlgeschlagen:\n- "+failures.join("\n- "));
+  console.error("v1.18.18-Stabilitaetspruefung fehlgeschlagen:\n- "+failures.join("\n- "));
   process.exit(1);
 }
-console.log("v1.18.17-Stabilitaetspruefung erfolgreich: sichere Spawns, sanfte Rueckfuehrung, seitliches Ausweichen, Bogenschuetzen-Zielwahl, Speicherpositionen und unveraenderte Kampfwerte bestaetigt.");
+console.log("v1.18.18-Stabilitaetspruefung erfolgreich: sichere Spawns, sanfte Rueckfuehrung, seitliches Ausweichen, Bogenschuetzen-Zielwahl, Speicherpositionen und unveraenderte Kampfwerte bestaetigt.");

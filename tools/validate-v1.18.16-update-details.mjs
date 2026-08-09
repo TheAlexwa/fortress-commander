@@ -35,13 +35,13 @@ for(const marker of [
 for(const marker of [".appUpdateDetailsOverlay",".appUpdateDetailsCard","#appUpdateDetailsBtn"])requireText(style,marker,"Update-Details-CSS fehlt");
 for(const marker of ["#appUpdateDetailsBtn{grid-column:1/2}",".appUpdateDetailsActions{display:grid"])requireText(mobile,marker,"Mobile Update-Details-CSS fehlt");
 
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.17-r2"',"Cacheversion fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.18"',"Cacheversion fehlt");
 requireText(sw,"'./release-notes.json'","Release-Notes fehlen im App-Shell");
 requireText(sw,'url.pathname.endsWith("/release-notes.json")',"Netzwerkzuerst-Regel fuer Release-Notes fehlt");
 requireText(sw,'fetch(request,{cache:"no-store"})',"No-store-Abruf fuer Release-Notes fehlt");
 
-if(notes.version!=="1.18.17")failures.push("release-notes.json hat falsche Version");
-if(notes.title!=="Reparaturstabilität")failures.push("release-notes.json hat falschen Titel");
+if(notes.version!=="1.18.18")failures.push("release-notes.json hat falsche Version");
+if(notes.title!=="Marktplatz & Lesbarkeit")failures.push("release-notes.json hat falschen Titel");
 if(!Array.isArray(notes.changes)||notes.changes.length<5)failures.push("release-notes.json enthaelt zu wenige Aenderungen");
 if(notes.saveCompatible!==true)failures.push("Spielstand-Kompatibilitaet ist nicht bestaetigt");
 
@@ -64,9 +64,9 @@ for(const stale of [
 ])if(html.includes(stale))failures.push(`Veralteter Anleitungstext noch vorhanden: ${stale}`);
 
 for(const marker of [
- 'const GAME_VERSION="1.18.17"',
- 'const GAME_RELEASE_NAME="Reparaturstabilität"'
-])requireText(main,marker,"v1.18.17 Versionsangabe fehlt");
+ 'const GAME_VERSION="1.18.18"',
+ 'const GAME_RELEASE_NAME="Marktplatz & Lesbarkeit"'
+])requireText(main,marker,"v1.18.18 Versionsangabe fehlt");
 
 for(const protectedValue of [
  'soldier:{name:"Bogenschütze",kind:"unit",gold:55,wood:10,hp:145,damage:15,range:120,rate:.85,speed:82',
@@ -75,7 +75,7 @@ for(const protectedValue of [
 ])requireText(main,protectedValue,"Geschuetzter Einheitenwert veraendert");
 
 if(failures.length){
- console.error("v1.18.17-Update-und-Anleitungspruefung fehlgeschlagen:\n- "+failures.join("\n- "));
+ console.error("v1.18.18-Update-und-Anleitungspruefung fehlgeschlagen:\n- "+failures.join("\n- "));
  process.exit(1);
 }
-console.log("v1.18.17-Update-und-Anleitungspruefung erfolgreich: Patchdetails, netzwerkfrische Release-Notes, mobile Darstellung, aktualisierte Anleitung und unveraenderte Kampfwerte bestaetigt.");
+console.log("v1.18.18-Update-und-Anleitungspruefung erfolgreich: Patchdetails, netzwerkfrische Release-Notes, mobile Darstellung, aktualisierte Anleitung und unveraenderte Kampfwerte bestaetigt.");

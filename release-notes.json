@@ -1,13 +1,14 @@
 {
-  "version": "1.18.17",
-  "title": "Reparaturstabilität",
-  "summary": "Zerstörte Außenbefestigungen werden nicht mehr automatisch wiederbelebt. Gleichzeitig werden die Reparaturkosten mehrerer Handwerker fair auf das Team verteilt und der Windows-Zeilenenden-Fehlalarm im Stabilitätsvalidator beseitigt.",
+  "version": "1.18.18",
+  "title": "Marktplatz & Lesbarkeit",
+  "summary": "Der Marktplatz gibt großen Goldreserven eine neue Verwendung durch teure Steinlieferungen und größere Holzlieferungen. Gleichzeitig sind die Gebäudenamen in der mobilen Arbeitsverteilung deutlich kontrastreicher lesbar.",
   "changes": [
-    "Zerstörte mittlere und äußere Mauern oder Tore müssen zwischen den Wellen regulär neu errichtet werden.",
-    "Handwerker und automatische Wellenreparatur reparieren nur noch beschädigte, nicht vollständig zerstörte baubare Befestigungen.",
-    "Mehrere Handwerker eines Hauses teilen neben der Reparaturleistung jetzt auch Holz- und Steinkosten proportional.",
-    "Der feste innere Ring bleibt als nicht neu baubare Verteidigungslinie weiterhin reparierbar.",
-    "Der Stabilitätsvalidator normalisiert CRLF- und LF-Zeilenenden und vermeidet dadurch Fehlalarme unter Windows."
+    "Der Marktplatz zeigt jetzt Gold, Holz und Stein gemeinsam an und gliedert direkten Handel und größere Lieferungen übersichtlicher.",
+    "500 Gold können als große Holzlieferung eingesetzt werden; die tatsächlich gelieferte Menge folgt weiterhin dem vorhandenen Handelsabschlag.",
+    "Neue Steinlieferungen kosten 1.500 Gold für 100 Basis-Stein oder 5.250 Gold für 350 Basis-Stein vor Handelsabschlag.",
+    "Die bestehende Goldproduktion wurde nicht reduziert; überschüssiges Gold erhält stattdessen eine zusätzliche freiwillige Verwendung.",
+    "Gebäudenamen und Beschreibungstexte in der Arbeitsverteilung besitzen auf dunklen Karten mehr Kontrast, besonders auf kleinen Displays.",
+    "Schaden, Rüstung, Angriffsgeschwindigkeit und andere Kampfwerte bleiben unverändert."
   ],
   "saveCompatible": true
 }
