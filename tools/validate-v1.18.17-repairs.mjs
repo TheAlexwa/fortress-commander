@@ -15,10 +15,10 @@ const failures=[];
 const assert=(condition,message)=>{if(!condition)failures.push(message)};
 const requireText=(source,text,label)=>{if(!source.includes(text))failures.push(`${label}: ${text}`)};
 
-requireText(main,'const GAME_VERSION="1.18.18"',"Version fehlt");
-requireText(main,'const GAME_RELEASE_NAME="Marktplatz & Lesbarkeit"',"Release-Name fehlt");
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.18"',"Cache-Version fehlt");
-requireText(html,"v1.18.18","HTML-Version fehlt");
+requireText(main,'const GAME_VERSION="1.18.19"',"Version fehlt");
+requireText(main,'const GAME_RELEASE_NAME="Mehrwelt-Speicherfundament"',"Release-Name fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.19"',"Cache-Version fehlt");
+requireText(html,"v1.18.19","HTML-Version fehlt");
 requireText(main,'w=>w.built&&w.hp<w.maxHp&&(w.ring==="inner"||w.hp>0)',"Zerstoerte baubare Befestigungen sind noch Handwerkerziele");
 requireText(main,'if(target.ring!=="inner"&&target.hp<=0)throw new Error("Zerstörte Befestigung ist kein Reparaturziel")',"Bereits zugewiesene Handwerker koennen zerstoerte Befestigungen noch weiter reparieren");
 requireText(main,'function markBuildableFortificationDestroyed(target){',"Zerstoerungsstatus fuer baubare Befestigungen fehlt");
@@ -82,7 +82,7 @@ for(const [file,expected] of Object.entries(protectedHashes)){
 }
 
 if(failures.length){
-  console.error("v1.18.18-Reparaturpruefung fehlgeschlagen:\n- "+failures.join("\n- "));
+  console.error("v1.18.19-Reparaturpruefung fehlgeschlagen:\n- "+failures.join("\n- "));
   process.exit(1);
 }
-console.log("v1.18.18-Reparaturpruefung erfolgreich: zerstoerte baubare Befestigungen werden sofort als zerstoert markiert, Handwerker brechen diese Ziele ab, Handwerkerkosten werden im Team geteilt Clanspaeher erreichen die Befestigungs-Kollisionskante und behalten ihren vorhandenen Befestigungsschaden.");
+console.log("v1.18.19-Reparaturpruefung erfolgreich: zerstoerte baubare Befestigungen werden sofort als zerstoert markiert, Handwerker brechen diese Ziele ab, Handwerkerkosten werden im Team geteilt Clanspaeher erreichen die Befestigungs-Kollisionskante und behalten ihren vorhandenen Befestigungsschaden.");

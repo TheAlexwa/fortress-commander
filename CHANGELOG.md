@@ -1,3 +1,14 @@
+## v1.18.19 – Mehrwelt-Speicherfundament
+
+- Unabhängige Weltdefinitionen für alle fünf Kartenwelten ergänzt; die Grenzmark verwendet weiterhin das klassische Festungslayout und 32 Kampagnenwellen.
+- Weltkartenprofil auf Format 3 erweitert: bekannte Weltfortschritte und Kommandantenvorteile bleiben beim Normalisieren vollständig erhalten.
+- Grenzmark behält exakt `fortressCommander.save.v1`; zukünftige Welten verwenden getrennte Schlüssel nach dem Muster `fortressCommander.save.v1.<worldId>`.
+- Alte v1.18.x-Snapshots ohne `worldId` gelten ausschließlich als Grenzmark-Spielstand; widersprüchliche Welt-Snapshots werden abgelehnt.
+- Laufende Spielsitzung eindeutig an ihre Welt gebunden, damit eine andere Kartenwelt niemals die geöffnete Grenzmark-Festung übernehmen kann.
+- Nebelwald bleibt sichtbar, gesperrt und „im Aufbau“; keine neue Landschaft, Gegner, Routen oder Balancewerte ergänzt.
+- Neuer Prüflauf `tools/validate-multiworld-save.mjs` kontrolliert Save-Trennung, Alt-Saves, Weltkartenmigration, Kommandantenpunkte, Kampagnenabschluss, Endlosmodus, Kamera und Einheitenpositionen.
+- Service-Worker-Cache und sichtbare Versionsangaben auf v1.18.19 erhöht.
+
 ## v1.18.18 – Marktplatz & Lesbarkeit
 
 - Marktplatz um eine gemeinsame Gold-/Holz-/Steinübersicht und klar getrennte Handelsbereiche erweitert.

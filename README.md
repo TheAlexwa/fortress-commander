@@ -1,3 +1,13 @@
+## v1.18.19 – Mehrwelt-Speicherfundament
+
+- Die fünf Kampagnenwelten besitzen erstmals zentrale, unabhängige Definitionen für Status, Layout, Kampagnenrahmen und spätere Freischaltregeln.
+- Das Weltkartenprofil speichert Fortschritte aller bekannten Welten getrennt und summiert Kommandantenpunkte über vorhandene Weltfortschritte.
+- Bestehende Grenzmark-Saves bleiben ohne Kopie oder Migration unter `fortressCommander.save.v1` erhalten.
+- Zukünftige Welten erhalten eigene Festungs-Slots nach dem Muster `fortressCommander.save.v1.<worldId>`; fremde oder widersprüchliche Saves werden abgelehnt.
+- Alte v1.18.x-Saves ohne Welt-ID gelten sicher und ausschließlich als Grenzmark-Spielstand. Kamera, Zoom und Einheitenpositionen bleiben erhalten.
+- Der Nebelwald bleibt sichtbar, aber weiterhin „im Aufbau“ und kann noch keine Partie starten.
+- Keine Änderungen an Kampfwerten, Preisen, Produktion, Gegnerzahlen, Festungsgeometrie oder Wegelogik.
+
 ## v1.18.18 – Marktplatz & Lesbarkeit
 
 - Der Marktplatz zeigt Gold, Holz und Stein gemeinsam und bietet neben dem bisherigen Holzhandel größere Gold-Ausgaben an.

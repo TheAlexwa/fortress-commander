@@ -6,6 +6,7 @@ import { restoreCampaignState, serializeCampaignState } from "./campaign.js";
 import { restoreWorldRunStats, serializeWorldRunStats } from "./world-map.js";
 import { createPopulationState, serializePopulationState } from "./villagers.js";
 import { normalizeStoneBuilding } from "./stone-buildings.js";
+import { DEFAULT_WORLD_ID, getWorldDefinition, isKnownWorldId } from "./world-definitions.js";
 import {
   MIDDLE_GATE_STONE_MAX_HP,
   MIDDLE_GATE_WOOD_MAX_HP,
@@ -26,8 +27,28 @@ import {
  * den aktuellen Blaupausen verbunden.
  */
 
-const SAVE_KEY = "fortressCommander.save.v1";
+export const BORDERLANDS_SAVE_KEY = "fortressCommander.save.v1";
 const SAVE_FORMAT = 1;
+
+export function getSaveKey(worldId = DEFAULT_WORLD_ID) {
+  if (!isKnownWorldId(worldId)) {
+    throw new Error(`Unbekannte Kampagnenwelt: ${String(worldId || "ohne ID")}`);
+  }
+  return worldId === DEFAULT_WORLD_ID
+    ? BORDERLANDS_SAVE_KEY
+    : `${BORDERLANDS_SAVE_KEY}.${worldId}`;
+}
+
+function expectedWorldId(worldId, state = null) {
+  const candidate = worldId ?? state?.worldId ?? DEFAULT_WORLD_ID;
+  if (!isKnownWorldId(candidate)) {
+    throw new Error(`Speichern für unbekannte Kampagnenwelt abgelehnt: ${String(candidate || "ohne ID")}`);
+  }
+  if (worldId !== undefined && worldId !== null && state?.worldId !== undefined && state.worldId !== candidate) {
+    throw new Error(`Speichern abgelehnt: Aktive Welt „${String(state.worldId)}“ widerspricht dem Ziel „${candidate}“.`);
+  }
+  return candidate;
+}
 
 function getSlotIndex(slot, { wallSlots, insideSlots, castleSlots }) {
   if (!slot) return -1;
@@ -213,6 +234,7 @@ function serializeUnit(unit) {
 
 function createSnapshot({
   state,
+  worldId,
   gameVersion,
   wallSlots,
   insideSlots,
@@ -224,8 +246,10 @@ function createSnapshot({
     throw new Error("Speichern ist nur zwischen den Wellen möglich.");
   }
 
+  const snapshotWorldId = expectedWorldId(worldId, state);
   return {
     saveFormat: SAVE_FORMAT,
+    worldId: snapshotWorldId,
     gameVersion,
     savedAt: new Date().toISOString(),
     saveType: saveType === "auto" ? "auto" : "manual",
@@ -290,7 +314,7 @@ function createSnapshot({
       warCouncil: serializeWarCouncilState(state.warCouncil, state.wave),
       bonusObjective: serializeBonusObjectiveState(state.bonusObjective, state.wave),
       campaign: serializeCampaignState(state.campaign, state.wave),
-      worldRun: serializeWorldRunStats(state.worldRun),
+      worldRun: serializeWorldRunStats(state.worldRun, snapshotWorldId),
     },
     view: {
       zoom: view?.zoom ?? 0.48,
@@ -300,8 +324,9 @@ function createSnapshot({
   };
 }
 
-function parseSnapshot() {
-  const raw = localStorage.getItem(SAVE_KEY);
+function parseSnapshot(worldId = DEFAULT_WORLD_ID) {
+  const requestedWorldId = expectedWorldId(worldId);
+  const raw = localStorage.getItem(getSaveKey(requestedWorldId));
   if (!raw) return null;
 
   const snapshot = JSON.parse(raw);
@@ -315,8 +340,19 @@ function parseSnapshot() {
   ) {
     throw new Error("Speicherstand ist ungültig oder veraltet.");
   }
+  const snapshotWorldId = snapshot.worldId === undefined || snapshot.worldId === null
+    ? DEFAULT_WORLD_ID
+    : snapshot.worldId;
+  if (!isKnownWorldId(snapshotWorldId)) {
+    throw new Error(`Speicherstand enthält eine unbekannte Welt-ID: ${String(snapshotWorldId)}`);
+  }
+  if (snapshotWorldId !== requestedWorldId) {
+    const savedWorld = getWorldDefinition(snapshotWorldId).name;
+    const requestedWorld = getWorldDefinition(requestedWorldId).name;
+    throw new Error(`Dieser Speicherstand gehört zu „${savedWorld}“ und kann nicht als „${requestedWorld}“ geladen werden.`);
+  }
 
-  return snapshot;
+  return { ...snapshot, worldId: snapshotWorldId };
 }
 
 function restoreBuilding(savedBuilding, context) {
@@ -384,11 +420,12 @@ function restoreUnit(savedUnit, BUILD) {
 
 export function saveGameState(context) {
   const snapshot = createSnapshot(context);
-  localStorage.setItem(SAVE_KEY, JSON.stringify(snapshot));
+  localStorage.setItem(getSaveKey(snapshot.worldId), JSON.stringify(snapshot));
 
   return {
     savedAt: snapshot.savedAt,
     gameVersion: snapshot.gameVersion,
+    worldId: snapshot.worldId,
     wave: snapshot.state.wave,
     saveType: snapshot.saveType,
   };
@@ -396,12 +433,13 @@ export function saveGameState(context) {
 
 export function loadGameState({
   state,
+  worldId = DEFAULT_WORLD_ID,
   BUILD,
   wallSlots,
   insideSlots,
   castleSlots,
 }) {
-  const snapshot = parseSnapshot();
+  const snapshot = parseSnapshot(worldId);
   if (!snapshot) {
     throw new Error("Kein Speicherstand vorhanden.");
   }
@@ -454,6 +492,7 @@ export function loadGameState({
   }
 
   Object.assign(state, {
+    worldId: snapshot.worldId,
     gold: Number(savedState.gold) || 0,
     wood: Number(savedState.wood) || 0,
     stone: Number(savedState.stone) || 0,
@@ -479,7 +518,7 @@ export function loadGameState({
     warCouncil: restoreWarCouncilState(savedState.warCouncil, savedState.wave),
     bonusObjective: null,
     campaign: restoreCampaignState(savedState.campaign, savedState.wave),
-    worldRun: restoreWorldRunStats(savedState.worldRun),
+    worldRun: restoreWorldRunStats(savedState.worldRun, snapshot.worldId),
     spawnQueue: [],
     enemies: [],
     projectiles: [],
@@ -595,6 +634,7 @@ export function loadGameState({
   return {
     savedAt: snapshot.savedAt,
     gameVersion: snapshot.gameVersion,
+    worldId: snapshot.worldId,
     wave: state.wave,
     view: {
       zoom: Number.isFinite(Number(snapshot.view?.zoom))
@@ -610,19 +650,23 @@ export function loadGameState({
   };
 }
 
-export function deleteSaveGame() {
-  const existed = localStorage.getItem(SAVE_KEY) !== null;
-  localStorage.removeItem(SAVE_KEY);
+export function deleteSaveGame(worldId = DEFAULT_WORLD_ID) {
+  const key = getSaveKey(expectedWorldId(worldId));
+  const existed = localStorage.getItem(key) !== null;
+  localStorage.removeItem(key);
   return existed;
 }
 
-export function getSaveMetadata() {
+export function getSaveMetadata(worldId = DEFAULT_WORLD_ID) {
+  let requestedWorldId = DEFAULT_WORLD_ID;
   try {
-    const snapshot = parseSnapshot();
+    requestedWorldId = expectedWorldId(worldId);
+    const snapshot = parseSnapshot(requestedWorldId);
     if (!snapshot) return null;
 
     return {
       valid: true,
+      worldId: snapshot.worldId,
       savedAt: snapshot.savedAt,
       gameVersion: snapshot.gameVersion,
       wave: snapshot.state.wave,
@@ -638,10 +682,10 @@ export function getSaveMetadata() {
               : [],
           }
         : null,
-      worldRun: serializeWorldRunStats(snapshot.state.worldRun),
+      worldRun: serializeWorldRunStats(snapshot.state.worldRun, snapshot.worldId),
     };
   } catch (error) {
     console.error("Speicherstand konnte nicht gelesen werden:", error);
-    return { valid: false };
+    return { valid: false, worldId: requestedWorldId, error: error?.message || "Speicherstand ist ungültig." };
   }
 }

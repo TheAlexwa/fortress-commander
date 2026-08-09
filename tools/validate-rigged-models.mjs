@@ -44,11 +44,11 @@ for(const file of [
 }
 
 for(const text of [
-  'const GAME_VERSION="1.18.18"',
-  'const GAME_RELEASE_NAME="Marktplatz & Lesbarkeit"'
+  'const GAME_VERSION="1.18.19"',
+  'const GAME_RELEASE_NAME="Mehrwelt-Speicherfundament"'
 ])requireText(main,text,"Versionsangabe fehlt");
-requireText(html,"v1.18.18","HTML-Version fehlt");
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.18"',"PWA-Cacheversion fehlt");
+requireText(html,"v1.18.19","HTML-Version fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.19"',"PWA-Cacheversion fehlt");
 requireText(readme,"Kampfwerte, Reichweiten, Angriffsgeschwindigkeiten, Zielregeln, Kollisionen und Balance bleiben unverändert","README-Balancehinweis fehlt");
 requireText(changelog,"validate-rigged-models.mjs","CHANGELOG-Prüfung fehlt");
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
-<title>Fortress Commander v1.18.18 – Marktplatz & Lesbarkeit</title>
+<title>Fortress Commander v1.18.19 – Mehrwelt-Speicherfundament</title>
 <meta name="theme-color" content="#0b1b2d">
 <meta name="application-name" content="Fortress Commander">
 <meta name="mobile-web-app-capable" content="yes">
@@ -26,7 +26,7 @@
   <div class="appLaunchTitle">FORTRESS<br><span>COMMANDER</span></div>
   <div class="appLaunchSubtitle">Strategie · Verteidigung · Dein Reich</div>
   <div class="appLaunchProgress" aria-hidden="true"><span></span></div>
-  <small>v1.18.18 · Marktplatz & Lesbarkeit wird vorbereitet …</small>
+  <small>v1.18.19 · Mehrwelt-Speicherfundament wird vorbereitet …</small>
  </div>
 </div>
 
@@ -61,7 +61,7 @@
  <div id="titleArt" role="img" aria-label="Fortress Commander Titelbild">
   <button id="instructionsHotspot" class="menuHotspot" aria-label="Anleitung öffnen">Anleitung</button>
   <button id="playHotspot" class="menuHotspot" aria-label="Kampagnenkarte öffnen">Spiel starten</button>
-  <div id="gameVersionBadge">v1.18.18</div>
+  <div id="gameVersionBadge">v1.18.19</div>
   <div id="pwaInstallCard" class="hidden">
    <img src="assets/icons/icon-192.png" alt="" width="38" height="38">
    <div><strong>Als Handy-App installieren</strong><span>Vollbild, schneller Start und grundlegende Offline-Nutzung.</span></div>
@@ -178,9 +178,9 @@
   <details class="guideSection">
    <summary>🗺️ Kampagnenkarte &amp; Welten</summary>
    <div class="guideBody">
-    <div class="guideTip"><b>Neue Zwischenstation:</b> Nach dem Startbildschirm öffnet sich die große Kampagnenkarte. Wähle dort eine Welt aus und betrete anschließend ihre Festung.</div><div class="guideTip"><b>Illustrierte Weltkarte:</b> Die fünf Regionen zeigen jetzt bereits ihre spätere Atmosphäre: grüne Grenzlande, dichter Nebelwald, Schnee und Eis am Eispass, verbrannte Dörfer im Brandland sowie Vulkane und Lava beim Eisenclan.</div>
+    <div class="guideTip"><b>Neue Zwischenstation:</b> Nach dem Startbildschirm öffnet sich die große Kampagnenkarte. Wähle dort eine Welt aus und betrete anschließend ihre Festung.</div><div class="guideTip"><b>Getrennte Welt-Spielstände:</b> Die Grenzmark behält ihren bisherigen lokalen Speicherplatz. Jede zukünftige spielbare Welt erhält einen eigenen Festungs-Speicher, damit sich Kampagnen nicht gegenseitig überschreiben.</div><div class="guideTip"><b>Illustrierte Weltkarte:</b> Die fünf Regionen zeigen jetzt bereits ihre spätere Atmosphäre: grüne Grenzlande, dichter Nebelwald, Schnee und Eis am Eispass, verbrannte Dörfer im Brandland sowie Vulkane und Lava beim Eisenclan.</div>
     <div class="guideGrid">
-     <article class="guideCard"><h3>🏰 Die Grenzmark</h3><p>Die Grenzmark umfasst 32 Kampagnenwellen. Vorhandene Spielstände der kompatiblen v1.15- bis v1.18-Reihe können über „Fortsetzen“ weitergespielt werden; gespeicherte Kamera- und Einheitenpositionen bleiben erhalten.</p></article>
+     <article class="guideCard"><h3>🏰 Die Grenzmark</h3><p>Die Grenzmark umfasst 32 Kampagnenwellen. Vorhandene Spielstände der kompatiblen v1.15- bis v1.18-Reihe bleiben unverändert unter ihrem bisherigen Speicherplatz erhalten; gespeicherte Kamera- und Einheitenpositionen bleiben erhalten.</p></article>
      <article class="guideCard"><h3>🏗 Weitere Welten</h3><p>Nebelwald, gefrorener Pass, verbrannte Ebenen und das Herz des Eisenclans sind bereits sichtbar. Beim Antippen erscheint vorerst nur „Noch im Aufbau“.</p></article>
     </div>
     <p>Zwischen zwei Wellen kannst du über das Pause-Menü zur Kampagnenkarte zurückkehren. Die laufende Festung wird dabei automatisch gespeichert.</p>
@@ -523,7 +523,7 @@
   </div>
   <div id="workshopTabs" class="workshopTabs"></div>
   <div id="techTree" class="techTree"></div>
-  <div class="workshopFoot">v1.18.18 · Der Marktplatz nutzt große Goldreserven für Holz- und Steinlieferungen; Arbeitsplätze sind besser lesbar.</div>
+  <div class="workshopFoot">v1.18.19 · Getrennte Welt-Speicher sind technisch vorbereitet; der Nebelwald bleibt im Aufbau.</div>
  </section>
 </div>
 
@@ -674,8 +674,8 @@
   <p>Die Simulation, Produktion und Handwerkerarbeit stehen still.</p>
   <div class="pauseMenuActions">
    <button id="resumeGameBtn" class="primary" type="button" data-tooltip="Setzt die laufende Partie fort.">▶ Spiel fortsetzen</button>
-   <button id="saveGameBtn" class="saveAction" type="button" data-tooltip="Speichert Gebäude, Einheiten, Welle, Ressourcen und Forschungen lokal in diesem Browser.">💾 Spiel speichern</button>
-   <button id="loadGameBtn" class="loadAction" type="button" data-tooltip="Lädt den zuletzt gespeicherten Spielstand dieser Version.">📂 Spiel laden</button>
+   <button id="saveGameBtn" class="saveAction" type="button" data-tooltip="Speichert Gebäude, Einheiten, Welle, Ressourcen und Forschungen im Speicherplatz der aktiven Welt.">💾 Spiel speichern</button>
+   <button id="loadGameBtn" class="loadAction" type="button" data-tooltip="Lädt den zuletzt gespeicherten Spielstand der aktiven Welt.">📂 Spiel laden</button>
    <button id="returnCampaignMapBtn" class="mapAction" type="button" data-tooltip="Speichert zwischen den Wellen und kehrt zur Kampagnenkarte zurück.">🗺️ Kampagnenkarte</button>
    <button id="pauseRestartBtn" class="restartAction" type="button">🔄 Spiel neu starten</button>
    <button id="deleteSaveBtn" class="deleteSaveAction" type="button" data-tooltip="Löscht den lokalen Speicherstand nach Bestätigung. Die aktuelle Partie bleibt geöffnet.">🗑 Speicherstand löschen</button>

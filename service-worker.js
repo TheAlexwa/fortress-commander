@@ -1,4 +1,4 @@
-const CACHE_NAME="fortress-commander-v1.18.18";
+const CACHE_NAME="fortress-commander-v1.18.19";
 const INDEX_URL=new URL("index.html",self.registration.scope).href;
 const APP_SHELL=[
  './index.html',
@@ -32,6 +32,7 @@ const APP_SHELL=[
  './js/villagers.js',
  './js/war-council.js',
  './js/weather.js',
+ './js/world-definitions.js',
  './js/world-map.js',
  './data/buildings.json',
  './data/economy.json',

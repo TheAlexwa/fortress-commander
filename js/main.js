@@ -194,6 +194,7 @@ import {
   getCommanderPointSummary,
   getWorldDefinition,
   getWorldMapView,
+  isKnownWorldId,
   loadWorldMapProfile,
   recordWorldRunWave,
   saveWorldMapProfile,
@@ -264,8 +265,8 @@ import {
 
 (()=>{
 "use strict";
-const GAME_VERSION="1.18.18";
-const GAME_RELEASE_NAME="Marktplatz & Lesbarkeit";
+const GAME_VERSION="1.18.19";
+const GAME_RELEASE_NAME="Mehrwelt-Speicherfundament";
 
 const DISPLAY_PREFERENCES_KEY="fortressCommander.displayPreferences.v1";
 const DISPLAY_PREFERENCE_DEFAULTS={hudSize:"normal",haptics:true,landscapeHint:true,cameraEffects:true};
@@ -376,16 +377,20 @@ orientationHintCloseBtn?.addEventListener("click",()=>{
 let campaignMapHasLiveSession=false;
 let worldMapProfile=loadWorldMapProfile();
 let selectedCampaignWorldId=worldMapProfile.selectedWorldId||ACTIVE_WORLD_ID;
+let activeSessionWorldId=null;
 
-function beginGameSession(){
- syncVisibleViewportHeight();
+function beginGameSession(worldId=selectedCampaignWorldId){
+  if(!isKnownWorldId(worldId)||getWorldDefinition(worldId).status!=="playable")return false;
+  activeSessionWorldId=worldId;
+  state.worldId=worldId;
+  syncVisibleViewportHeight();
  gameSessionStarted=true;
  startScreen.classList.add("hidden");
  campaignMapScreen.classList.add("hidden");
  instructionsScreen.classList.add("hidden");
  paused=false;
  last=performance.now();
- const recoverCanvas=()=>{
+  const recoverCanvas=()=>{
   handleOrientationChange();
   resize();
   if(canvas.width<2||canvas.height<2){
@@ -397,7 +402,8 @@ function beginGameSession(){
   draw();updateUI();
  };
  requestAnimationFrame(recoverCanvas);
- setTimeout(recoverCanvas,180);
+  setTimeout(recoverCanvas,180);
+  return true;
 }
 function formatWorldMapDate(value){
  if(!value)return "Kein Spielstand";
@@ -409,16 +415,18 @@ function persistWorldMapProfile(){
  return worldMapProfile;
 }
 function syncWorldMapFromCurrentState(){
- worldMapProfile=syncWorldMapProfileFromState(worldMapProfile,state);
- persistWorldMapProfile();
+  const worldId=activeSessionWorldId||state.worldId||ACTIVE_WORLD_ID;
+  worldMapProfile=syncWorldMapProfileFromState(worldMapProfile,state,worldId);
+  persistWorldMapProfile();
 }
 function renderCampaignWorldMap(){
- const metadata=getSaveMetadata();
- worldMapProfile=syncWorldMapProfileFromSave(worldMapProfile,metadata);
- worldMapProfile=selectWorldOnMap(worldMapProfile,selectedCampaignWorldId);
- persistWorldMapProfile();
- const view=getWorldMapView(worldMapProfile,metadata);
- const world=view.worlds.find(item=>item.id===selectedCampaignWorldId)||view.worlds[0];
+  const metadata=getSaveMetadata(selectedCampaignWorldId);
+  worldMapProfile=syncWorldMapProfileFromSave(worldMapProfile,metadata,selectedCampaignWorldId);
+  worldMapProfile=selectWorldOnMap(worldMapProfile,selectedCampaignWorldId);
+  persistWorldMapProfile();
+  const view=getWorldMapView(worldMapProfile,metadata,selectedCampaignWorldId);
+  const world=view.worlds.find(item=>item.id===selectedCampaignWorldId)||view.worlds[0];
+  selectedCampaignWorldId=world.id;
  document.querySelectorAll(".worldNode[data-world-id]").forEach(node=>node.classList.toggle("selected",node.dataset.worldId===world.id));
  document.getElementById("worldInfoIcon").textContent=world.icon;
  document.getElementById("worldInfoSubtitle").textContent=world.subtitle;
@@ -442,14 +450,18 @@ function renderCampaignWorldMap(){
   status.textContent=world.progress.completed?"ABGESCHLOSSEN":"SPIELBAR";status.classList.remove("construction");
   progressBlock.classList.remove("hidden");rewardBlock.classList.remove("hidden");construction.classList.add("hidden");
   primary.classList.remove("hidden");
-  const hasSave=metadata?.valid===true;
-  const live=campaignMapHasLiveSession&&gameSessionStarted;
-  primary.textContent=live?"▶ Zur Festung":hasSave?"▶ Kampagne fortsetzen":"▶ Welt betreten";
-  restart.classList.toggle("hidden",!hasSave&&!live);
-  document.getElementById("worldProgressText").textContent=`${Math.min(32,world.progress.bestWave)} / 32 Wellen`;
-  document.getElementById("worldProgressFill").style.width=`${Math.min(100,world.progress.bestWave/32*100)}%`;
-  document.getElementById("worldBossCount").textContent=`${world.progress.bossesDefeated} / 4`;
-  document.getElementById("worldSaveInfo").textContent=live?`Aktuelle Welle ${state.wave}`:hasSave?`Welle ${metadata.wave} · ${formatWorldMapDate(metadata.savedAt)}`:"Kein Spielstand";
+   const hasStoredSave=metadata!==null;
+   const hasSave=metadata?.valid===true&&metadata.worldId===world.id;
+   const invalidSave=hasStoredSave&&!hasSave;
+   const live=campaignMapHasLiveSession&&gameSessionStarted&&activeSessionWorldId===world.id;
+  primary.disabled=invalidSave&&!live;
+  primary.textContent=live?"▶ Zur Festung":invalidSave?"⚠ Spielstand nicht ladbar":hasSave?"▶ Kampagne fortsetzen":"▶ Welt betreten";
+  restart.classList.toggle("hidden",!hasStoredSave&&!live);
+   const finalWave=world.campaign.finalWave||32,bossCount=world.campaign.bossWaves.length||4;
+   document.getElementById("worldProgressText").textContent=`${Math.min(finalWave,world.progress.bestWave)} / ${finalWave} Wellen`;
+   document.getElementById("worldProgressFill").style.width=`${Math.min(100,world.progress.bestWave/finalWave*100)}%`;
+   document.getElementById("worldBossCount").textContent=`${world.progress.bossesDefeated} / ${bossCount}`;
+  document.getElementById("worldSaveInfo").textContent=live?`Aktuelle Welle ${state.wave}`:invalidSave?(metadata.error||"Vorhandener Spielstand ist ungültig"):hasSave?`Welle ${metadata.wave} · ${formatWorldMapDate(metadata.savedAt)}`:"Kein Spielstand";
   document.getElementById("worldSealRow").innerHTML=world.seals.map(seal=>`<div class="worldSeal ${seal.earned?"earned":""}" title="${seal.description}"><span>${seal.icon}</span><b>${seal.name.replace("Siegel des ","")}</b></div>`).join("");
   document.getElementById("worldBonusSuccess").textContent=world.progress.bonusObjectivesCompleted;
   document.getElementById("worldCommanderEarned").textContent=view.points.earned;
@@ -507,33 +519,35 @@ function openCampaignMap(fromGame=false){
 }
 function closeCampaignMapToTitle(){
  campaignMapScreen.classList.add("hidden");startScreen.classList.remove("hidden");instructionsScreen.classList.add("hidden");
- paused=true;gameSessionStarted=false;campaignMapHasLiveSession=false;
+ paused=true;gameSessionStarted=false;campaignMapHasLiveSession=false;activeSessionWorldId=null;
 }
 function enterSelectedCampaignWorld(){
- const world=getWorldDefinition(selectedCampaignWorldId);
- if(world.status!=="playable"){renderCampaignWorldMap();return}
- const metadata=getSaveMetadata();
- const useLiveSession=campaignMapHasLiveSession&&gameSessionStarted;
- beginGameSession();
- campaignMapHasLiveSession=false;
- if(useLiveSession){paused=false;last=performance.now();updateUI();return}
- if(metadata?.valid){
-  if(loadGame()){paused=false;last=performance.now();showToast(`🗺️ ${world.name} · Welle ${state.wave}`)}
- }else{
-  reset();
+  const world=getWorldDefinition(selectedCampaignWorldId);
+  if(world.status!=="playable"){renderCampaignWorldMap();return}
+  const metadata=getSaveMetadata(world.id);
+  const useLiveSession=campaignMapHasLiveSession&&gameSessionStarted&&activeSessionWorldId===world.id;
+  if(!useLiveSession&&metadata&&!metadata.valid){showToast(metadata.error||"Dieser Welt-Spielstand kann nicht geladen werden");return}
+  if(!beginGameSession(world.id))return;
+  campaignMapHasLiveSession=false;
+  if(useLiveSession){paused=false;last=performance.now();updateUI();return}
+  if(metadata?.valid){
+   if(loadGame(world.id)){paused=false;last=performance.now();showToast(`🗺️ ${world.name} · Welle ${state.wave}`)}
+  }else{
+   reset(world.id);
   paused=false;last=performance.now();showToast(`🗺️ ${world.name} beginnt · ${formatStartBonuses(worldMapProfile)}`);updateUI();
  }
 }
 function startNewCampaignWorld(){
  const world=getWorldDefinition(selectedCampaignWorldId);
  if(world.status!=="playable")return;
- const metadata=getSaveMetadata();
- if((metadata?.valid||campaignMapHasLiveSession)&&!window.confirm("Die aktuelle Festung wirklich verwerfen und Welt 1 neu beginnen?"))return;
- if(metadata?.valid)deleteSaveGame();
- autosaveSuppressed=false;
- beginGameSession();
- campaignMapHasLiveSession=false;
- reset();
+  const metadata=getSaveMetadata(world.id);
+  const sameLiveSession=campaignMapHasLiveSession&&gameSessionStarted&&activeSessionWorldId===world.id;
+  if((metadata||sameLiveSession)&&!window.confirm(`Die aktuelle Festung wirklich verwerfen und „${world.name}“ neu beginnen?`))return;
+  if(metadata)deleteSaveGame(world.id);
+  autosaveSuppressed=false;
+  if(!beginGameSession(world.id))return;
+  campaignMapHasLiveSession=false;
+  reset(world.id);
  syncWorldMapFromCurrentState();
 }
 let instructionsOpenedFrom="title";
@@ -979,7 +993,7 @@ const BUILD={
  statue:{name:"Kriegerstatue",kind:"inside",gold:45,wood:0,stone:15,hp:420,color:"#8f7958",slotRole:"statue",ritual:true},
  hero:{name:"Andreas, der große Held",kind:"unit",gold:0,wood:0,hp:650,damage:65,range:34,rate:1.05,speed:66,armor:.35,color:"#d4aa52",hero:true}
 };
-const state={gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,nextEnemyId:0,
+ const state={worldId:ACTIVE_WORLD_ID,gold:210,wood:105,stone:0,researchPoints:0,hp:1200,maxHp:1200,wave:1,inWave:false,toSpawn:0,spawnTimer:0,supportTimer:0,kills:0,nextUnitId:0,nextBuildingId:0,nextResidentId:0,nextEnemyId:0,
  enemies:[],projectiles:[],buildings:[],units:[],particles:[],walls:[],innerWalls:[],middleGates:[],outerWalls:[],outerGates:[],craftsmen:[],residents:[],population:createPopulationState(),siege:null,warCouncil:createWarCouncilState(1),bonusObjective:null,campaign:createCampaignState(1),worldRun:createWorldRunStats(),spawnQueue:[],repairActive:false,repairedHp:0,heroOffering:0,heroSummoned:false,heroFallen:false,research:{fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,tower_damage:0,tower_rate:0,tower_hp:0,craft_repair:0,craft_wood:0,craft_speed:0,stone_building:0}};
 const wallSlots=[],insideSlots=[],castleSlots=[];
 
@@ -1275,7 +1289,8 @@ function refreshSaveStatus(){
  const save=document.getElementById("saveGameBtn");
  const load=document.getElementById("loadGameBtn");
  const del=document.getElementById("deleteSaveBtn");
- const metadata=getSaveMetadata();
+  const saveWorldId=gameSessionStarted&&activeSessionWorldId?activeSessionWorldId:selectedCampaignWorldId;
+  const metadata=getSaveMetadata(saveWorldId);
 
  if(save){
   save.disabled=state.inWave||gameOver;
@@ -1304,7 +1319,7 @@ function refreshSaveStatus(){
   box.textContent=`${label}: ${formatSaveDate(metadata.savedAt)} · Welle ${metadata.wave}${version} · Autosave alle 60 s`;
  }else if(metadata){
   box.className="saveStatus warn";
-  box.textContent="Ein vorhandener Speicherstand ist ungültig oder veraltet. Autosave ist aktiv.";
+  box.textContent=metadata.error||"Ein vorhandener Speicherstand ist ungültig oder veraltet. Autosave ist aktiv.";
  }else if(autosaveSuppressed){
   box.className="saveStatus warn";
   box.textContent="Speicherstand gelöscht · Autosave bis zum nächsten manuellen Speichern pausiert.";
@@ -1321,10 +1336,11 @@ function saveGame(silent=false){
    refreshSaveStatus();
   }
   return false;
- }
- try{
-  saveGameState({
-   state,gameVersion:GAME_VERSION,saveType:silent?"auto":"manual",
+  }
+  try{
+   const worldId=activeSessionWorldId||state.worldId;
+   saveGameState({
+    state,worldId,gameVersion:GAME_VERSION,saveType:silent?"auto":"manual",
    wallSlots,insideSlots,castleSlots,
    view:{zoom,camX,camY}
   });
@@ -1340,13 +1356,14 @@ function saveGame(silent=false){
   return false;
  }
 }
-function loadGame(){
- try{
-  const loaded=loadGameState({state,BUILD,wallSlots,insideSlots,castleSlots});
+function loadGame(expectedWorldId=activeSessionWorldId||selectedCampaignWorldId||ACTIVE_WORLD_ID){
+  try{
+   const loaded=loadGameState({state,worldId:expectedWorldId,BUILD,wallSlots,insideSlots,castleSlots});
+   activeSessionWorldId=loaded.worldId;
   hideRepairDecision();hideEndScreen();hideCampaignVictoryScreen();closeEnemyInfo(false);
   selected=null;buildMode=null;unitCommandMode=null;gameOver=false;paused=true;autosaveSuppressed=false;
   syncResidents();assignCraftsmen();ensureCurrentSiege();
-  const sameMapVersion=/^1\.(15|16|17|18)\./.test(String(loaded.gameVersion||""));
+   const sameMapVersion=/^1\.(15|16|17|18|19)\./.test(String(loaded.gameVersion||""));
   if(!sameMapVersion){
    const shiftX=CX-1200,shiftY=CY-850;
    for(const unit of state.units){
@@ -1364,15 +1381,16 @@ function loadGame(){
   else if(isCampaignFinished(state))showCampaignVictoryScreen(true);
   showToast(`Spielstand geladen · Welle ${loaded.wave}`);
   return true;
- }catch(error){
-  console.error("Laden fehlgeschlagen:",error);
-  showToast("Spielstand konnte nicht geladen werden");
+  }catch(error){
+   console.error("Laden fehlgeschlagen:",error);
+   showToast(error?.message||"Spielstand konnte nicht geladen werden");
   refreshSaveStatus();
   return false;
  }
 }
 function deleteSave(){
- const metadata=getSaveMetadata();
+  const worldId=activeSessionWorldId||state.worldId||selectedCampaignWorldId||ACTIVE_WORLD_ID;
+  const metadata=getSaveMetadata(worldId);
  if(!metadata){
   showToast("Kein Speicherstand vorhanden");
   refreshSaveStatus();
@@ -1382,8 +1400,8 @@ function deleteSave(){
   "Lokalen Speicherstand wirklich löschen?\n\nDie aktuelle Partie bleibt geöffnet, kann danach aber nicht mehr geladen werden."
  );
  if(!confirmed)return false;
- try{
-  deleteSaveGame();
+  try{
+   deleteSaveGame(worldId);
   autosaveSuppressed=true;
   refreshSaveStatus();
   showToast("Speicherstand gelöscht");
@@ -3070,11 +3088,13 @@ function showEndScreen(){
  setPanelVisibility(screen,true);
 }
 function hideEndScreen(){setPanelVisibility(document.getElementById("endScreen"),false)}
-function reset(){
- const startBonuses=getActiveStartBonuses(worldMapProfile);
+function reset(requestedWorldId=activeSessionWorldId||selectedCampaignWorldId||ACTIVE_WORLD_ID){
+  if(!isKnownWorldId(requestedWorldId)||getWorldDefinition(requestedWorldId).status!=="playable")return false;
+  activeSessionWorldId=requestedWorldId;state.worldId=requestedWorldId;
+  const startBonuses=getActiveStartBonuses(worldMapProfile);
  state.gold=210+startBonuses.gold;state.wood=105+startBonuses.wood;state.stone=startBonuses.stone;state.researchPoints=startBonuses.researchPoints;state.research={fortress_autoRepair:0,guard_hp:0,guard_armor:0,archer_damage:0,archer_range:0,archer_rate:0,craft_repair:0,craft_wood:0,craft_speed:0,stone_building:0};state.hp=state.maxHp=1200;state.wave=1;state.inWave=false;state.toSpawn=0;state.spawnTimer=0;state.spawnQueue=[];state.siege=null;state.kills=0;state.nextEnemyId=0;state.nextResidentId=0;state.population=createPopulationState();state.heroOffering=startBonuses.heroOffering;state.heroSummoned=false;state.heroFallen=false;state.warCouncil=createWarCouncilState(1);state.bonusObjective=null;state.campaign=createCampaignState(1);state.worldRun=createWorldRunStats();
  state.enemies=[];state.projectiles=[];state.buildings=[];state.units=[];state.particles=[];state.craftsmen=[];state.residents=[];state.repairActive=false;state.repairedHp=0;state.supportTimer=0;hideRepairDecision({skipHistory:true});hideEndScreen();hideCampaignVictoryScreen();hidePauseMenu(false,{skipHistory:true});closeEnemyInfo(false,{skipHistory:true});closeAllBlockingPanels();for(const s of [...wallSlots,...insideSlots,...castleSlots])s.building=null;initializeMiddleWallSegments(state.walls,{built:false});initializeMiddleGates(state.middleGates,{built:false});initializeOuterWallSegments(state.outerWalls,{built:false});initializeOuterGates(state.outerGates,{built:false});initializeInnerWallSegments(state.innerWalls,{fullHealth:true});
- selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();syncWorldMapFromCurrentState();showToast("Neue Belagerung beginnt");
+  selected=null;buildMode=null;unitCommandMode=null;paused=false;gameOver=false;camX=CX;camY=CY;setZoom(.42);ensureCurrentSiege();syncWorldMapFromCurrentState();showToast("Neue Belagerung beginnt");return true;
 }
 
 document.querySelectorAll(".buildBtn").forEach(b=>b.addEventListener("click",e=>{if(e.target.closest(".buildInfoBtn"))return;hideRepairDecision();const action=b.dataset.action;if(action==="unit-overview"){rememberBuildTrayScroll();closeMoreNav();selected=null;unitCommandMode=null;buildMode=null;centerBuildTrayCard(b);openUnitOverview();return}const k=b.dataset.build;buildMode=buildMode===k?null:k;selected=null;unitCommandMode=null;centerBuildTrayCard(b)}));

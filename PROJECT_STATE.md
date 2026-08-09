@@ -1,76 +1,70 @@
 # Fortress Commander – Projektstatus
 
-## Verifizierter Stand
+## Verifizierter Ausgangsstand
 
-- Version: 1.18.18
-- Release-Name: Marktplatz & Lesbarkeit
+- Ausgangsversion: 1.18.18
+- Ausgangsrelease: Marktplatz & Lesbarkeit
 - Branch: main
-- Ausgangscommit: 318025b (v1.18.17: Reparatur und Clanspäher-Schaden)
-- Aktueller v1.18.18-Stand: noch nicht committed
-- Service-Worker-Cache: fortress-commander-v1.18.18
-- Manueller Spieltest für v1.18.18: noch ausstehend
+- Ausgangscommit: 551a08650094e4ad05e77c0c1ef9c7b77710f42e
+- Ausgangscommit war lokal und auf origin/main identisch.
+- v1.18.18 ist veröffentlicht; die frühere Angabe „noch nicht committed“ war veraltet.
 
-## Technischer Prüfstatus
+## Freigegebener Versionsstand
 
-- v1.18.17 wurde manuell getestet und auf GitHub veröffentlicht.
-- v1.18.18 erweitert ausschließlich Marktplatz/UI/Dokumentation und Versions-/Prüfdateien.
-- Goldproduktion und bestehende Wirtschaftserträge werden nicht reduziert.
-- Geschützte Kampf- und Balancewerte bleiben unverändert.
-- JavaScript-Syntax, Validatoren, UTF-8 und Git-Diff müssen nach Patch-Anwendung erneut geprüft werden.
+- Zielversion: 1.18.19
+- Release-Name: Mehrwelt-Speicherfundament
+- Service-Worker-Cache: fortress-commander-v1.18.19
+- Status: vom Nutzer manuell getestet und zur Veröffentlichung freigegeben.
 
-## In v1.18.18 vorgesehen
+## Technische Umsetzung
 
-1. Gebäudenamen und Beschreibungstexte in der Arbeitsverteilung erhalten auf dunklen Karten deutlich mehr Kontrast.
-2. Der Marktplatz zeigt Gold, Holz und Stein gemeinsam an.
-3. Der bestehende Holz-/Gold-Handel bleibt erhalten.
-4. Neue Vorratslieferung: 500 Gold werden mit der vorhandenen Marktrate in Holz umgewandelt.
-5. Neue Steinlieferungen: 1.500 Gold für 100 Basis-Stein oder 5.250 Gold für 350 Basis-Stein; der vorhandene Handelsabschlag bestimmt die tatsächliche Liefermenge.
-6. Die Goldproduktion bleibt unverändert; überschüssiges Gold erhält stattdessen eine zusätzliche freiwillige Verwendung.
+1. `js/world-definitions.js` enthält unabhängige Definitionen für alle fünf bekannten Kampagnenwelten.
+2. Welt 1 `borderlands` bleibt spielbar, verwendet `classic-fortress-v1`, endet nach Welle 32 und besitzt Bosswellen 8, 16, 24 und 32.
+3. Welt 2 `mistwood` bleibt `construction`; ihre spätere Freischaltregel nach Abschluss der Grenzmark ist nur vorbereitet.
+4. Das Weltkartenprofil verwendet Format 3 und bewahrt getrennte Fortschritte aller bekannten Welten sowie bestehende Kommandantenvorteile.
+5. Kommandantenpunkte werden über vorhandene Weltfortschritte summiert; ohne Welt-2-Fortschritt bleibt das Welt-1-Ergebnis unverändert.
+6. Laufende Spielsitzung, ausgewählte Kartenwelt und gespeicherte Welt-ID werden eindeutig getrennt.
+7. LocalStorage-Schreibfehler der Weltkarte werden abgefangen.
 
-## Bekannte bestätigte offene Punkte
+## Savegame-Strategie
 
-1. Der PWA-Updatebanner behauptet auch bei saveCompatible:false, dass der Spielstand erhalten bleibt.
+- Grenzmark verwendet weiterhin exakt `fortressCommander.save.v1`.
+- Nebelwald verwendet vorbereitet `fortressCommander.save.v1.mistwood`.
+- Weitere bekannte Welten folgen `fortressCommander.save.v1.<worldId>`.
+- Neue Snapshots speichern `worldId` zusätzlich zum unveränderten `saveFormat: 1`.
+- Alte Snapshots ohne `worldId` werden ausschließlich als Grenzmark-Save akzeptiert.
+- Ein Save mit falscher, widersprüchlicher oder unbekannter Welt-ID wird verständlich abgelehnt.
+- Es findet keine physische Migration, Kopie oder Löschung des bisherigen Grenzmark-Saves statt.
+- Ressourcen, Forschung, Gebäude, Befestigungen, Bewohner, Einheiten, Kamera, Kampagne, Belagerung, Kriegsrat, Bonusziele und Weltlaufstatistik bleiben Bestandteil des Snapshots.
+
+## Automatischer Prüfstatus
+
+- Savegame-Kompatibilität und Speichertrennung sind statisch sowie durch `tools/validate-multiworld-save.mjs` abgedeckt.
+- Der neue Validator prüft Alt-Saves, getrennte Schlüssel, Löschisolation, Profilformat 2 → 3, Mehrweltfortschritt, Kommandantenpunkte, Welle 32, Endlosmodus sowie Kamera- und Einheitenpositionen.
+- Bestehende Validatoren bleiben als funktionale Altprüfungen erhalten und werden auf Version 1.18.19 weitergeführt.
+- Vollständige Syntax-, Validator-, UTF-8- und Diff-Prüfung wurde nach Patch-Anwendung und vor dem Commit erneut erfolgreich ausgeführt.
+
+## Welt-2-Status
+
+- Der Nebelwald ist in v1.18.19 nicht spielbar.
+- Es wurden keine neue Landschaft, Nebeleffekte, Gegner, Routen oder Welt-2-Balancewerte ergänzt.
+- Der Kartenknoten bleibt sichtbar und zeigt weiterhin „Noch im Aufbau“.
+
+## Bestätigter manueller Teststatus
+
+- v1.18.19 wurde vom Nutzer manuell über VS Code Live Server / Port 5500 getestet.
+- Der manuelle Test war erfolgreich; laut Nutzer funktioniert alles und sieht gut aus.
+- Das Mehrwelt-Speicherfundament funktioniert im freigegebenen Stand.
+- Der bestehende Stand kann committed und auf `origin/main` veröffentlicht werden.
+- Welt 2 bleibt weiterhin im Aufbau und ist noch nicht spielbar.
+
+## Bekannte offene Folgepunkte
+
+1. Der PWA-Updatebanner behauptet auch bei `saveCompatible:false`, dass der Spielstand erhalten bleibt.
 2. Offline kann die aktive alte Version bei einem wartenden Update ihre alten Patchdetails ausliefern.
-
-## Weitere technische Auffälligkeiten
-
-- Alle sechs data/*.json-Dateien sind leer; der aktuelle Laufzeitcode lädt sie laut Audit nicht.
-- Abrisserstattungen werden pro Ressourcenart abgerundet.
-- Einige mobile Update- und Scrollbuttons unterschreiten 44 × 44 Pixel.
-- Das vollständige HUD wird in jedem Animationsframe neu berechnet und beschrieben.
-- Mehrere alte Funktions- und CSS-Reste besitzen im aktuellen Projekt keine Verbraucher.
-- Speichern des Weltkartenprofils ist nicht an jeder Aufrufstelle gegen LocalStorage-Fehler geschützt.
-- Die vier Dateien unter docs/ sind leer.
-
-## Bereits bestätigt aus v1.18.17
-
-- Zerstörte mittlere/äußere Befestigungen bleiben zerstört und müssen regulär neu errichtet werden.
-- Handwerker brechen Reparaturen an vollständig zerstörten baubaren Befestigungen ab.
-- Mehrere Handwerker teilen Reparaturleistung und Materialkosten konsistent.
-- CRLF-/LF-Fehlalarm im Stabilitätsvalidator ist behoben.
-- Clanspäher verursachen wieder ihren vorgesehenen Schaden an Mauern und Toren, ohne Balancewertänderung.
-
-## Offene manuelle Tests für v1.18.18
-
-- Arbeitsverteilung auf Handy: Holzfäller, Steinbruch, Handwerkerhaus, Werkstatt und Marktplatz gut lesbar.
-- Marktplatz: Gold-, Holz- und Steinwerte korrekt sichtbar.
-- 500-Gold-Holzlieferung und beide Steinlieferungen mit korrektem Ressourcenabzug testen.
-- Marktplatzstufen/Handelshaus: Handelsabschlag verändert die gelieferte Menge weiterhin korrekt.
-- Zu wenig Gold: Lieferung wird abgelehnt, ohne Ressourcen zu verändern.
-- Save/Load nach einem Handel zwischen den Wellen.
-- Mobile Marktplatzdarstellung ohne abgeschnittene Buttons oder Texte.
-
-## Dokumentationsstatus
-
-- README, CHANGELOG, Ingame-Anleitung und release-notes.json werden mit v1.18.18 aktualisiert.
-- Patchdetails beschreiben die neue Goldverwendung und die bessere Lesbarkeit.
-- Die bekannten PWA-Folgepunkte bleiben für ein separates Update offen.
-
-## Savegame-Status
-
-- v1.18.18 führt keine neue persistente Datenstruktur ein.
-- Bestehende Savegames bleiben daher nach statischer Einschätzung kompatibel.
-- Historische Savegame-Fixtures für v1.15–v1.18 bleiben als eigener Prüfschritt offen.
+3. Die sechs `data/*.json`-Dateien und vier Dateien unter `docs/` sind weiterhin leer.
+4. Einige mobile Update- und Scrollbuttons unterschreiten weiterhin 44 × 44 Pixel.
+5. Das vollständige HUD wird weiterhin in jedem Animationsframe aktualisiert.
 
 ## Geschützte Balance-Dateien
 
@@ -83,14 +77,3 @@
 - js/fortifications.js
 
 Keine Balancewerte ohne ausdrücklichen Auftrag verändern.
-
-## Empfohlene nächste Arbeiten
-
-1. v1.18.18 lokal anwenden und über Go Live / Port 5500 testen.
-2. Erst nach Testfreigabe PROJECT_STATE.md auf den bestätigten Teststatus setzen und committen.
-3. Danach PWA-Savehinweis und Offline-Patchdetails als getrennten kleinen Patch behandeln.
-4. Mobile Buttons unter 44 × 44 Pixel separat prüfen.
-
-## Arbeitsregel für ChatGPT / Work / Codex
-
-Vor jeder Änderung zuerst PROJECT_STATE.md, Git HEAD, Branch, GAME_VERSION und git status prüfen. Bei Widersprüchen gilt immer der reale Git-/Dateistand.

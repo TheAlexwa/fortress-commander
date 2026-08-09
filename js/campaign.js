@@ -1,3 +1,5 @@
+import { DEFAULT_WORLD_ID, getWorldDefinition } from "./world-definitions.js";
+
 /**
  * Kampagnenfortschritt von Fortress Commander.
  *
@@ -6,7 +8,7 @@
  * fortgesetzt werden.
  */
 
-export const CAMPAIGN_FINAL_WAVE = 32;
+export const CAMPAIGN_FINAL_WAVE = getWorldDefinition(DEFAULT_WORLD_ID).campaign.finalWave;
 
 export const CAMPAIGN_MILESTONES = Object.freeze([
   Object.freeze({

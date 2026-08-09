@@ -1,14 +1,14 @@
 {
-  "version": "1.18.18",
-  "title": "Marktplatz & Lesbarkeit",
-  "summary": "Der Marktplatz gibt großen Goldreserven eine neue Verwendung durch teure Steinlieferungen und größere Holzlieferungen. Gleichzeitig sind die Gebäudenamen in der mobilen Arbeitsverteilung deutlich kontrastreicher lesbar.",
+  "version": "1.18.19",
+  "title": "Mehrwelt-Speicherfundament",
+  "summary": "Die Kampagnenkarte und das lokale Speichersystem sind technisch für getrennte Festungen in mehreren Welten vorbereitet. Die Grenzmark bleibt vollständig kompatibel; der Nebelwald ist weiterhin noch nicht spielbar.",
   "changes": [
-    "Der Marktplatz zeigt jetzt Gold, Holz und Stein gemeinsam an und gliedert direkten Handel und größere Lieferungen übersichtlicher.",
-    "500 Gold können als große Holzlieferung eingesetzt werden; die tatsächlich gelieferte Menge folgt weiterhin dem vorhandenen Handelsabschlag.",
-    "Neue Steinlieferungen kosten 1.500 Gold für 100 Basis-Stein oder 5.250 Gold für 350 Basis-Stein vor Handelsabschlag.",
-    "Die bestehende Goldproduktion wurde nicht reduziert; überschüssiges Gold erhält stattdessen eine zusätzliche freiwillige Verwendung.",
-    "Gebäudenamen und Beschreibungstexte in der Arbeitsverteilung besitzen auf dunklen Karten mehr Kontrast, besonders auf kleinen Displays.",
-    "Schaden, Rüstung, Angriffsgeschwindigkeit und andere Kampfwerte bleiben unverändert."
+    "Statische Weltdefinitionen liegen jetzt zentral und unabhängig für Grenzmark, Nebelwald, gefrorenen Pass, verbrannte Ebenen und das Herz des Eisenclans vor.",
+    "Bestehende Grenzmark-Spielstände bleiben unverändert unter fortressCommander.save.v1 erhalten.",
+    "Jede zukünftige Welt erhält einen eigenen lokalen Festungs-Speicher und kann keinen Spielstand einer anderen Welt überschreiben.",
+    "Das Weltkartenprofil bewahrt Fortschritt und Kommandantenvorteile kontrolliert für mehrere bekannte Welten.",
+    "Der Nebelwald bleibt in v1.18.19 sichtbar, aber weiterhin im Aufbau und nicht spielbar.",
+    "Schaden, Rüstung, Angriffsgeschwindigkeit, Preise und andere Balancewerte bleiben unverändert."
   ],
   "saveCompatible": true
 }

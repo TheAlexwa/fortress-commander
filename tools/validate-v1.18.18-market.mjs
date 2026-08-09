@@ -15,12 +15,12 @@ const failures=[];
 const assert=(condition,message)=>{if(!condition)failures.push(message)};
 const requireText=(source,text,label)=>{if(!source.includes(text))failures.push(`${label}: ${text}`)};
 
-requireText(main,'const GAME_VERSION="1.18.18"',"Version fehlt");
-requireText(main,'const GAME_RELEASE_NAME="Marktplatz & Lesbarkeit"',"Release-Name fehlt");
-requireText(html,"v1.18.18","HTML-Version fehlt");
-requireText(sw,'CACHE_NAME="fortress-commander-v1.18.18"',"Cache-Version fehlt");
-assert(notes.version==="1.18.18","release-notes.json hat falsche Version");
-assert(notes.title==="Marktplatz & Lesbarkeit","release-notes.json hat falschen Titel");
+requireText(main,'const GAME_VERSION="1.18.19"',"Version fehlt");
+requireText(main,'const GAME_RELEASE_NAME="Mehrwelt-Speicherfundament"',"Release-Name fehlt");
+requireText(html,"v1.18.19","HTML-Version fehlt");
+requireText(sw,'CACHE_NAME="fortress-commander-v1.18.19"',"Cache-Version fehlt");
+assert(notes.version==="1.18.19","release-notes.json hat falsche Version");
+assert(notes.title==="Mehrwelt-Speicherfundament","release-notes.json hat falschen Titel");
 assert(notes.saveCompatible===true,"Save-Kompatibilitaet ist nicht bestaetigt");
 
 for(const marker of [
@@ -60,7 +60,7 @@ for(const [file,expected] of Object.entries(protectedHashes)){
 }
 
 if(failures.length){
-  console.error("v1.18.18-Marktplatzpruefung fehlgeschlagen:\n- "+failures.join("\n- "));
+  console.error("v1.18.19-Marktplatzpruefung fehlgeschlagen:\n- "+failures.join("\n- "));
   process.exit(1);
 }
-console.log("v1.18.18-Marktplatzpruefung erfolgreich: Gold-zu-Stein-Lieferungen, grosse Holzlieferung, bessere Arbeitsverteilungs-Lesbarkeit, Versionsstand und unveraenderte Wirtschafts-/Kampfdateien bestaetigt.");
+console.log("v1.18.19-Marktplatzpruefung erfolgreich: Gold-zu-Stein-Lieferungen, grosse Holzlieferung, bessere Arbeitsverteilungs-Lesbarkeit, Versionsstand und unveraenderte Wirtschafts-/Kampfdateien bestaetigt.");
